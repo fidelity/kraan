@@ -1,4 +1,4 @@
-# kraan - The Kubernetes Addon Manager CLI
+# kraan - The Kubernetes Addon Manager
 
 ## What is kraan?
 
@@ -10,7 +10,7 @@ There are currently no releases. This section will be updated with installation 
 
 ## Documentation
 
-Documentation is contained in the `/docs` directory. The [index is here](docs/README.md). 
+Work in Progress, documentation to follow 
 
 ## Contributions
 

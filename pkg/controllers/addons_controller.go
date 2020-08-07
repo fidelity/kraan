@@ -94,8 +94,11 @@ func logBadStatusError(log logr.Logger, status string) {
 
 func processEmptyStatus(l *layers.Layer) {
 	utils.Log(l.GetLogger(), 2, 1, "processing", "Status", "")
+
 	l.StatusPrunePending()
+	l.SetUpdated()
 	l.SetRequeue()
+
 	utils.Log(l.GetLogger(), 2, 1, "processed",
 		"Previous Status", "",
 		"Status", l.GetFullStatus(),
@@ -104,11 +107,14 @@ func processEmptyStatus(l *layers.Layer) {
 
 func processDeployed(l *layers.Layer) {
 	utils.Log(l.GetLogger(), 2, 1, "processing", "Status", kraanv1alpha1.DeployedCondition)
+
 	if !l.IsVersionCurrent() {
 		// Version has changed set to prune pending.
 		l.StatusPrunePending()
+		l.SetUpdated()
 		l.SetRequeue()
 	}
+
 	utils.Log(l.GetLogger(), 2, 1, "processed",
 		"Previous Status", kraanv1alpha1.DeployedCondition,
 		"Status", l.GetFullStatus(),
@@ -117,12 +123,14 @@ func processDeployed(l *layers.Layer) {
 
 func processPrunePending(l *layers.Layer) {
 	utils.Log(l.GetLogger(), 2, 1, "processing", "Status", kraanv1alpha1.PrunePendingCondition)
+
 	if !l.CheckK8sVersion() {
 		l.SetRequeue()
 		l.SetDelayed()
 		return
 	}
 	l.StatusPrune()
+	l.SetUpdated()
 	// Thinking about this, implementing a reliable reverse DependsOn is non trivial so suggest
 	// that for now we just transition to Prune state and revist waiting for layers that depend on
 	// this layer later.
@@ -134,6 +142,7 @@ func processPrunePending(l *layers.Layer) {
 
 func processPrune(l *layers.Layer, r *AddonsLayerReconciler) {
 	utils.Log(l.GetLogger(), 2, 1, "processing", "Status", kraanv1alpha1.PruneCondition)
+
 	l.StatusPruning()
 	if err := r.update(l.GetContext(), l.GetLogger(), l.GetAddonsLayer()); err != nil {
 		l.SetRequeue()
@@ -141,14 +150,26 @@ func processPrune(l *layers.Layer, r *AddonsLayerReconciler) {
 	}
 	// Start prune here in background thread with time limit of spec timeout value
 	// then wait for it to complete or timeout
-	time.Sleep(time.Second * 60)
+	time.Sleep(time.Second * 60) // To simulate delay for testing
+	// If complete update status to ApplyPending
+
+	utils.Log(l.GetLogger(), 2, 1, "processed",
+		"Previous Status", kraanv1alpha1.DeployedCondition,
+		"Status", l.GetFullStatus(),
+		"Spec:", l.GetSpec())
 }
 
 func processPruning(l *layers.Layer, r *AddonsLayerReconciler) {
 	utils.Log(l.GetLogger(), 2, 1, "processing", "Status", kraanv1alpha1.PruningCondition)
-	// Check if pruning is done, if not restart prune here in background with time limit of spec timeout value
-	// Update status with details of pruning progress
-	// If completed, set status to ApplyPending
+	// Check if pruning is done, if not...
+	// Start prune here in background thread with time limit of spec timeout value
+	// then wait for it to complete or timeout
+	// If complete update status to ApplyPending
+
+	utils.Log(l.GetLogger(), 2, 1, "processed",
+		"Previous Status", kraanv1alpha1.DeployedCondition,
+		"Status", l.GetFullStatus(),
+		"Spec:", l.GetSpec())
 }
 
 func processApplyPending(l *layers.Layer) {
@@ -159,19 +180,46 @@ func processApplyPending(l *layers.Layer) {
 		return
 	}
 	// Wait for DependsOn layers to be Deployed
+	// If dependencies are Deployed
+	// Set status to Apply
+	// Otherwise requeue with delay
+
+	utils.Log(l.GetLogger(), 2, 1, "processed",
+		"Previous Status", kraanv1alpha1.DeployedCondition,
+		"Status", l.GetFullStatus(),
+		"Spec:", l.GetSpec())
 }
 
 func processApply(l *layers.Layer, r *AddonsLayerReconciler) {
 	utils.Log(l.GetLogger(), 2, 1, "processing", "Status", kraanv1alpha1.ApplyCondition)
-	// Start apply here in background thread with time limit of spec timeout value
+
 	l.StatusApplying()
+	if err := r.update(l.GetContext(), l.GetLogger(), l.GetAddonsLayer()); err != nil {
+		l.SetRequeue()
+		return
+	}
+	// Start apply here in background thread with time limit of spec timeout value
+	// then wait for it to complete or timeout
+	time.Sleep(time.Second * 60) // To simulate delay for testing
+	// If complete update status to Deployed
+
+	utils.Log(l.GetLogger(), 2, 1, "processed",
+		"Previous Status", kraanv1alpha1.DeployedCondition,
+		"Status", l.GetFullStatus(),
+		"Spec:", l.GetSpec())
 }
 
 func processApplying(l *layers.Layer, r *AddonsLayerReconciler) {
 	utils.Log(l.GetLogger(), 2, 1, "processing", "Status", kraanv1alpha1.ApplyingCondition)
-	// Check if applying is done, if not restart applyhere in background with time limit of spec timeout value
-	// Update status with details of applying progress
-	// If completed, set status to Deployed
+	// Check if applying is done, if not...
+	// Start apply here in background thread with time limit of spec timeout value
+	// then wait for it to complete or timeout
+	// If complete update status to Deployed
+
+	utils.Log(l.GetLogger(), 2, 1, "processed",
+		"Previous Status", kraanv1alpha1.DeployedCondition,
+		"Status", l.GetFullStatus(),
+		"Spec:", l.GetSpec())
 }
 
 func processHold(l *layers.Layer) {

@@ -171,7 +171,6 @@ func (l *Layer) setStatus(status, reason, message string) {
 	//l.trimConditions()
 	l.addonsLayer.Status.State = status
 	l.addonsLayer.Status.Version = l.addonsLayer.Spec.Version
-	l.updated = true
 }
 
 // StatusDeployed sets the addon layer's status to deployed.

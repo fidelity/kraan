@@ -193,6 +193,7 @@ issues:
         - gci
         - gomnd
         - gosec
+        - dupl
     - path: pkg/controllers
       linters:
         - godot

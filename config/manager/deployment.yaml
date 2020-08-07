@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kraan-controller
+  labels:
+    control-plane: controller
+spec:
+  selector:
+    matchLabels:
+      app: kraan-controller
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: kraan-controller
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: manager
+        image: fluxcd/kraan-controller
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+        ports:
+          - containerPort: 8080
+            name: http
+          - containerPort: 9090
+            name: http-prom
+        args:
+          - --enable-leader-election
+          - --log-json
+        env:
+          - name: RUNTIME_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+        livenessProbe:
+          httpGet:
+            port: http
+            path: /
+        readinessProbe:
+          httpGet:
+            port: http
+            path: /
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+

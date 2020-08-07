@@ -1,0 +1,7 @@
+domain: io
+repo: github.com/fidelity/kraan
+resources:
+- group: kraan
+  kind: AddonsLayer
+  version: v1alpha1
+version: "2"

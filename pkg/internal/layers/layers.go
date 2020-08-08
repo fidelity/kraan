@@ -1,3 +1,4 @@
+//Package layers xxx
 package layers
 
 import (
@@ -103,7 +104,7 @@ func (l *Layer) GetSpec() *kraanv1alpha1.AddonsLayerSpec {
 	return &l.addonsLayer.Spec
 }
 
-// GetSpec returns the AddonsLayers Spec.
+// GetAddonsLayer returns the underlying AddonsLayer API type struct.
 func (l *Layer) GetAddonsLayer() *kraanv1alpha1.AddonsLayer {
 	return l.addonsLayer
 }

@@ -1,5 +1,11 @@
-package actors
+//Package apply xxx
+// TEMP DISABLED - go:generate mockgen -destination=mockLayerApplier.go -package=apply -source=layerApplier.go . LayerApplier
+// re-enable the go:generate annotation when we're ready to write tests for the controller
+package apply
 
+/*
+To generate mock code for the LayerApplier run 'go generate ./...' from the project root directory.
+*/
 import (
 	"fmt"
 	"os"
@@ -19,14 +25,15 @@ func init() {
 	helmopscheme.AddToScheme(kscheme.Scheme) // nolint:errcheck // ok
 }
 
-// LayerApplier defines an Apply method to apply AddonLayers to a cluster.
+// LayerApplier defines methods for managing the Addons within an AddonLayer in a cluster.
 type LayerApplier interface {
 	Apply(layer *layers.Layer) (err error)
+	Prune(layer *layers.Layer) (err error)
 }
 
 // KubectlLayerApplier applies an AddonsLayer to a Kubernetes cluster using the kubectl command.
 type KubectlLayerApplier struct {
-	kubectl *kubectl.Kubectl
+	kubectl kubectl.Kubectl
 	logger  logr.Logger
 }
 
@@ -69,50 +76,6 @@ func (a KubectlLayerApplier) logDebug(msg string, layer *layers.Layer, keysAndVa
 
 func (a KubectlLayerApplier) logTrace(msg string, layer *layers.Layer, keysAndValues ...interface{}) {
 	a.log(7, msg, layer, keysAndValues...)
-}
-
-// Apply an AddonLayer to the cluster.
-func (a KubectlLayerApplier) Apply(layer *layers.Layer) (err error) {
-	sourceDir := layer.GetSourcePath()
-	a.logInfo("Applying AddonsLayer", layer)
-	info, err := os.Stat(sourceDir)
-	if os.IsNotExist(err) {
-		a.logDebug("source directory not found", layer)
-		return fmt.Errorf("source directory (%s) not found for AddonsLayer %s/%s",
-			sourceDir, layer.GetNamespace(), layer.GetName())
-	}
-	if os.IsPermission(err) {
-		a.logDebug("source directory read permission denied", layer)
-		return fmt.Errorf("read permission denied to source directory (%s) for AddonsLayer %s/%s",
-			sourceDir, layer.GetNamespace(), layer.GetName())
-	}
-	if err != nil {
-		a.logError(err, "error while checking source directory", layer)
-		return fmt.Errorf("error while checking source directory (%s) for AddonsLayer %s/%s",
-			sourceDir, layer.GetNamespace(), layer.GetName())
-	}
-	if !info.IsDir() {
-		// I'm not sure if this is an error, but I thought I should detect and log it
-		a.logInfo("source path is not a directory", layer)
-	}
-
-	output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).Run()
-	if err != nil {
-		return fmt.Errorf("error from kubectl while applying source directory (%s) for AddonsLayer %s/%s",
-			sourceDir, layer.GetNamespace(), layer.GetName())
-	}
-
-	hrs, errz, err := a.decodeAddons(layer, output)
-	if err != nil {
-		if errz != nil && len(errz) > 0 {
-			a.logErrors(errz, layer)
-		}
-		return err
-	}
-
-	a.logAddons(hrs, layer)
-
-	return nil
 }
 
 func (a KubectlLayerApplier) logErrors(errz []error, layer *layers.Layer) {
@@ -184,4 +147,64 @@ func (a KubectlLayerApplier) decodeList(layer *layers.Layer,
 		return hrs, errz, errz[0]
 	}
 	return hrs, nil, nil
+}
+
+// Apply an AddonLayer to the cluster.
+func (a KubectlLayerApplier) Apply(layer *layers.Layer) (err error) {
+	sourceDir := layer.GetSourcePath()
+	a.logInfo("Applying AddonsLayer", layer)
+	info, err := os.Stat(sourceDir)
+	if os.IsNotExist(err) {
+		a.logDebug("source directory not found", layer)
+		return fmt.Errorf("source directory (%s) not found for AddonsLayer %s/%s",
+			sourceDir, layer.GetNamespace(), layer.GetName())
+	}
+	if os.IsPermission(err) {
+		a.logDebug("source directory read permission denied", layer)
+		return fmt.Errorf("read permission denied to source directory (%s) for AddonsLayer %s/%s",
+			sourceDir, layer.GetNamespace(), layer.GetName())
+	}
+	if err != nil {
+		a.logError(err, "error while checking source directory", layer)
+		return fmt.Errorf("error while checking source directory (%s) for AddonsLayer %s/%s",
+			sourceDir, layer.GetNamespace(), layer.GetName())
+	}
+	if !info.IsDir() {
+		// I'm not sure if this is an error, but I thought I should detect and log it
+		a.logInfo("source path is not a directory", layer)
+	}
+
+	output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).Run()
+	if err != nil {
+		return fmt.Errorf("error from kubectl while applying source directory (%s) for AddonsLayer %s/%s",
+			sourceDir, layer.GetNamespace(), layer.GetName())
+	}
+
+	hrs, errz, err := a.decodeAddons(layer, output)
+	if err != nil {
+		if errz != nil && len(errz) > 0 {
+			a.logErrors(errz, layer)
+		}
+		return err
+	}
+
+	a.logAddons(hrs, layer)
+
+	// TODO: Add an ownerRef to each deployed HelmRelease the points back to this AddonsLayer (needed for Prune)
+
+	// TODO: Watch all HelmRelease resources applied for this AddonsLayer until all are success or fail or timeout
+
+	return nil
+}
+
+// Prune the AddonsLayer by removing the Addons found in the cluster that have since been removed from the Layer.
+func (a KubectlLayerApplier) Prune(layer *layers.Layer) (err error) {
+	// TODO: Stub method placeholder.
+	// Get a list of HelmRelease resources described in the YAML files in the layer's sourceDirectory from the output of kubectl apply -R -f <sourceDir> --dry-run -o json
+	// Get a list of HelmRelease resources in the cluster with ownerRefs to this AddonsLayer
+	// Remove all HelmRelease resources found in the sourceDirectory from the list of HelmRelease resources in the cluster
+	// Delete all HelmRelease resources in the remaining list from the cluster
+	// Wait until Helm Operator finishes removing all deleted HelmRelease resources from the cluster (respect the timeout)
+	// Return an error if any HelmRelease resources could not be deleted or the timeout has been exceeded
+	return nil
 }

@@ -35,6 +35,7 @@ var (
 type Kubectl interface {
 	Apply(path string) (c Command)
 	Delete(args ...string) (c Command)
+	Get(args ...string) (c Command)
 	getLogger() logr.Logger
 	getPath() string
 }
@@ -170,6 +171,25 @@ func (f *CommandFactory) Delete(args ...string) (c Command) {
 			logger:     f.logger,
 			factory:    f,
 			subCmd:     "delete",
+			jsonOutput: false,
+			args:       args,
+		},
+	}
+	return c
+}
+
+// GetCommand implements the Command interface to delete resources from the KubeAPI service
+type GetCommand struct {
+	abstractCommand
+}
+
+// Get instantiates a GetCommand instance for the described Kubernetes resource
+func (f *CommandFactory) Get(args ...string) (c Command) {
+	c = &DeleteCommand{
+		abstractCommand: abstractCommand{
+			logger:     f.logger,
+			factory:    f,
+			subCmd:     "get",
 			jsonOutput: false,
 			args:       args,
 		},

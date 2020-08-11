@@ -21,6 +21,10 @@ import (
 	kscheme "k8s.io/client-go/kubernetes/scheme"
 )
 
+var (
+	newKubectlFunc func(logger logr.Logger) (kubectl.Kubectl, error) = kubectl.NewKubectl
+)
+
 func init() {
 	helmopscheme.AddToScheme(kscheme.Scheme) // nolint:errcheck // ok
 }
@@ -39,7 +43,7 @@ type KubectlLayerApplier struct {
 
 // NewApplier returns a LayerApplier instance.
 func NewApplier(logger logr.Logger) (applier LayerApplier, err error) {
-	kubectl, err := kubectl.NewKubectl(logger)
+	kubectl, err := newKubectlFunc(logger)
 	if err != nil {
 		return nil, err
 	}

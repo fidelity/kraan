@@ -33,6 +33,6 @@ spec:
       containers:
       - name: test-job
         image: "alpine:3"
-        command:
-        - "echo 'sleep {{ default 0 .Values.test.delaySeconds }}; {{ default "true" .Values.test.succeed }}' | /bin/sh"
+        command: [ "/bin/sh" ]
+        args: [ "-c", "sleep {{ default 0 .Values.test.delaySeconds }}; {{ default "true" .Values.test.succeed }}" ]
         # - migrate up

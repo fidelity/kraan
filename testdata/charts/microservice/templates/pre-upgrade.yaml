@@ -33,6 +33,6 @@ spec:
       containers:
       - name: pre-upgrade-job
         image: "alpine:3"
-        command:
-        - "echo 'sleep {{ default 0 .Values.delaySeconds }}; {{ default "true" .Values.succeed }}' | /bin/sh"
+        command: [ "/bin/sh" ]
+        args: [ "-c", "sleep {{ default 0 .Values.delaySeconds }}; {{ default "true" .Values.succeed }}" ]
         # - migrate up

@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: "{{ .Release.Name }}-hook-job"
-  namespace: postgres
+  namespace: "{{ .Release.Namespace }}"
   labels:
     app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
     app.kubernetes.io/instance: {{ .Release.Name | quote }}
@@ -27,21 +27,7 @@ spec:
       restartPolicy: Never
       containers:
       - name: pre-upgrade-job
-        image: "tmaier/postgresql-client:latest"
-        env:
-        - name: PGPASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: postgres.acid-mahmoud-cluster.credentials
-              key: password
+        image: "alpine:3"
         command:
-        - /usr/bin/psql
-        - -h
-        - acid-mahmoud-cluster.postgres.svc.cluster.local
-        - -U
-        - postgres
-        - -p
-        - '5432'
-        - -c
-        - 'CREATE TABLE test(id serial PRIMARY KEY,name VARCHAR (255) UNIQUE NOT NULL);'
+        - /bin/true
         # - migrate up

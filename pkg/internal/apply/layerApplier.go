@@ -9,15 +9,20 @@ To generate mock code for the LayerApplier run 'go generate ./...' from the proj
 import (
 	"fmt"
 	"os"
+	"sync"
+	"time"
 
 	"github.com/fidelity/kraan/pkg/internal/kubectl"
 	"github.com/fidelity/kraan/pkg/internal/layers"
 
 	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
+	helmrelease "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned"
 	helmopscheme "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/scheme"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
 	kscheme "k8s.io/client-go/kubernetes/scheme"
 )
 
@@ -31,8 +36,8 @@ func init() {
 
 // LayerApplier defines methods for managing the Addons within an AddonLayer in a cluster.
 type LayerApplier interface {
-	Apply(layer *layers.Layer) (err error)
-	Prune(layer *layers.Layer) (err error)
+	Apply(layer layers.Layer) (err error)
+	Prune(layer layers.Layer) (err error)
 }
 
 // KubectlLayerApplier applies an AddonsLayer to a Kubernetes cluster using the kubectl command.
@@ -47,14 +52,14 @@ func NewApplier(logger logr.Logger) (applier LayerApplier, err error) {
 	if err != nil {
 		return nil, err
 	}
-	applier = KubectlLayerApplier{
+	applier = &KubectlLayerApplier{
 		kubectl: kubectl,
 		logger:  logger,
 	}
 	return applier, nil
 }
 
-func (a KubectlLayerApplier) getLog(layer *layers.Layer) (logger logr.Logger) {
+func (a *KubectlLayerApplier) getLog(layer layers.Layer) (logger logr.Logger) {
 	logger = layer.GetLogger()
 	if logger == nil {
 		logger = a.logger
@@ -62,40 +67,373 @@ func (a KubectlLayerApplier) getLog(layer *layers.Layer) (logger logr.Logger) {
 	return logger
 }
 
-func (a KubectlLayerApplier) log(level int, msg string, layer *layers.Layer, keysAndValues ...interface{}) {
+func (a *KubectlLayerApplier) log(level int, msg string, layer layers.Layer, keysAndValues ...interface{}) {
 	a.getLog(layer).V(level).Info(msg, append(keysAndValues, "sourcePath", layer.GetSourcePath(), "layer", layer)...)
 }
 
-func (a KubectlLayerApplier) logError(err error, msg string, layer *layers.Layer, keysAndValues ...interface{}) {
+func (a *KubectlLayerApplier) logError(err error, msg string, layer layers.Layer, keysAndValues ...interface{}) {
 	a.getLog(layer).Error(err, msg, append(keysAndValues, "sourcePath", layer.GetSourcePath(), "layer", layer)...)
 }
 
-func (a KubectlLayerApplier) logInfo(msg string, layer *layers.Layer, keysAndValues ...interface{}) {
+func (a *KubectlLayerApplier) logInfo(msg string, layer layers.Layer, keysAndValues ...interface{}) {
 	a.log(1, msg, layer, keysAndValues...)
 }
 
-func (a KubectlLayerApplier) logDebug(msg string, layer *layers.Layer, keysAndValues ...interface{}) {
+func (a *KubectlLayerApplier) logDebug(msg string, layer layers.Layer, keysAndValues ...interface{}) {
 	a.log(5, msg, layer, keysAndValues...)
 }
 
-func (a KubectlLayerApplier) logTrace(msg string, layer *layers.Layer, keysAndValues ...interface{}) {
+func (a *KubectlLayerApplier) logTrace(msg string, layer layers.Layer, keysAndValues ...interface{}) {
 	a.log(7, msg, layer, keysAndValues...)
 }
 
-func (a KubectlLayerApplier) logErrors(errz []error, layer *layers.Layer) {
+func (a *KubectlLayerApplier) logErrors(errz []error, layer layers.Layer) {
 	for _, err := range errz {
 		a.logError(err, "error while applying layer", layer)
 	}
 }
 
-func (a KubectlLayerApplier) logAddons(hrs []*helmopv1.HelmRelease, layer *layers.Layer) {
+func (a *KubectlLayerApplier) getAddons(hrClient *helmrelease.Clientset, hrs []*helmopv1.HelmRelease, layer layers.Layer) (foundHrs []*helmopv1.HelmRelease) {
 	for i, hr := range hrs {
-		a.logInfo("Deployed HelmRelease for AddonsLayer", layer, "index", i, "helmRelease", hr)
+		a.logDebug("Checking HelmRelease for AddonsLayer", layer, "index", i, "helmRelease", hr)
+		nsClient := hrClient.HelmV1().HelmReleases(hr.Namespace)
+		foundHr, err := nsClient.Get(hr.Name, metav1.GetOptions{TypeMeta: hr.TypeMeta})
+		if err == nil {
+			a.logDebug("Found HelmRelease for AddonsLayer", layer, "index", i, "helmRelease", foundHr)
+			foundHrs = append(foundHrs, foundHr)
+		} else {
+			err := fmt.Errorf("Error getting HelmRelease '%s' for AddonsLayer '%s'", getLabel(hr), layer.GetName())
+			a.logError(err, "Error getting HelmRelease for AddonsLayer", layer, "index", i, "helmRelease", hr)
+		}
+	}
+	return foundHrs
+}
+
+func getLabel(hr *helmopv1.HelmRelease) string {
+	return fmt.Sprintf("%s/%s", hr.GetNamespace(), hr.GetName())
+}
+
+type addonError struct {
+	label   string
+	err     error
+	isFatal bool
+}
+
+func newEventError(event *watch.Event, hr *helmopv1.HelmRelease) addonError {
+	err := fmt.Errorf("Received %s event for HelmRelease %s", event.Type, getLabel(hr))
+	return addonError{
+		label:   getLabel(hr),
+		err:     err,
+		isFatal: event.Type == watch.Deleted,
 	}
 }
 
-func (a KubectlLayerApplier) decodeAddons(layer *layers.Layer,
-	json []byte) (hrs []*helmopv1.HelmRelease, errz []error, err error) {
+func newError(msg string, hr *helmopv1.HelmRelease) addonError {
+	err := fmt.Errorf("%s for HelmRelease %s", msg, getLabel(hr))
+	return addonError{
+		label:   getLabel(hr),
+		err:     err,
+		isFatal: false,
+	}
+}
+
+func newFatalError(msg string, hr *helmopv1.HelmRelease) addonError {
+	err := fmt.Errorf("%s for HelmRelease %s", msg, getLabel(hr))
+	return addonError{
+		label:   getLabel(hr),
+		err:     err,
+		isFatal: true,
+	}
+}
+
+func (p *addonError) getLabel() string {
+	return p.label
+}
+
+type addonPhase struct {
+	label string
+	phase *helmopv1.HelmReleasePhase
+	state string
+}
+
+func newAddonPhase(hr *helmopv1.HelmRelease) addonPhase {
+	return addonPhase{
+		label: getLabel(hr),
+		phase: &hr.Status.Phase,
+		state: hr.Status.ReleaseStatus,
+	}
+}
+
+func (p *addonPhase) getLabel() string {
+	return p.label
+}
+
+type addonsTracker struct {
+	addons  []*helmopv1.HelmRelease
+	phases  map[string]*helmopv1.HelmReleasePhase
+	states  map[string]string
+	errors  map[string][]*error
+	success map[string]bool
+	mutex   *sync.Mutex
+}
+
+func newTracker(addons []*helmopv1.HelmRelease) *addonsTracker {
+	tracker := &addonsTracker{
+		addons:  addons,
+		phases:  make(map[string]*helmopv1.HelmReleasePhase, len(addons)),
+		states:  make(map[string]string, len(addons)),
+		errors:  make(map[string][]*error, len(addons)),
+		success: make(map[string]bool, len(addons)),
+		mutex:   &sync.Mutex{},
+	}
+	for _, addon := range addons {
+		tracker.initPhase(addon)
+	}
+	return tracker
+}
+
+func (p *addonsTracker) getPhase(hr *helmopv1.HelmRelease) (phase *helmopv1.HelmReleasePhase, found bool) {
+	p.mutex.Lock()
+	phase, found = p.phases[getLabel(hr)]
+	p.mutex.Unlock()
+	return phase, found
+}
+
+func (p *addonsTracker) getState(hr *helmopv1.HelmRelease) (state string, found bool) {
+	p.mutex.Lock()
+	state, found = p.states[getLabel(hr)]
+	p.mutex.Unlock()
+	return state, found
+}
+
+func (p *addonsTracker) getErrors(hr *helmopv1.HelmRelease) (errors []*error, found bool) {
+	p.mutex.Lock()
+	errors, found = p.errors[getLabel(hr)]
+	p.mutex.Unlock()
+	return errors, found
+}
+
+func (p *addonsTracker) initPhase(hr *helmopv1.HelmRelease) {
+	if !isObserved(hr) {
+		return
+	}
+	phase := &hr.Status.Phase
+	state := hr.Status.ReleaseStatus
+	label := getLabel(hr)
+	p.phases[label] = phase
+	p.states[label] = state
+	if isSuccessPhase(phase) {
+		p.success[label] = true
+	} else if isFailedPhase(phase) {
+		p.success[label] = false
+	}
+}
+
+func (p *addonsTracker) updatePhase(phase addonPhase) {
+	p.mutex.Lock()
+	p.phases[phase.label] = phase.phase
+	p.states[phase.label] = phase.state
+	if isSuccessPhase(phase.phase) {
+		p.success[phase.label] = true
+	} else if isFailedPhase(phase.phase) {
+		p.success[phase.label] = false
+	}
+	p.mutex.Unlock()
+}
+
+func (p *addonsTracker) addError(err addonError) {
+	p.mutex.Lock()
+	p.errors[err.label] = append(p.errors[err.label], &err.err)
+	if err.isFatal {
+		p.success[err.label] = false
+	}
+	p.mutex.Unlock()
+}
+
+func (p *addonsTracker) isDone(hr *helmopv1.HelmRelease) bool {
+	p.mutex.Lock()
+	_, found := p.success[getLabel(hr)]
+	p.mutex.Unlock()
+	return found
+}
+
+func (p *addonsTracker) isSuccess(hr *helmopv1.HelmRelease) bool {
+	p.mutex.Lock()
+	success, found := p.success[getLabel(hr)]
+	if !found {
+		success = false
+	}
+	p.mutex.Unlock()
+	return success
+}
+
+func (p *addonsTracker) releaseDone() bool {
+	for _, hr := range p.addons {
+		if !p.isDone(hr) {
+			return false
+		}
+	}
+	return true
+}
+
+func (p *addonsTracker) releaseFailed() bool {
+	for _, hr := range p.addons {
+		if !p.isSuccess(hr) {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *addonsTracker) logReleaseErrors(a *KubectlLayerApplier, layer layers.Layer) {
+	for _, hr := range p.addons {
+		if p.isSuccess(hr) {
+			continue
+		}
+		errors, found := p.errors[getLabel(hr)]
+		if found {
+			for _, err := range errors {
+				a.logError(*err, "HelmRelease failed for AddonsLayer", layer, "helmRelease", hr)
+			}
+		} else {
+			err := fmt.Errorf("no errors tracked for HelmRelease '%s' - it may have failed before tracking started", getLabel(hr))
+			a.logError(err, "HelmRelease failed for AddonsLayer", layer, "helmRelease", hr)
+		}
+	}
+}
+
+func isObserved(hr *helmopv1.HelmRelease) bool {
+	return hr.GetGeneration() == hr.Status.ObservedGeneration
+}
+
+func isSuccessPhase(phase *helmopv1.HelmReleasePhase) bool {
+	switch *phase {
+	case helmopv1.HelmReleasePhaseSucceeded:
+		return true
+	default:
+		return false
+	}
+}
+
+func isErrorPhase(phase *helmopv1.HelmReleasePhase) bool {
+	switch *phase {
+	case helmopv1.HelmReleasePhaseChartFetchFailed,
+		helmopv1.HelmReleasePhaseDeployFailed,
+		helmopv1.HelmReleasePhaseRollbackFailed,
+		helmopv1.HelmReleasePhaseTestFailed:
+		return true
+	default:
+		return false
+	}
+}
+
+func isFailedPhase(phase *helmopv1.HelmReleasePhase) bool {
+	switch *phase {
+	case helmopv1.HelmReleasePhaseFailed:
+		return true
+	default:
+		return false
+	}
+}
+
+func (a *KubectlLayerApplier) watchAddons(hrClient *helmrelease.Clientset, hrs []*helmopv1.HelmRelease, layer layers.Layer) *addonsTracker {
+	hrs = a.getAddons(hrClient, hrs, layer)
+
+	// Group HelmRelease items by Namespace as the client is Namespace-scoped
+	hrsByNamespace := make(map[string][]*helmopv1.HelmRelease)
+	for _, hr := range hrs {
+		hrsByNamespace[hr.Namespace] = append(hrsByNamespace[hr.Namespace], hr)
+	}
+
+	// Individual HelmRelease resource Watchers will timeout after watcherTimeout seconds
+	watcherTimeout := int64(180)
+	// The watchTimer times out the entire AddonsLayer watch process with a signal
+	watchTimer := time.NewTimer(4 * time.Minute)
+
+	tracker := newTracker(hrs)
+	phaseChannel := make(chan addonPhase, len(hrs))
+	errorChannel := make(chan addonError, len(hrs))
+	for ns, nsHrs := range hrsByNamespace {
+		nsClient := hrClient.HelmV1().HelmReleases(ns)
+		// Add a go routine with a watcher for each HelmRelease object in the list for this namespace
+		for _, watchHr := range nsHrs {
+			// Skip creating the watcher if this HelmRelease is already in a terminal state
+			if tracker.isDone(watchHr) {
+				continue
+			}
+			go func(watchedHr *helmopv1.HelmRelease, phaseChannel chan<- addonPhase, errorChannel chan<- addonError) {
+				listOptions := metav1.SingleObject(watchedHr.ObjectMeta)
+				listOptions.TimeoutSeconds = &watcherTimeout
+				/*listOptions := metav1.ListOptions{
+					FieldSelector:  fmt.Sprintf("meta.name=%s", watchedHr.GetName()),
+					TimeoutSeconds: &watcherTimeout,
+				}*/
+
+				watcher, err := nsClient.Watch(listOptions)
+				if err != nil {
+					a.logError(err, "cannot watch HelmRelease", layer, "helmRelease", watchedHr, "listOptions", listOptions)
+				}
+				// TODO: Do I need to explicitly call Stop on the Watcher?
+				// defer watcher.Stop()
+
+				eventChannel := watcher.ResultChan()
+				// TODO: will the range exit when the watcherTimeout ends?
+				for event := range eventChannel {
+					eventHr, ok := event.Object.(*helmopv1.HelmRelease)
+					if !ok {
+						// Somehow we got an event for an unexpected type!
+						msg := fmt.Sprintf("Watcher returned event '%s' with an unexpected object type (%T)", event.Type, event.Object)
+						errorChannel <- newError(msg, eventHr)
+					}
+
+					switch event.Type {
+					case watch.Added, watch.Modified:
+						a.logDebug("Recieved event for HelmRelease", layer, "helmRelease", eventHr, "event", event)
+						if isObserved(eventHr) {
+							phaseChannel <- newAddonPhase(eventHr)
+						}
+					case watch.Deleted, watch.Error:
+						errorChannel <- newEventError(&event, eventHr)
+					}
+					phase := &eventHr.Status.Phase
+					if isSuccessPhase(phase) || isFailedPhase(phase) {
+						return // Does this Stop the Watcher and close its channel?
+					}
+				}
+			}(watchHr, phaseChannel, errorChannel)
+		}
+	}
+
+catchLoop:
+	for {
+		select {
+		case phase, ok := <-phaseChannel:
+			if !ok {
+				a.logInfo("AddonsLayer phase channel closed", layer)
+				break catchLoop
+			}
+			tracker.updatePhase(phase)
+			if tracker.releaseDone() {
+				a.logInfo("AddonsLayer release completed!", layer)
+				break catchLoop
+			}
+		case addonError, ok := <-errorChannel:
+			if !ok {
+				a.logInfo("AddonsLayer error channel closed", layer)
+				break catchLoop
+			}
+			tracker.addError(addonError)
+		case timeout := <-watchTimer.C:
+			err := fmt.Errorf("Watch Timeout! %#v", timeout)
+			a.logError(err, "AddonsLayer watch timeout", layer, "timeout", timeout)
+			break catchLoop
+		}
+	}
+
+	return tracker
+}
+
+func (a *KubectlLayerApplier) decodeAddons(layer layers.Layer, json []byte) (hrs []*helmopv1.HelmRelease, errz []error, err error) {
 	// TODO - should probably trace log the json before we try to decode it.
 	a.logTrace("decoding JSON output from kubectl", layer, "output", json)
 
@@ -118,14 +456,14 @@ func (a KubectlLayerApplier) decodeAddons(layer *layers.Layer,
 		a.logDebug("decoded single HelmRelease from kubectl output", layer, "groupVersionKind", gvk, "helmRelease", hr)
 		return []*helmopv1.HelmRelease{hr}, nil, nil
 	default:
-		msg := "decoded kubectl output was not a HelmRelease or List"
+		msg := fmt.Sprintf("decoded kubectl output was not a HelmRelease or List: %s", string(json))
 		err = fmt.Errorf(msg)
 		a.logError(err, msg, layer, "output", json, "groupVersionKind", gvk, "object", obj)
 		return nil, nil, err
 	}
 }
 
-func (a KubectlLayerApplier) decodeList(layer *layers.Layer,
+func (a *KubectlLayerApplier) decodeList(layer layers.Layer,
 	raws *corev1.List, dez *runtime.Decoder) (hrs []*helmopv1.HelmRelease, errz []error, err error) {
 	dec := *dez
 
@@ -154,24 +492,22 @@ func (a KubectlLayerApplier) decodeList(layer *layers.Layer,
 }
 
 // Apply an AddonLayer to the cluster.
-func (a KubectlLayerApplier) Apply(layer *layers.Layer) (err error) {
+func (a *KubectlLayerApplier) Apply(layer layers.Layer) (err error) {
 	sourceDir := layer.GetSourcePath()
+	label := fmt.Sprintf("%s/%s", layer.GetNamespace(), layer.GetName())
 	a.logInfo("Applying AddonsLayer", layer)
 	info, err := os.Stat(sourceDir)
 	if os.IsNotExist(err) {
 		a.logDebug("source directory not found", layer)
-		return fmt.Errorf("source directory (%s) not found for AddonsLayer %s/%s",
-			sourceDir, layer.GetNamespace(), layer.GetName())
+		return fmt.Errorf("source directory (%s) not found for AddonsLayer %s", sourceDir, label)
 	}
 	if os.IsPermission(err) {
 		a.logDebug("source directory read permission denied", layer)
-		return fmt.Errorf("read permission denied to source directory (%s) for AddonsLayer %s/%s",
-			sourceDir, layer.GetNamespace(), layer.GetName())
+		return fmt.Errorf("read permission denied to source directory (%s) for AddonsLayer %s", sourceDir, label)
 	}
 	if err != nil {
 		a.logError(err, "error while checking source directory", layer)
-		return fmt.Errorf("error while checking source directory (%s) for AddonsLayer %s/%s",
-			sourceDir, layer.GetNamespace(), layer.GetName())
+		return fmt.Errorf("error while checking source directory (%s) for AddonsLayer %s", sourceDir, label)
 	}
 	if !info.IsDir() {
 		// I'm not sure if this is an error, but I thought I should detect and log it
@@ -180,8 +516,7 @@ func (a KubectlLayerApplier) Apply(layer *layers.Layer) (err error) {
 
 	output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).Run()
 	if err != nil {
-		return fmt.Errorf("error from kubectl while applying source directory (%s) for AddonsLayer %s/%s",
-			sourceDir, layer.GetNamespace(), layer.GetName())
+		return fmt.Errorf("error from kubectl while applying source directory (%s) for AddonsLayer %s", sourceDir, label)
 	}
 
 	hrs, errz, err := a.decodeAddons(layer, output)
@@ -192,17 +527,23 @@ func (a KubectlLayerApplier) Apply(layer *layers.Layer) (err error) {
 		return err
 	}
 
-	a.logAddons(hrs, layer)
+	hrClient := layer.GetHelmReleaseClient()
 
 	// TODO: Add an ownerRef to each deployed HelmRelease the points back to this AddonsLayer (needed for Prune)
 
-	// TODO: Watch all HelmRelease resources applied for this AddonsLayer until all are success or fail or timeout
+	// TODO: Add timeout for watching addons
+	tracker := a.watchAddons(hrClient, hrs, layer)
+
+	if tracker.releaseFailed() {
+		tracker.logReleaseErrors(a, layer)
+		return fmt.Errorf("release failed for AddonsLayer %s", label)
+	}
 
 	return nil
 }
 
 // Prune the AddonsLayer by removing the Addons found in the cluster that have since been removed from the Layer.
-func (a KubectlLayerApplier) Prune(layer *layers.Layer) (err error) {
+func (a *KubectlLayerApplier) Prune(layer layers.Layer) (err error) {
 	// TODO: Stub method placeholder.
 	// Get a list of HelmRelease resources described in the YAML files in the layer's sourceDirectory from the output of kubectl apply -R -f <sourceDir> --dry-run -o json
 	// Get a list of HelmRelease resources in the cluster with ownerRefs to this AddonsLayer

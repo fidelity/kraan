@@ -1,0 +1,26 @@
+apiVersion: helm.fluxcd.io/v1
+kind: HelmRelease
+metadata:
+  name: microservice
+  namespace: simple
+  annotations:
+    fluxcd.io/automated: "false"
+spec:
+  releaseName: microservice
+  chart:
+    git: https://github.com/sbernheim/kraan
+    path: testdata/charts/microservice
+    ref: watcher-wip
+  values:
+    delaySeconds: 30
+    succeed: "true"
+    testDelaySeconds: 30
+    testSucceed: "false"
+    podinfo:
+      image:
+        repository: stefanprodan/podinfo
+        tag: 3.1.5
+      service:
+        type: LoadBalancer
+      replicaCount: 2
+      message: Hello Puny Humans!

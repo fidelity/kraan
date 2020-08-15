@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: "{{ .Release.Name }}-hook-job"
+  name: "{{ .Release.Name }}-test-job"
   namespace: "{{ .Release.Namespace }}"
   labels:
     app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
@@ -11,13 +11,13 @@ metadata:
   annotations:
     # This is what defines this resource as a hook. Without this line, the
     # job is considered part of the release.
-    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook: test
     # The delete policy determines when to delete the hook job:
     #   before-hook-creation: delete before creating this hook again (default)
     #   hook-succeeded: delete immediately if the job succeeds (exit 0)
     #   hook-failed: delete immediately if the job fails (exit non-zero)
     # helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded,hook-failed
-    helm.sh/hook-delete-policy: before-hook-creation
+    helm.sh/hook-delete-policy: hook-succeeded
 spec:
   template:
     metadata:
@@ -31,8 +31,8 @@ spec:
     spec:
       restartPolicy: Never
       containers:
-      - name: pre-upgrade-job
+      - name: test-job
         image: "alpine:3"
         command:
-        - "echo 'sleep {{ default 0 .Values.delaySeconds }}; {{ default "true" .Values.succeed }}' | /bin/sh"
+        - "echo 'sleep {{ default 0 .Values.test.delaySeconds }}; {{ default "true" .Values.test.succeed }}' | /bin/sh"
         # - migrate up

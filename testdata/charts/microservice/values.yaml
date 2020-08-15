@@ -1,5 +1,4 @@
 delaySeconds: 0
 succeed: "true"
-test:
-  delaySeconds: 0
-  succeed: "true"
+testDelaySeconds: 0
+testSucceed: "true"

@@ -34,5 +34,5 @@ spec:
       - name: test-job
         image: "alpine:3"
         command: [ "/bin/sh" ]
-        args: [ "-c", "sleep {{ default 0 .Values.test.delaySeconds }}; {{ default "true" .Values.test.succeed }}" ]
+        args: [ "-c", "sleep {{ default 0 .Values.testDelaySeconds }}; {{ default "true" .Values.testSucceed }}" ]
         # - migrate up

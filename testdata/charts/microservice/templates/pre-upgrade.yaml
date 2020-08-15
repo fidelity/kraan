@@ -17,11 +17,11 @@ metadata:
     #   hook-succeeded: delete immediately if the job succeeds (exit 0)
     #   hook-failed: delete immediately if the job fails (exit non-zero)
     # helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded,hook-failed
-    helm.sh/hook-delete-policy: before-hook-creation
+    # helm.sh/hook-delete-policy: before-hook-creation
 spec:
   template:
     metadata:
-      name: "{{ .Release.Name }}"
+      name: "{{ .Release.Name }}-hook"
       annotations:
         sidecar.istio.io/inject: "false"
       labels:
@@ -31,7 +31,7 @@ spec:
     spec:
       restartPolicy: Never
       containers:
-      - name: pre-upgrade-job
+      - name: hook-job
         image: "alpine:3"
         command: [ "/bin/sh" ]
         args: [ "-c", "sleep {{ default 0 .Values.delaySeconds }}; {{ default "true" .Values.succeed }}" ]

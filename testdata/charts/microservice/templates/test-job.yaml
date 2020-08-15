@@ -21,7 +21,7 @@ metadata:
 spec:
   template:
     metadata:
-      name: "{{ .Release.Name }}"
+      name: "{{ .Release.Name }}-test"
       annotations:
         sidecar.istio.io/inject: "false"
       labels:

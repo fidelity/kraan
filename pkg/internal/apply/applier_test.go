@@ -146,6 +146,8 @@ func TestSimpleApplyIntegration(t *testing.T) {
 	}
 	t.Logf("NewApplier returned (%T) %#v", applier, applier)
 
+	// This integration test can be forced to pass or fail at different stages by altering the
+	// Values section of the podinfo.yaml HelmRelease in the directory below.
 	sourcePath := "testdata/apply/simpleapply"
 	coreClient, hrClient := kubeClients(t)
 

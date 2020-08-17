@@ -169,22 +169,24 @@ func (p *addonPhase) getLabel() string {
 }
 
 type addonsTracker struct {
-	addons  []*helmopv1.HelmRelease
-	phases  map[string]*helmopv1.HelmReleasePhase
-	states  map[string]string
-	errors  map[string][]*error
-	success map[string]bool
-	mutex   *sync.Mutex
+	addons   []*helmopv1.HelmRelease
+	phases   map[string]*helmopv1.HelmReleasePhase
+	states   map[string]string
+	errors   map[string][]*error
+	success  map[string]bool
+	timedout bool
+	mutex    *sync.Mutex
 }
 
 func newTracker(addons []*helmopv1.HelmRelease) *addonsTracker {
 	tracker := &addonsTracker{
-		addons:  addons,
-		phases:  make(map[string]*helmopv1.HelmReleasePhase, len(addons)),
-		states:  make(map[string]string, len(addons)),
-		errors:  make(map[string][]*error, len(addons)),
-		success: make(map[string]bool, len(addons)),
-		mutex:   &sync.Mutex{},
+		addons:   addons,
+		phases:   make(map[string]*helmopv1.HelmReleasePhase, len(addons)),
+		states:   make(map[string]string, len(addons)),
+		errors:   make(map[string][]*error, len(addons)),
+		success:  make(map[string]bool, len(addons)),
+		timedout: false,
+		mutex:    &sync.Mutex{},
 	}
 	for _, addon := range addons {
 		tracker.initPhase(addon)
@@ -250,6 +252,23 @@ func (p *addonsTracker) addError(err addonError) {
 	p.mutex.Unlock()
 }
 
+func (p *addonsTracker) timeout() {
+	p.mutex.Lock()
+	p.timedout = true
+	for _, hr := range p.addons {
+		label := getLabel(hr)
+		// Add an error for this addon if it has not yet succeeded or failed
+		_, found := p.success[label]
+		if !found {
+			phase := p.phases[label]
+			state := p.states[label]
+			err := fmt.Errorf("HelmRelease '%s' timed out in phase '%s' releaseStatus '%s'", label, *phase, state)
+			p.errors[label] = append(p.errors[label], &err)
+		}
+	}
+	p.mutex.Unlock()
+}
+
 func (p *addonsTracker) isDone(hr *helmopv1.HelmRelease) bool {
 	p.mutex.Lock()
 	_, found := p.success[getLabel(hr)]
@@ -283,6 +302,10 @@ func (p *addonsTracker) releaseFailed() bool {
 		}
 	}
 	return false
+}
+
+func (p *addonsTracker) releaseTimedout() bool {
+	return p.timedout
 }
 
 func (p *addonsTracker) logReleaseErrors(a *KubectlLayerApplier, layer layers.Layer) {
@@ -369,6 +392,7 @@ func (a *KubectlLayerApplier) watchAddons(hrClient *helmrelease.Clientset, hrs [
 					TimeoutSeconds: &watcherTimeout,
 				}*/
 
+				// TODO - investigate using a CustomPredicate here to filter for only the events we're interested in.
 				watcher, err := nsClient.Watch(listOptions)
 				if err != nil {
 					a.logError(err, "cannot watch HelmRelease", layer, "helmRelease", watchedHr, "listOptions", listOptions)
@@ -426,6 +450,7 @@ catchLoop:
 		case timeout := <-watchTimer.C:
 			err := fmt.Errorf("Watch Timeout! %#v", timeout)
 			a.logError(err, "AddonsLayer watch timeout", layer, "timeout", timeout)
+			tracker.timeout()
 			break catchLoop
 		}
 	}

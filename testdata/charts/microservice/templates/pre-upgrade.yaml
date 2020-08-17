@@ -30,7 +30,7 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name | quote }}
         helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     spec:
-      restartPolicy: {{ default Never .Values.preHookRestartPolicy }}
+      restartPolicy: {{ default "Never" .Values.preHookRestartPolicy }}
       containers:
       - name: hook-job
         image: "alpine:3"

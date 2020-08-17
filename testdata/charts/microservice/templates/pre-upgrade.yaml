@@ -20,7 +20,8 @@ metadata:
     # helm.sh/hook-delete-policy: before-hook-creation
 spec:
   backoffLimit: {{ default 6 .Values.preHookBackoffLimit }}
-  activeDeadlineSeconds: {{ default 600 .Values.preHookActiveDeadlineSeconds }}  template:
+  activeDeadlineSeconds: {{ default 600 .Values.preHookActiveDeadlineSeconds }}
+  template:
     metadata:
       name: "{{ .Release.Name }}-hook"
       annotations:

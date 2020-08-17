@@ -19,8 +19,8 @@ metadata:
     # helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded,hook-failed
     # helm.sh/hook-delete-policy: hook-succeeded
 spec:
-  backoffLimit: {{ default 6 .Values.testHookBackoffLimit }}
-  activeDeadlineSeconds: {{ default 600 .Values.testHookActiveDeadlineSeconds }}
+  backoffLimit: {{ .Values.testHookBackoffLimit }}
+  activeDeadlineSeconds: {{ .Values.testHookActiveDeadlineSeconds }}
   template:
     metadata:
       name: "{{ .Release.Name }}-test"
@@ -31,7 +31,7 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name | quote }}
         helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     spec:
-      restartPolicy: {{ default "Never" .Values.testHookRestartPolicy }}
+      restartPolicy: {{ .Values.testHookRestartPolicy }}
       containers:
       - name: test-job
         image: "alpine:3"

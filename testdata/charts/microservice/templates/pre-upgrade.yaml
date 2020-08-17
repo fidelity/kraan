@@ -19,7 +19,8 @@ metadata:
     # helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded,hook-failed
     # helm.sh/hook-delete-policy: before-hook-creation
 spec:
-  template:
+  backoffLimit: {{ default 6 .Values.preHookBackoffLimit }}
+  activeDeadlineSeconds: {{ default 600 .Values.preHookActiveDeadlineSeconds }}  template:
     metadata:
       name: "{{ .Release.Name }}-hook"
       annotations:
@@ -29,10 +30,10 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name | quote }}
         helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     spec:
-      restartPolicy: Never
+      restartPolicy: {{ default Never .Values.preHookRestartPolicy }}
       containers:
       - name: hook-job
         image: "alpine:3"
         command: [ "/bin/sh" ]
-        args: [ "-c", "sleep {{ default 0 .Values.delaySeconds }}; {{ default "true" .Values.succeed }}" ]
+        args: [ "-c", "sleep {{ default 0 .Values.preHookDelaySeconds }}; {{ default "true" .Values.preHookSucceed }}" ]
         # - migrate up

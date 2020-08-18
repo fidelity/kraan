@@ -18,6 +18,7 @@ import (
 	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
 	helmrelease "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned"
 	helmopscheme "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/scheme"
+	hrclientv1 "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/typed/helm.fluxcd.io/v1"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -137,8 +138,7 @@ func newError(msg string, hr *helmopv1.HelmRelease) addonError {
 	}
 }
 
-func newFatalError(msg string, hr *helmopv1.HelmRelease) addonError {
-	err := fmt.Errorf("%s for HelmRelease %s", msg, getLabel(hr))
+func newFatalError(err error, hr *helmopv1.HelmRelease) addonError {
 	return addonError{
 		label:   getLabel(hr),
 		err:     err,
@@ -359,75 +359,94 @@ func isFailedPhase(phase *helmopv1.HelmReleasePhase) bool {
 	}
 }
 
-func (a *KubectlLayerApplier) watchAddons(hrClient *helmrelease.Clientset, hrs []*helmopv1.HelmRelease, layer layers.Layer) *addonsTracker {
-	hrs = a.getAddons(hrClient, hrs, layer)
-
+func (a *KubectlLayerApplier) groupHrsByNamespace(hrs []*helmopv1.HelmRelease) map[string][]*helmopv1.HelmRelease {
 	// Group HelmRelease items by Namespace as the client is Namespace-scoped
 	hrsByNamespace := make(map[string][]*helmopv1.HelmRelease)
 	for _, hr := range hrs {
 		hrsByNamespace[hr.Namespace] = append(hrsByNamespace[hr.Namespace], hr)
 	}
+	return hrsByNamespace
+}
 
-	// Individual HelmRelease resource Watchers will timeout after watcherTimeout seconds
-	watcherTimeout := int64(180)
-	// The watchTimer times out the entire AddonsLayer watch process with a signal
-	watchTimer := time.NewTimer(4 * time.Minute)
+type addonsWatcher struct {
+	applier        *KubectlLayerApplier
+	clientset      *helmrelease.Clientset
+	hrs            []*helmopv1.HelmRelease
+	tracker        *addonsTracker
+	phases         chan addonPhase
+	errors         chan addonError
+	layer          layers.Layer
+	watcherTimeout int64
+	timer          *time.Timer
+}
 
-	tracker := newTracker(hrs)
-	phaseChannel := make(chan addonPhase, len(hrs))
-	errorChannel := make(chan addonError, len(hrs))
-	for ns, nsHrs := range hrsByNamespace {
-		nsClient := hrClient.HelmV1().HelmReleases(ns)
-		// Add a go routine with a watcher for each HelmRelease object in the list for this namespace
-		for _, watchHr := range nsHrs {
-			// Skip creating the watcher if this HelmRelease is already in a terminal state
-			if tracker.isDone(watchHr) {
-				continue
+func (a *KubectlLayerApplier) newWatcher(layer layers.Layer, hrClientSet *helmrelease.Clientset, hrs []*helmopv1.HelmRelease, timeoutDuration time.Duration) *addonsWatcher {
+	return &addonsWatcher{
+		applier:        a,
+		clientset:      hrClientSet,
+		hrs:            a.getAddons(hrClientSet, hrs, layer),
+		tracker:        newTracker(hrs),
+		phases:         make(chan addonPhase, len(hrs)),
+		errors:         make(chan addonError, len(hrs)),
+		layer:          layer,
+		watcherTimeout: int64(timeoutDuration) + 30,
+		timer:          time.NewTimer(timeoutDuration),
+	}
+}
+
+func (w *addonsWatcher) getWatcherTimeout() *int64 {
+	return &w.watcherTimeout
+}
+
+func (w *addonsWatcher) watchHelmRelease(hr *helmopv1.HelmRelease, client hrclientv1.HelmReleaseInterface, phases chan<- addonPhase, errors chan<- addonError) {
+	a := w.applier
+	listOptions := metav1.SingleObject(hr.ObjectMeta)
+	listOptions.TimeoutSeconds = w.getWatcherTimeout()
+	/*listOptions := metav1.ListOptions{
+		FieldSelector:  fmt.Sprintf("meta.name=%s", watchedHr.GetName()),
+		TimeoutSeconds: &watcherTimeout,
+	}*/
+
+	// TODO - investigate using a CustomPredicate here to filter for only the events we're interested in.
+	watcher, err := client.Watch(listOptions)
+	if err != nil {
+		wrapErr := fmt.Errorf("error creating Watch for HelmRelease '%s' in AddonsLayer '%s': %w", getLabel(hr), layerLabel(w.layer), err)
+		errors <- newFatalError(wrapErr, hr)
+		return
+	}
+	// TODO: Do I need to explicitly call Stop on the Watcher?
+	// defer watcher.Stop()
+	eventChannel := watcher.ResultChan()
+	// TODO: will the range exit when the watcherTimeout ends?
+	for event := range eventChannel {
+		eventHr, ok := event.Object.(*helmopv1.HelmRelease)
+		if !ok {
+			// Somehow we got an event for an unexpected type!
+			msg := fmt.Sprintf("Watcher returned event '%s' with an unexpected object type (%T)", event.Type, event.Object)
+			errors <- newError(msg, eventHr)
+		}
+
+		switch event.Type {
+		case watch.Added, watch.Modified:
+			a.logDebug("Recieved event for HelmRelease", w.layer, "helmRelease", eventHr, "event", event)
+			if isObserved(eventHr) {
+				phases <- newAddonPhase(eventHr)
 			}
-			go func(watchedHr *helmopv1.HelmRelease, phaseChannel chan<- addonPhase, errorChannel chan<- addonError) {
-				listOptions := metav1.SingleObject(watchedHr.ObjectMeta)
-				listOptions.TimeoutSeconds = &watcherTimeout
-				/*listOptions := metav1.ListOptions{
-					FieldSelector:  fmt.Sprintf("meta.name=%s", watchedHr.GetName()),
-					TimeoutSeconds: &watcherTimeout,
-				}*/
-
-				// TODO - investigate using a CustomPredicate here to filter for only the events we're interested in.
-				watcher, err := nsClient.Watch(listOptions)
-				if err != nil {
-					a.logError(err, "cannot watch HelmRelease", layer, "helmRelease", watchedHr, "listOptions", listOptions)
-				}
-				// TODO: Do I need to explicitly call Stop on the Watcher?
-				// defer watcher.Stop()
-
-				eventChannel := watcher.ResultChan()
-				// TODO: will the range exit when the watcherTimeout ends?
-				for event := range eventChannel {
-					eventHr, ok := event.Object.(*helmopv1.HelmRelease)
-					if !ok {
-						// Somehow we got an event for an unexpected type!
-						msg := fmt.Sprintf("Watcher returned event '%s' with an unexpected object type (%T)", event.Type, event.Object)
-						errorChannel <- newError(msg, eventHr)
-					}
-
-					switch event.Type {
-					case watch.Added, watch.Modified:
-						a.logDebug("Recieved event for HelmRelease", layer, "helmRelease", eventHr, "event", event)
-						if isObserved(eventHr) {
-							phaseChannel <- newAddonPhase(eventHr)
-						}
-					case watch.Deleted, watch.Error:
-						errorChannel <- newEventError(&event, eventHr)
-					}
-					phase := &eventHr.Status.Phase
-					if isSuccessPhase(phase) || isFailedPhase(phase) {
-						return // Does this Stop the Watcher and close its channel?
-					}
-				}
-			}(watchHr, phaseChannel, errorChannel)
+		case watch.Deleted, watch.Error:
+			errors <- newEventError(&event, eventHr)
+		}
+		phase := &eventHr.Status.Phase
+		if isSuccessPhase(phase) || isFailedPhase(phase) {
+			return // TODO - verify that this stops the Watcher and closes its channel.
 		}
 	}
+}
 
+func (w *addonsWatcher) catchEvents(phaseChannel <-chan addonPhase, errorChannel <-chan addonError) *addonsWatcher {
+	a := w.applier
+	tracker := w.tracker
+	layer := w.layer
+	timeoutChannel := w.timer.C
 catchLoop:
 	for {
 		select {
@@ -447,19 +466,44 @@ catchLoop:
 				break catchLoop
 			}
 			tracker.addError(addonError)
-		case timeout := <-watchTimer.C:
+		case timeout := <-timeoutChannel:
 			err := fmt.Errorf("Watch Timeout! %#v", timeout)
 			a.logError(err, "AddonsLayer watch timeout", layer, "timeout", timeout)
 			tracker.timeout()
 			break catchLoop
 		}
 	}
+	return w
+}
 
-	return tracker
+func (w *addonsWatcher) makeNamespaceWatchers(ns string, hrs []*helmopv1.HelmRelease) {
+	client := w.clientset.HelmV1().HelmReleases(ns)
+	for _, hr := range hrs {
+		// Skip creating the watcher if this HelmRelease is already in a terminal state
+		if w.tracker.isDone(hr) {
+			continue
+		}
+		go w.watchHelmRelease(hr, client, w.phases, w.errors)
+	}
+}
+
+func (w *addonsWatcher) returnResults() *addonsTracker {
+	return w.tracker
+}
+
+func (w *addonsWatcher) startWatchers() *addonsWatcher {
+	hrsByNamespace := w.applier.groupHrsByNamespace(w.hrs)
+	for ns, hrs := range hrsByNamespace {
+		w.makeNamespaceWatchers(ns, hrs)
+	}
+	return w
+}
+
+func (w *addonsWatcher) watchHrs() *addonsTracker {
+	return w.startWatchers().catchEvents(w.phases, w.errors).returnResults()
 }
 
 func (a *KubectlLayerApplier) decodeAddons(layer layers.Layer, json []byte) (hrs []*helmopv1.HelmRelease, errz []error, err error) {
-	// TODO - should probably trace log the json before we try to decode it.
 	a.logTrace("decoding JSON output from kubectl", layer, "output", json)
 
 	dez := kscheme.Codecs.UniversalDeserializer()
@@ -516,23 +560,26 @@ func (a *KubectlLayerApplier) decodeList(layer layers.Layer,
 	return hrs, nil, nil
 }
 
+func layerLabel(layer layers.Layer) string {
+	return fmt.Sprintf("%s/%s", layer.GetNamespace(), layer.GetName())
+}
+
 // Apply an AddonLayer to the cluster.
 func (a *KubectlLayerApplier) Apply(layer layers.Layer) (err error) {
 	sourceDir := layer.GetSourcePath()
-	label := fmt.Sprintf("%s/%s", layer.GetNamespace(), layer.GetName())
 	a.logInfo("Applying AddonsLayer", layer)
 	info, err := os.Stat(sourceDir)
 	if os.IsNotExist(err) {
 		a.logDebug("source directory not found", layer)
-		return fmt.Errorf("source directory (%s) not found for AddonsLayer %s", sourceDir, label)
+		return fmt.Errorf("source directory (%s) not found for AddonsLayer %s", sourceDir, layerLabel(layer))
 	}
 	if os.IsPermission(err) {
 		a.logDebug("source directory read permission denied", layer)
-		return fmt.Errorf("read permission denied to source directory (%s) for AddonsLayer %s", sourceDir, label)
+		return fmt.Errorf("read permission denied to source directory (%s) for AddonsLayer %s", sourceDir, layerLabel(layer))
 	}
 	if err != nil {
 		a.logError(err, "error while checking source directory", layer)
-		return fmt.Errorf("error while checking source directory (%s) for AddonsLayer %s", sourceDir, label)
+		return fmt.Errorf("error while checking source directory (%s) for AddonsLayer %s", sourceDir, layerLabel(layer))
 	}
 	if !info.IsDir() {
 		// I'm not sure if this is an error, but I thought I should detect and log it
@@ -541,7 +588,7 @@ func (a *KubectlLayerApplier) Apply(layer layers.Layer) (err error) {
 
 	output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).Run()
 	if err != nil {
-		return fmt.Errorf("error from kubectl while applying source directory (%s) for AddonsLayer %s", sourceDir, label)
+		return fmt.Errorf("error from kubectl while applying source directory (%s) for AddonsLayer %s", sourceDir, layerLabel(layer))
 	}
 
 	hrs, errz, err := a.decodeAddons(layer, output)
@@ -557,11 +604,12 @@ func (a *KubectlLayerApplier) Apply(layer layers.Layer) (err error) {
 	// TODO: Add an ownerRef to each deployed HelmRelease the points back to this AddonsLayer (needed for Prune)
 
 	// TODO: Add timeout for watching addons
-	tracker := a.watchAddons(hrClient, hrs, layer)
+	tracker := a.newWatcher(layer, hrClient, hrs, 4*time.Minute).watchHrs()
 
+	// TODO - We could return the tracker if the controller wants more information about what happened
 	if tracker.releaseFailed() {
 		tracker.logReleaseErrors(a, layer)
-		return fmt.Errorf("release failed for AddonsLayer %s", label)
+		return fmt.Errorf("release failed for AddonsLayer %s", layerLabel(layer))
 	}
 
 	return nil

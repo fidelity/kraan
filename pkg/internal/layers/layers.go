@@ -1,4 +1,5 @@
 //Package layers xxx
+//go:generate mockgen -destination=mockLayers.go -package=layers -source=layers.go . Layer
 package layers
 
 import (
@@ -6,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	helmrelease "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,21 +21,8 @@ import (
 var MaxConditions = 10
 var rootPath = "/repos"
 
-// Layer is the Schema for the addons API.
-type Layer struct {
-	updated     bool
-	requeue     bool
-	delayed     bool
-	delay       time.Duration
-	ctx         context.Context
-	client      *kubernetes.Clientset
-	log         logr.Logger
-	LayerI      `json:"-"`
-	addonsLayer *kraanv1alpha1.AddonsLayer
-}
-
-// LayerI defines the interface for managing the layer.
-type LayerI interface {
+// Layer defines the interface for managing the layer.
+type Layer interface {
 	StatusReady()
 	StatusApplying()
 	StatusApply()
@@ -41,7 +30,7 @@ type LayerI interface {
 	StatusPrunePending()
 	StatusPrune()
 	StatusPruning()
-	StatusDeployed()
+	StatusDeployed(reason, message string)
 	IsHold() bool
 	SetHold()
 	GetStatus() string
@@ -49,6 +38,7 @@ type LayerI interface {
 	GetNamespace() string
 	GetLogger() logr.Logger
 	GetK8sClient() *kubernetes.Clientset
+	GetHelmReleaseClient() *helmrelease.Clientset
 	GetContext() context.Context
 	GetSourcePath() string
 	IsReadyToProcess() bool
@@ -70,47 +60,61 @@ type LayerI interface {
 	GetAddonsLayer() *kraanv1alpha1.AddonsLayer
 }
 
+// KraanLayer is the Schema for the addons API.
+type KraanLayer struct {
+	updated     bool
+	requeue     bool
+	delayed     bool
+	delay       time.Duration
+	ctx         context.Context
+	client      *kubernetes.Clientset
+	hrclient    *helmrelease.Clientset
+	log         logr.Logger
+	Layer       `json:"-"`
+	addonsLayer *kraanv1alpha1.AddonsLayer
+}
+
 // CreateLayer creates a layer object.
 func CreateLayer(ctx context.Context, client *kubernetes.Clientset,
-	log logr.Logger, addonsLayer *kraanv1alpha1.AddonsLayer) *Layer {
-	l := &Layer{requeue: false, delayed: false, updated: false, ctx: ctx, client: client, log: log,
+	log logr.Logger, addonsLayer *kraanv1alpha1.AddonsLayer) Layer {
+	l := &KraanLayer{requeue: false, delayed: false, updated: false, ctx: ctx, client: client, log: log,
 		addonsLayer: addonsLayer}
 	l.delay = l.GetInterval()
 	return l
 }
 
 // SetRequeue sets the requeue flag to cause the AddonsLayer to be requeued.
-func (l *Layer) SetRequeue() {
+func (l *KraanLayer) SetRequeue() {
 	l.requeue = true
 }
 
 // SetUpdated sets the updated flag to cause the AddonsLayer to update the custom resource.
-func (l *Layer) SetUpdated() {
+func (l *KraanLayer) SetUpdated() {
 	l.updated = true
 }
 
 // SetDelayed sets the delayed flag to cause the AddonsLayer to delay the requeue.
-func (l *Layer) SetDelayed() {
+func (l *KraanLayer) SetDelayed() {
 	l.delayed = true
 }
 
 // GetFullStatus returns the AddonsLayers Status sub resource.
-func (l *Layer) GetFullStatus() *kraanv1alpha1.AddonsLayerStatus {
+func (l *KraanLayer) GetFullStatus() *kraanv1alpha1.AddonsLayerStatus {
 	return &l.addonsLayer.Status
 }
 
 // GetSpec returns the AddonsLayers Spec.
-func (l *Layer) GetSpec() *kraanv1alpha1.AddonsLayerSpec {
+func (l *KraanLayer) GetSpec() *kraanv1alpha1.AddonsLayerSpec {
 	return &l.addonsLayer.Spec
 }
 
 // GetAddonsLayer returns the underlying AddonsLayer API type struct.
-func (l *Layer) GetAddonsLayer() *kraanv1alpha1.AddonsLayer {
+func (l *KraanLayer) GetAddonsLayer() *kraanv1alpha1.AddonsLayer {
 	return l.addonsLayer
 }
 
 // IsReadyToProcess returns a boolean if an AddonsLayer is ready to be processed.
-func (l *Layer) IsReadyToProcess() bool {
+func (l *KraanLayer) IsReadyToProcess() bool {
 	if l.IsHold() {
 		l.SetHold()
 		return false
@@ -130,12 +134,12 @@ func (l *Layer) IsReadyToProcess() bool {
 }
 
 // GetRequiredK8sVersion returns the K8s Version required.
-func (l *Layer) GetRequiredK8sVersion() string {
+func (l *KraanLayer) GetRequiredK8sVersion() string {
 	return l.addonsLayer.Spec.PreReqs.K8sVersion
 }
 
 // CheckK8sVersion checks if the cluster api server version is equal to or above the required version.
-func (l *Layer) CheckK8sVersion() bool {
+func (l *KraanLayer) CheckK8sVersion() bool {
 	// if still not ready, requeue
 	l.SetRequeue()
 	versionInfo, err := l.GetK8sClient().Discovery().ServerVersion()
@@ -150,7 +154,7 @@ func (l *Layer) CheckK8sVersion() bool {
 }
 
 /*
-func (l *Layer) trimConditions() {
+func (l *KraanLayer) trimConditions() {
 	for {
 		if len(l.addonsLayer.Status.Conditions) > MaxConditions {
 			t := l.addonsLayer.Status.Conditions[1:]
@@ -160,7 +164,7 @@ func (l *Layer) trimConditions() {
 }
 */
 
-func (l *Layer) setStatus(status, reason, message string) {
+func (l *KraanLayer) setStatus(status, reason, message string) {
 	l.addonsLayer.Status.Conditions = append(l.addonsLayer.Status.Conditions, kraanv1alpha1.Condition{
 		Type:               status,
 		Version:            l.addonsLayer.Spec.Version,
@@ -176,93 +180,93 @@ func (l *Layer) setStatus(status, reason, message string) {
 }
 
 // StatusDeployed sets the addon layer's status to deployed.
-func (l *Layer) StatusDeployed(reason, message string) {
+func (l *KraanLayer) StatusDeployed(reason, message string) {
 	l.setStatus(kraanv1alpha1.DeployedCondition, reason, message)
 }
 
 // StatusApplyPending sets the addon layer's status to apply pending.
-func (l *Layer) StatusApplyPending() {
+func (l *KraanLayer) StatusApplyPending() {
 	l.setStatus(kraanv1alpha1.ApplyPendingCondition,
 		kraanv1alpha1.AddonsLayerApplyPendingReason, kraanv1alpha1.AddonsLayerApplyPendingMsg)
 }
 
 // StatusApply sets the addon layer's status to apply.
-func (l *Layer) StatusApply() {
+func (l *KraanLayer) StatusApply() {
 	l.setStatus(kraanv1alpha1.ApplyCondition,
 		kraanv1alpha1.AddonsLayerApplyReason, kraanv1alpha1.AddonsLayerApplyMsg)
 }
 
 // StatusApplying sets the addon layer's status to apply in progress.
-func (l *Layer) StatusApplying() {
+func (l *KraanLayer) StatusApplying() {
 	l.setStatus(kraanv1alpha1.ApplyingCondition,
 		kraanv1alpha1.AddonsLayerApplyingReason, kraanv1alpha1.AddonsLayerApplyingMsg)
 }
 
 // StatusPrunePending sets the addon layer's status to prune pending.
-func (l *Layer) StatusPrunePending() {
+func (l *KraanLayer) StatusPrunePending() {
 	l.setStatus(kraanv1alpha1.PrunePendingCondition,
 		kraanv1alpha1.AddonsLayerPrunePendingReason, kraanv1alpha1.AddonsLayerPrunePendingMsg)
 }
 
 // StatusPrune sets the addon layer's status to prune.
-func (l *Layer) StatusPrune() {
+func (l *KraanLayer) StatusPrune() {
 	l.setStatus(kraanv1alpha1.PruneCondition,
 		kraanv1alpha1.AddonsLayerPruneReason, kraanv1alpha1.AddonsLayerPruneMsg)
 }
 
 // StatusPruning sets the addon layer's status to pruning.
-func (l *Layer) StatusPruning() {
+func (l *KraanLayer) StatusPruning() {
 	l.setStatus(kraanv1alpha1.PruningCondition,
 		kraanv1alpha1.AddonsLayerPruningReason, kraanv1alpha1.AddonsLayerPruningMsg)
 }
 
 // StatusUpdate sets the addon layer's status.
-func (l *Layer) StatusUpdate(status, reason, message string) {
+func (l *KraanLayer) StatusUpdate(status, reason, message string) {
 	l.setStatus(status, reason, message)
 }
 
 // IsHold returns hold status.
-func (l *Layer) IsHold() bool {
+func (l *KraanLayer) IsHold() bool {
 	return l.addonsLayer.Spec.Hold
 }
 
 // IsVersionCurrent returns true if the spec version matches the status version.
-func (l *Layer) IsVersionCurrent() bool {
+func (l *KraanLayer) IsVersionCurrent() bool {
 	return l.addonsLayer.Spec.Version == l.addonsLayer.Status.Version
 }
 
 // IsUpdated returns true if an update to the AddonsLayer data has occurred.
-func (l *Layer) IsUpdated() bool {
+func (l *KraanLayer) IsUpdated() bool {
 	return l.updated
 }
 
 // IsDelayed returns true if the requeue should be delayed.
-func (l *Layer) IsDelayed() bool {
+func (l *KraanLayer) IsDelayed() bool {
 	return l.delayed
 }
 
 // NeedsRequeue returns true if the AddonsLayer needed to be reprocessed.
-func (l *Layer) NeedsRequeue() bool {
+func (l *KraanLayer) NeedsRequeue() bool {
 	return l.requeue
 }
 
 // GetRequeueDelay returns the requeue delay.
-func (l *Layer) GetRequeueDelay() time.Duration {
+func (l *KraanLayer) GetRequeueDelay() time.Duration {
 	return l.delay
 }
 
 // GetInterval returns the interval.
-func (l *Layer) GetInterval() time.Duration {
+func (l *KraanLayer) GetInterval() time.Duration {
 	return l.addonsLayer.Spec.Interval.Duration
 }
 
 // GetStatus returns the status.
-func (l *Layer) GetStatus() string {
+func (l *KraanLayer) GetStatus() string {
 	return l.addonsLayer.Status.State
 }
 
 // SetHold sets the hold status.
-func (l *Layer) SetHold() {
+func (l *KraanLayer) SetHold() {
 	if l.IsHold() && l.GetStatus() != kraanv1alpha1.HoldCondition {
 		l.StatusUpdate(kraanv1alpha1.HoldCondition,
 			kraanv1alpha1.AddonsLayerHoldReason, kraanv1alpha1.AddonsLayerHoldMsg)
@@ -271,7 +275,7 @@ func (l *Layer) SetHold() {
 }
 
 // GetSourcePath gets the path to the addons layer's top directory in the local filesystem.
-func (l *Layer) GetSourcePath() string {
+func (l *KraanLayer) GetSourcePath() string {
 	return fmt.Sprintf("%s/%s/%s/%s",
 		rootPath,
 		l.addonsLayer.Spec.Source.NameSpace,
@@ -280,26 +284,31 @@ func (l *Layer) GetSourcePath() string {
 }
 
 // GetContext gets the context.
-func (l *Layer) GetContext() context.Context {
+func (l *KraanLayer) GetContext() context.Context {
 	return l.ctx
 }
 
 // GetK8sClient gets the k8sClient.
-func (l *Layer) GetK8sClient() *kubernetes.Clientset {
+func (l *KraanLayer) GetK8sClient() *kubernetes.Clientset {
 	return l.client
 }
 
+// GetHelmReleaeClient gets the HelmRelease API client.
+func (l *KraanLayer) GetHelmReleaseClient() *helmrelease.Clientset {
+	return l.hrclient
+}
+
 // GetLogger gets the layer logger.
-func (l *Layer) GetLogger() logr.Logger {
+func (l *KraanLayer) GetLogger() logr.Logger {
 	return l.log
 }
 
 // GetName gets the layer name.
-func (l *Layer) GetName() string {
+func (l *KraanLayer) GetName() string {
 	return l.addonsLayer.ObjectMeta.Name
 }
 
 // GetNamespace gets the layer namespace.
-func (l *Layer) GetNamespace() string {
+func (l *KraanLayer) GetNamespace() string {
 	return l.addonsLayer.ObjectMeta.Namespace
 }

@@ -65,6 +65,24 @@ func (mr *MockKubectlMockRecorder) Delete(args ...interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockKubectl)(nil).Delete), args...)
 }
 
+// Get mocks base method
+func (m *MockKubectl) Get(args ...string) Command {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{}
+	for _, a := range args {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Get", varargs...)
+	ret0, _ := ret[0].(Command)
+	return ret0
+}
+
+// Get indicates an expected call of Get
+func (mr *MockKubectlMockRecorder) Get(args ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockKubectl)(nil).Get), args...)
+}
+
 // getLogger mocks base method
 func (m *MockKubectl) getLogger() logr.Logger {
 	m.ctrl.T.Helper()

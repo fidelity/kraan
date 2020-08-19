@@ -31,8 +31,8 @@ func init() {
 
 // LayerApplier defines methods for managing the Addons within an AddonLayer in a cluster.
 type LayerApplier interface {
-	Apply(layer *layers.Layer) (err error)
-	Prune(layer *layers.Layer) (err error)
+	Apply(layer layers.Layer) (err error)
+	Prune(layer layers.Layer) (err error)
 }
 
 // KubectlLayerApplier applies an AddonsLayer to a Kubernetes cluster using the kubectl command.
@@ -54,7 +54,7 @@ func NewApplier(logger logr.Logger) (applier LayerApplier, err error) {
 	return applier, nil
 }
 
-func (a KubectlLayerApplier) getLog(layer *layers.Layer) (logger logr.Logger) {
+func (a KubectlLayerApplier) getLog(layer layers.Layer) (logger logr.Logger) {
 	logger = layer.GetLogger()
 	if logger == nil {
 		logger = a.logger
@@ -62,39 +62,39 @@ func (a KubectlLayerApplier) getLog(layer *layers.Layer) (logger logr.Logger) {
 	return logger
 }
 
-func (a KubectlLayerApplier) log(level int, msg string, layer *layers.Layer, keysAndValues ...interface{}) {
+func (a KubectlLayerApplier) log(level int, msg string, layer layers.Layer, keysAndValues ...interface{}) {
 	a.getLog(layer).V(level).Info(msg, append(keysAndValues, "sourcePath", layer.GetSourcePath(), "layer", layer)...)
 }
 
-func (a KubectlLayerApplier) logError(err error, msg string, layer *layers.Layer, keysAndValues ...interface{}) {
+func (a KubectlLayerApplier) logError(err error, msg string, layer layers.Layer, keysAndValues ...interface{}) {
 	a.getLog(layer).Error(err, msg, append(keysAndValues, "sourcePath", layer.GetSourcePath(), "layer", layer)...)
 }
 
-func (a KubectlLayerApplier) logInfo(msg string, layer *layers.Layer, keysAndValues ...interface{}) {
+func (a KubectlLayerApplier) logInfo(msg string, layer layers.Layer, keysAndValues ...interface{}) {
 	a.log(1, msg, layer, keysAndValues...)
 }
 
-func (a KubectlLayerApplier) logDebug(msg string, layer *layers.Layer, keysAndValues ...interface{}) {
+func (a KubectlLayerApplier) logDebug(msg string, layer layers.Layer, keysAndValues ...interface{}) {
 	a.log(5, msg, layer, keysAndValues...)
 }
 
-func (a KubectlLayerApplier) logTrace(msg string, layer *layers.Layer, keysAndValues ...interface{}) {
+func (a KubectlLayerApplier) logTrace(msg string, layer layers.Layer, keysAndValues ...interface{}) {
 	a.log(7, msg, layer, keysAndValues...)
 }
 
-func (a KubectlLayerApplier) logErrors(errz []error, layer *layers.Layer) {
+func (a KubectlLayerApplier) logErrors(errz []error, layer layers.Layer) {
 	for _, err := range errz {
 		a.logError(err, "error while applying layer", layer)
 	}
 }
 
-func (a KubectlLayerApplier) logAddons(hrs []*helmopv1.HelmRelease, layer *layers.Layer) {
+func (a KubectlLayerApplier) logAddons(hrs []*helmopv1.HelmRelease, layer layers.Layer) {
 	for i, hr := range hrs {
 		a.logInfo("Deployed HelmRelease for AddonsLayer", layer, "index", i, "helmRelease", hr)
 	}
 }
 
-func (a KubectlLayerApplier) decodeAddons(layer *layers.Layer,
+func (a KubectlLayerApplier) decodeAddons(layer layers.Layer,
 	json []byte) (hrs []*helmopv1.HelmRelease, errz []error, err error) {
 	// TODO - should probably trace log the json before we try to decode it.
 	a.logTrace("decoding JSON output from kubectl", layer, "output", json)
@@ -125,7 +125,7 @@ func (a KubectlLayerApplier) decodeAddons(layer *layers.Layer,
 	}
 }
 
-func (a KubectlLayerApplier) decodeList(layer *layers.Layer,
+func (a KubectlLayerApplier) decodeList(layer layers.Layer,
 	raws *corev1.List, dez *runtime.Decoder) (hrs []*helmopv1.HelmRelease, errz []error, err error) {
 	dec := *dez
 
@@ -154,7 +154,7 @@ func (a KubectlLayerApplier) decodeList(layer *layers.Layer,
 }
 
 // Apply an AddonLayer to the cluster.
-func (a KubectlLayerApplier) Apply(layer *layers.Layer) (err error) {
+func (a KubectlLayerApplier) Apply(layer layers.Layer) (err error) {
 	sourceDir := layer.GetSourcePath()
 	a.logInfo("Applying AddonsLayer", layer)
 	info, err := os.Stat(sourceDir)
@@ -202,7 +202,7 @@ func (a KubectlLayerApplier) Apply(layer *layers.Layer) (err error) {
 }
 
 // Prune the AddonsLayer by removing the Addons found in the cluster that have since been removed from the Layer.
-func (a KubectlLayerApplier) Prune(layer *layers.Layer) (err error) {
+func (a KubectlLayerApplier) Prune(layer layers.Layer) (err error) {
 	// TODO: Stub method placeholder.
 	// Get a list of HelmRelease resources described in the YAML files in the layer's sourceDirectory from the output of kubectl apply -R -f <sourceDir> --dry-run -o json
 	// Get a list of HelmRelease resources in the cluster with ownerRefs to this AddonsLayer

@@ -1,4 +1,5 @@
 //Package layers xxx
+//go:generate mockgen -destination=mockLayers.go -package=layers -source=layers.go . Layer
 package layers
 
 import (
@@ -7,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	helmrelease "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,19 +24,6 @@ import (
 // MaxConditions is the maximum number of condtions to retain.
 var MaxConditions = 10
 var rootPath = "/repos"
-
-// KraanLayer is the structure that hold details of the AddonsLayer.
-type KraanLayer struct {
-	updated     bool
-	requeue     bool
-	delayed     bool
-	delay       time.Duration
-	ctx         context.Context
-	client      client.Client
-	log         logr.Logger
-	Layer       `json:"-"`
-	addonsLayer *kraanv1alpha1.AddonsLayer
-}
 
 // Layer defines the interface for managing the layer.
 type Layer interface {
@@ -83,6 +72,20 @@ type Layer interface {
 	GetAddonsLayer() *kraanv1alpha1.AddonsLayer
 
 	GetAddonsLayers() (map[string]*kraanv1alpha1.AddonsLayer, error)
+}
+
+// KraanLayer is the Schema for the addons API.
+type KraanLayer struct {
+	updated     bool
+	requeue     bool
+	delayed     bool
+	delay       time.Duration
+	ctx         context.Context
+	client      *kubernetes.Clientset
+	hrclient    *helmrelease.Clientset
+	log         logr.Logger
+	Layer       `json:"-"`
+	addonsLayer *kraanv1alpha1.AddonsLayer
 }
 
 // CreateLayer creates a layer object.
@@ -332,6 +335,11 @@ func (l *KraanLayer) GetContext() context.Context {
 // GetK8sClient gets the k8sClient.
 func (l *KraanLayer) GetK8sClient() client.Client {
 	return l.client
+}
+
+// GetHelmReleaeClient gets the HelmRelease API client.
+func (l *KraanLayer) GetHelmReleaseClient() *helmrelease.Clientset {
+	return l.hrclient
 }
 
 // GetLogger gets the layer logger.

@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: "{{ .Release.Name }}-hook-job"
+  name: "{{ .Release.Name }}-test-job"
   namespace: "{{ .Release.Namespace }}"
   labels:
     app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
@@ -11,19 +11,19 @@ metadata:
   annotations:
     # This is what defines this resource as a hook. Without this line, the
     # job is considered part of the release.
-    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook: test
     # The delete policy determines when to delete the hook job:
     #   before-hook-creation: delete before creating this hook again (default)
     #   hook-succeeded: delete immediately if the job succeeds (exit 0)
     #   hook-failed: delete immediately if the job fails (exit non-zero)
     # helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded,hook-failed
-    # helm.sh/hook-delete-policy: before-hook-creation
+    # helm.sh/hook-delete-policy: hook-succeeded
 spec:
-  backoffLimit: {{ .Values.preHookBackoffLimit }}
-  activeDeadlineSeconds: {{ .Values.preHookActiveDeadlineSeconds }}
+  backoffLimit: {{ .Values.testHookBackoffLimit }}
+  activeDeadlineSeconds: {{ .Values.testHookActiveDeadlineSeconds }}
   template:
     metadata:
-      name: "{{ .Release.Name }}-hook"
+      name: "{{ .Release.Name }}-test"
       annotations:
         sidecar.istio.io/inject: "false"
       labels:
@@ -31,10 +31,10 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name | quote }}
         helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     spec:
-      restartPolicy: {{ .Values.preHookRestartPolicy }}
+      restartPolicy: {{ .Values.testHookRestartPolicy }}
       containers:
-      - name: hook-job
+      - name: test-job
         image: "alpine:3"
         command: [ "/bin/sh" ]
-        args: [ "-c", "sleep {{ default 0 .Values.preHookDelaySeconds }}; {{ default "true" .Values.preHookSucceed }}" ]
+        args: [ "-c", "sleep {{ default 0 .Values.testHookDelaySeconds }}; {{ default "true" .Values.testHookSucceed }}" ]
         # - migrate up

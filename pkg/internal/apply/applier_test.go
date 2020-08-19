@@ -3,11 +3,18 @@ package apply
 import (
 	"testing"
 
-	//"github.com/fidelity/kraan/pkg/internal/kubectl"
+	hoscheme "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/scheme"
+
+	"github.com/fidelity/kraan/pkg/internal/kubectl"
 	"github.com/go-logr/logr"
 	testlogr "github.com/go-logr/logr/testing"
-	// gomock "github.com/golang/mock/gomock"
+	gomock "github.com/golang/mock/gomock"
+	corescheme "k8s.io/client-go/kubernetes/scheme"
 )
+
+func init() {
+	hoscheme.AddToScheme(corescheme.Scheme)
+}
 
 func fakeLogger() logr.Logger {
 	return testlogr.NullLogger{}
@@ -26,7 +33,7 @@ func TestNewApplier(t *testing.T) {
 	t.Logf("NewApplier returned (%T) %#v", applier, applier)
 }
 
-/*func TestMockKubectl(t *testing.T) {
+func TestMockKubectl(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	defer mockCtl.Finish()
 
@@ -41,4 +48,4 @@ func TestNewApplier(t *testing.T) {
 		t.Fatalf("The NewApplier constructor returned an error: %s", err)
 	}
 	t.Logf("NewApplier returned (%T) %#v", applier, applier)
-}*/
+}

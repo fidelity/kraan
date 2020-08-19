@@ -22,6 +22,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -34,9 +35,10 @@ import (
 // AddonsLayerReconciler reconciles a AddonsLayer object.
 type AddonsLayerReconciler struct {
 	client.Client
-	Log     logr.Logger
-	Scheme  *runtime.Scheme
-	Applier apply.LayerApplier
+	Log        logr.Logger
+	Scheme     *runtime.Scheme
+	Applier    apply.LayerApplier
+	coreClient *kubernetes.Clientset
 }
 
 // NewReconciler returns an AddonsLayerReconciler instance

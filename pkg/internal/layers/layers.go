@@ -4,12 +4,16 @@ package layers
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/internal/utils"
@@ -26,7 +30,7 @@ type Layer struct {
 	delayed     bool
 	delay       time.Duration
 	ctx         context.Context
-	client      *kubernetes.Clientset
+	client      client.Client
 	log         logr.Logger
 	LayerI      `json:"-"`
 	addonsLayer *kraanv1alpha1.AddonsLayer
@@ -71,7 +75,7 @@ type LayerI interface {
 }
 
 // CreateLayer creates a layer object.
-func CreateLayer(ctx context.Context, client *kubernetes.Clientset,
+func CreateLayer(ctx context.Context, client client.Client,
 	log logr.Logger, addonsLayer *kraanv1alpha1.AddonsLayer) *Layer {
 	l := &Layer{requeue: false, delayed: false, updated: false, ctx: ctx, client: client, log: log,
 		addonsLayer: addonsLayer}
@@ -104,7 +108,7 @@ func (l *Layer) GetSpec() *kraanv1alpha1.AddonsLayerSpec {
 	return &l.addonsLayer.Spec
 }
 
-// GetAddonsLayer returns the underlying AddonsLayer API type struct.
+// GetAddonsLayer returns the AddonsLayers Spec.
 func (l *Layer) GetAddonsLayer() *kraanv1alpha1.AddonsLayer {
 	return l.addonsLayer
 }
@@ -136,9 +140,7 @@ func (l *Layer) GetRequiredK8sVersion() string {
 
 // CheckK8sVersion checks if the cluster api server version is equal to or above the required version.
 func (l *Layer) CheckK8sVersion() bool {
-	// if still not ready, requeue
-	l.SetRequeue()
-	versionInfo, err := l.GetK8sClient().Discovery().ServerVersion()
+	versionInfo, err := getK8sClient().Discovery().ServerVersion()
 	if err != nil {
 		utils.LogError(l.GetLogger(), 2, err, "failed get server version")
 		l.StatusUpdate(l.GetStatus(), "failed to obtain cluster api server version",
@@ -147,6 +149,38 @@ func (l *Layer) CheckK8sVersion() bool {
 		return false
 	}
 	return versionInfo.String() > l.GetRequiredK8sVersion()
+}
+
+// GetK8sClient gets the Kubernetes client.
+func getK8sClient() *kubernetes.Clientset {
+	kubeConfig := os.Getenv("KUBECONFIG")
+	if len(kubeConfig) > 0 {
+		// use the current context in kubeconfig
+		config, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		// create the clientset
+		clientset, err := kubernetes.NewForConfig(config)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		return clientset
+	}
+	// creates the in-cluster config
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		panic(err.Error())
+	}
+	// creates the clientset
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	return clientset
 }
 
 /*
@@ -177,7 +211,9 @@ func (l *Layer) setStatus(status, reason, message string) {
 
 // StatusDeployed sets the addon layer's status to deployed.
 func (l *Layer) StatusDeployed(reason, message string) {
-	l.setStatus(kraanv1alpha1.DeployedCondition, reason, message)
+	if l.GetStatus() != kraanv1alpha1.DeployedCondition {
+		l.setStatus(kraanv1alpha1.DeployedCondition, reason, message)
+	}
 }
 
 // StatusApplyPending sets the addon layer's status to apply pending.
@@ -188,8 +224,10 @@ func (l *Layer) StatusApplyPending() {
 
 // StatusApply sets the addon layer's status to apply.
 func (l *Layer) StatusApply() {
-	l.setStatus(kraanv1alpha1.ApplyCondition,
-		kraanv1alpha1.AddonsLayerApplyReason, kraanv1alpha1.AddonsLayerApplyMsg)
+	if l.GetStatus() != kraanv1alpha1.DeployedCondition {
+		l.setStatus(kraanv1alpha1.ApplyCondition,
+			kraanv1alpha1.AddonsLayerApplyReason, kraanv1alpha1.AddonsLayerApplyMsg)
+	}
 }
 
 // StatusApplying sets the addon layer's status to apply in progress.
@@ -285,7 +323,7 @@ func (l *Layer) GetContext() context.Context {
 }
 
 // GetK8sClient gets the k8sClient.
-func (l *Layer) GetK8sClient() *kubernetes.Clientset {
+func (l *Layer) GetK8sClient() client.Client {
 	return l.client
 }
 

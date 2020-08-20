@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
-	"github.com/fidelity/kraan/pkg/internal/actors"
+	"github.com/fidelity/kraan/pkg/internal/apply"
 	layers "github.com/fidelity/kraan/pkg/internal/layers"
 	utils "github.com/fidelity/kraan/pkg/internal/utils"
 )
@@ -41,7 +41,7 @@ type AddonsLayerReconciler struct {
 	client.Client
 	Log     logr.Logger
 	Scheme  *runtime.Scheme
-	Applier actors.LayerApplier
+	Applier apply.LayerApplier
 }
 
 // NewReconciler returns an AddonsLayerReconciler instance
@@ -52,7 +52,7 @@ func NewReconciler(client client.Client, logger logr.Logger,
 		Log:    logger,
 		Scheme: scheme,
 	}
-	reconciler.Applier, err = actors.NewApplier(logger)
+	reconciler.Applier, err = apply.NewApplier(logger)
 	return reconciler, err
 }
 
@@ -284,6 +284,7 @@ func (r *AddonsLayerReconciler) gitRepositorySource(o handler.MapObject) []ctrl.
 	}
 }
 */
+
 // SetupWithManager is used to setup the controller
 func (r *AddonsLayerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	addonsLayer := &kraanv1alpha1.AddonsLayer{}

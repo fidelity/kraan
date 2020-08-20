@@ -35,10 +35,10 @@ import (
 // AddonsLayerReconciler reconciles a AddonsLayer object.
 type AddonsLayerReconciler struct {
 	client.Client
-	Log        logr.Logger
-	Scheme     *runtime.Scheme
-	Applier    apply.LayerApplier
-	coreClient *kubernetes.Clientset
+	Log     logr.Logger
+	Scheme  *runtime.Scheme
+	Context context.Context
+	Applier apply.LayerApplier
 }
 
 // NewReconciler returns an AddonsLayerReconciler instance
@@ -49,7 +49,8 @@ func NewReconciler(client client.Client, logger logr.Logger,
 		Log:    logger,
 		Scheme: scheme,
 	}
-	reconciler.Applier, err = apply.NewApplier(logger)
+	reconciler.Context = context.Background()
+	reconciler.Applier, err = apply.NewApplier(client, logger, scheme)
 	return reconciler, err
 }
 
@@ -114,8 +115,13 @@ func processAddonLayer(l layers.Layer) error { // nolint:gocyclo // ok
 // Reconcile process AddonsLayers custom resources.
 // +kubebuilder:rbac:groups=kraan.io,resources=addons,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kraan.io,resources=addons/status,verbs=get;update;patch
+<<<<<<< HEAD
 func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
+=======
+func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) { // nolint:gocyclo,funlen // ok
+	ctx := r.Context
+>>>>>>> Applier uses the reconciler's rest client
 
 	var addonsLayer *kraanv1alpha1.AddonsLayer = &kraanv1alpha1.AddonsLayer{}
 	if err := r.Get(ctx, req.NamespacedName, addonsLayer); err != nil {

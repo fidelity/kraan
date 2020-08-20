@@ -7,6 +7,7 @@ package apply
 To generate mock code for the LayerApplier run 'go generate ./...' from the project root directory.
 */
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -14,20 +15,28 @@ import (
 	"github.com/fidelity/kraan/pkg/internal/layers"
 
 	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
-	helmopscheme "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/scheme"
+	//helmopscheme "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/scheme"
+
 	"github.com/go-logr/logr"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	kscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
+
+	//kscheme "k8s.io/client-go/kubernetes/scheme"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
 	newKubectlFunc func(logger logr.Logger) (kubectl.Kubectl, error) = kubectl.NewKubectl
 )
 
+/*
 func init() {
 	helmopscheme.AddToScheme(kscheme.Scheme) // nolint:errcheck // ok
 }
+*/
 
 // LayerApplier defines methods for managing the Addons within an AddonLayer in a cluster.
 type LayerApplier interface {
@@ -37,18 +46,22 @@ type LayerApplier interface {
 
 // KubectlLayerApplier applies an AddonsLayer to a Kubernetes cluster using the kubectl command.
 type KubectlLayerApplier struct {
+	client  client.Client
 	kubectl kubectl.Kubectl
+	scheme  *runtime.Scheme
 	logger  logr.Logger
 }
 
 // NewApplier returns a LayerApplier instance.
-func NewApplier(logger logr.Logger) (applier LayerApplier, err error) {
+func NewApplier(client client.Client, logger logr.Logger, scheme *runtime.Scheme) (applier LayerApplier, err error) {
 	kubectl, err := newKubectlFunc(logger)
 	if err != nil {
 		return nil, err
 	}
 	applier = KubectlLayerApplier{
+		client:  client,
 		kubectl: kubectl,
+		scheme:  scheme,
 		logger:  logger,
 	}
 	return applier, nil
@@ -88,10 +101,25 @@ func (a KubectlLayerApplier) logErrors(errz []error, layer layers.Layer) {
 	}
 }
 
-func (a KubectlLayerApplier) logAddons(hrs []*helmopv1.HelmRelease, layer layers.Layer) {
+func (a KubectlLayerApplier) logAddons(hrs []*helmopv1.HelmRelease, layer layers.Layer) error {
 	for i, hr := range hrs {
 		a.logInfo("Deployed HelmRelease for AddonsLayer", layer, "index", i, "helmRelease", hr)
+		key, err := client.ObjectKeyFromObject(hr)
+		if err != nil {
+			return fmt.Errorf("Unable to get an ObjectKey from HelmRelease '%s'", getLabel(hr))
+		}
+		foundHr := &helmopv1.HelmRelease{}
+		err = a.client.Get(context.Background(), key, foundHr)
+		if err != nil {
+			return fmt.Errorf("failed to Get HelmRelease '%s'", getLabel(hr))
+		}
+		fmt.Printf("Found HelmRelease '%s'\n", getLabel(hr))
 	}
+	return nil
+}
+
+func getLabel(hr *helmopv1.HelmRelease) string {
+	return fmt.Sprintf("%s/%s", hr.GetNamespace(), hr.GetName())
 }
 
 func (a KubectlLayerApplier) decodeAddons(layer layers.Layer,
@@ -99,7 +127,8 @@ func (a KubectlLayerApplier) decodeAddons(layer layers.Layer,
 	// TODO - should probably trace log the json before we try to decode it.
 	a.logTrace("decoding JSON output from kubectl", layer, "output", json)
 
-	dez := kscheme.Codecs.UniversalDeserializer()
+	// dez := a.scheme.Codecs.UniversalDeserializer()
+	dez := serializer.NewCodecFactory(a.scheme).UniversalDeserializer()
 
 	obj, gvk, err := dez.Decode(json, nil, nil)
 	if err != nil {
@@ -179,6 +208,7 @@ func (a KubectlLayerApplier) Apply(layer layers.Layer) (err error) {
 	}
 
 	output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).Run()
+	//output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).DryRun()
 	if err != nil {
 		return fmt.Errorf("error from kubectl while applying source directory (%s) for AddonsLayer %s/%s",
 			sourceDir, "", layer.GetName())
@@ -192,13 +222,13 @@ func (a KubectlLayerApplier) Apply(layer layers.Layer) (err error) {
 		return err
 	}
 
-	a.logAddons(hrs, layer)
+	err = a.logAddons(hrs, layer)
 
 	// TODO: Add an ownerRef to each deployed HelmRelease the points back to this AddonsLayer (needed for Prune)
 
 	// TODO: Watch all HelmRelease resources applied for this AddonsLayer until all are success or fail or timeout
 
-	return nil
+	return err
 }
 
 // Prune the AddonsLayer by removing the Addons found in the cluster that have since been removed from the Layer.

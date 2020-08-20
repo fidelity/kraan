@@ -1,6 +1,5 @@
 // +build integration
 
-// Package kubectl ...
 package kubectl
 
 /*

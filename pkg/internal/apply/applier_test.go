@@ -1,19 +1,30 @@
 package apply
 
 import (
+	"context"
 	"testing"
 
-	hoscheme "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/scheme"
+	hrscheme "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/scheme"
 
+	kraanscheme "github.com/fidelity/kraan/pkg/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/internal/kubectl"
 	"github.com/go-logr/logr"
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"
-	corescheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/apimachinery/pkg/runtime"
+	k8sscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+)
+
+var (
+	testScheme = runtime.NewScheme()
+	testCtx    = context.Background()
 )
 
 func init() {
-	hoscheme.AddToScheme(corescheme.Scheme)
+	_ = k8sscheme.AddToScheme(testScheme)   // nolint:errcheck // ok
+	_ = kraanscheme.AddToScheme(testScheme) // nolint:errcheck // ok
+	_ = hrscheme.AddToScheme(testScheme)    // nolint:errcheck // ok
 }
 
 func fakeLogger() logr.Logger {
@@ -26,7 +37,8 @@ func testLogger(t *testing.T) logr.Logger {
 
 func TestNewApplier(t *testing.T) {
 	logger := fakeLogger()
-	applier, err := NewApplier(logger)
+	client := fake.NewFakeClientWithScheme(testScheme)
+	applier, err := NewApplier(client, logger, testScheme)
 	if err != nil {
 		t.Fatalf("The NewApplier constructor returned an error: %s", err)
 	}
@@ -43,7 +55,8 @@ func TestMockKubectl(t *testing.T) {
 	}
 
 	logger := fakeLogger()
-	applier, err := NewApplier(logger)
+	client := fake.NewFakeClientWithScheme(testScheme)
+	applier, err := NewApplier(client, logger, testScheme)
 	if err != nil {
 		t.Fatalf("The NewApplier constructor returned an error: %s", err)
 	}

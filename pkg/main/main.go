@@ -29,6 +29,8 @@ import (
 	_ "sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	hrscheme "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/scheme"
+
 	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/controllers"
 	// +kubebuilder:scaffold:imports
@@ -42,6 +44,7 @@ var (
 func init() {
 	_ = clientgoscheme.AddToScheme(scheme) // nolint:errcheck // ok
 	_ = kraanv1alpha1.AddToScheme(scheme)  // nolint:errcheck // ok
+	_ = hrscheme.AddToScheme(scheme)       // nolint:errcheck // ok
 	// +kubebuilder:scaffold:scheme
 }
 

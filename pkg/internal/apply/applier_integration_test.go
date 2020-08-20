@@ -1,6 +1,5 @@
 // +build integration
 
-// Package apply ...
 package apply
 
 import (
@@ -9,28 +8,33 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
-	hrclientset "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned"
-	hoscheme "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/scheme"
-
+	//hrclientset "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned"
+	kraanscheme "github.com/fidelity/kraan/pkg/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/internal/layers"
-	"github.com/go-logr/logr"
+	hrscheme "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/scheme"
+
+	//"github.com/go-logr/logr"
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/api/core/v1"
+
+	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
-	corescheme "k8s.io/client-go/kubernetes/scheme"
+	k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func init() {
-	hoscheme.AddToScheme(corescheme.Scheme)
-}
-
-func xtestLogger(t *testing.T) logr.Logger {
-	return testlogr.TestLogger{T: t}
+func combinedScheme() *runtime.Scheme {
+	intScheme := runtime.NewScheme()
+	_ = k8sscheme.AddToScheme(intScheme)   // nolint:errcheck // ok
+	_ = kraanscheme.AddToScheme(intScheme) // nolint:errcheck // ok
+	_ = hrscheme.AddToScheme(intScheme)    // nolint:errcheck // ok
+	return intScheme
 }
 
 func kubeConfigFromFile(t *testing.T) (*rest.Config, error) {
@@ -64,7 +68,23 @@ func kubeConfig(t *testing.T) (*rest.Config, error) {
 	return rest.InClusterConfig()
 }
 
-func kubeCoreClient(config *rest.Config, t *testing.T) *kubernetes.Clientset {
+func runtimeClient(t *testing.T, scheme *runtime.Scheme) client.Client {
+	config, err := kubeConfig(t)
+	if err != nil {
+		t.Fatalf("kubernetes config error: %s", err)
+	}
+	client, err := client.New(config, client.Options{Scheme: scheme})
+	if err != nil {
+		t.Fatalf("Unable to create controller runtime client: %s", err)
+	}
+	return client
+}
+
+func kubeCoreClient(t *testing.T) *kubernetes.Clientset {
+	config, err := kubeConfig(t)
+	if err != nil {
+		t.Fatalf("kubernetes config error: %s", err)
+	}
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		t.Fatalf("Unable to create Kubernetes API Clientset: %s", err)
@@ -72,49 +92,40 @@ func kubeCoreClient(config *rest.Config, t *testing.T) *kubernetes.Clientset {
 	return clientset
 }
 
-func helmReleaseClient(config *rest.Config, t *testing.T) *hrclientset.Clientset {
-	clientset, err := hrclientset.NewForConfig(config)
-	if err != nil {
-		t.Fatalf("Unable to create a HelmRelease API Client: %s", err)
-	}
-	return clientset
-}
-
-func kubeClients(t *testing.T) (coreClient *kubernetes.Clientset, hrClient *hrclientset.Clientset) {
-	config, err := kubeConfig(t)
-	t.Logf("KUBECONFIG refers to host %s", config.Host)
-	if err != nil {
-		t.Fatalf("K8S config error: %s", err)
-	}
-	return kubeCoreClient(config, t), helmReleaseClient(config, t)
-}
-
 func TestConnectToCluster(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	defer mockCtl.Finish()
 
-	coreClient, _ := kubeClients(t)
+	scheme := combinedScheme()
+	client := runtimeClient(t, scheme)
+	k8sclient := kubeCoreClient(t)
 
-	info, err := coreClient.ServerVersion()
+	info, err := k8sclient.ServerVersion()
 	if err != nil {
 		t.Fatalf("Error getting server version: %s", err)
 	}
 	t.Logf("Server version %s", info.GitVersion)
-	namespaces, err := coreClient.CoreV1().Namespaces().List(metav1.ListOptions{})
+
+	namespaceList := &corev1.NamespaceList{}
+	err = client.List(context.Background(), namespaceList)
 	if err != nil {
-		t.Fatalf("Error getting namespaces: %s", err)
+		t.Fatalf("runtime error getting namespaces: %s", err)
 	}
-	for _, ns := range namespaces.Items {
-		t.Logf("Found NS '%s'", ns.GetName())
+	for _, namespace := range namespaceList.Items {
+		t.Logf("Found Namespace '%s'", namespace.GetName())
 	}
+
 }
 
-func TestSimpleApplyIntegration(t *testing.T) {
+func TestSimpleApply(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	defer mockCtl.Finish()
 
 	logger := testlogr.TestLogger{T: t}
-	applier, err := NewApplier(logger)
+	scheme := combinedScheme()
+	client := runtimeClient(t, scheme)
+
+	applier, err := NewApplier(client, logger, scheme)
 	if err != nil {
 		t.Fatalf("The NewApplier constructor returned an error: %s", err)
 	}
@@ -123,17 +134,15 @@ func TestSimpleApplyIntegration(t *testing.T) {
 	// This integration test can be forced to pass or fail at different stages by altering the
 	// Values section of the podinfo.yaml HelmRelease in the directory below.
 	sourcePath := "testdata/apply/simpleapply"
-	coreClient, hrClient := kubeClients(t)
-	baseContext := context.Background()
+	//baseContext := context.Background()
 
 	mockLayer := layers.NewMockLayer(mockCtl)
 	mockLayer.EXPECT().GetNamespace().Return("simple").AnyTimes()
 	mockLayer.EXPECT().GetName().Return("testLayer").AnyTimes()
 	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
 	mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()
-	mockLayer.EXPECT().GetK8sClient().Return(coreClient).AnyTimes()
-	mockLayer.EXPECT().GetHelmReleaseClient().Return(hrClient).AnyTimes()
-	mockLayer.EXPECT().GetContext().Return(baseContext).AnyTimes()
+	//mockLayer.EXPECT().GetHelmReleaseClient().Return(hrClient).AnyTimes()
+	//mockLayer.EXPECT().GetContext().Return(baseContext).AnyTimes()
 
 	err = applier.Apply(mockLayer)
 	if err != nil {
@@ -141,13 +150,14 @@ func TestSimpleApplyIntegration(t *testing.T) {
 	}
 }
 
-// TestApplyContextTimeoutIntegration - isn't really valid anymore since Apply only applies the YAML and returns without waiting.
 func TestApplyContextTimeoutIntegration(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	defer mockCtl.Finish()
 
 	logger := testlogr.TestLogger{T: t}
-	applier, err := NewApplier(logger)
+	scheme := combinedScheme()
+	client := runtimeClient(t, scheme)
+	applier, err := NewApplier(client, logger, scheme)
 	if err != nil {
 		t.Fatalf("The NewApplier constructor returned an error: %s", err)
 	}
@@ -156,18 +166,18 @@ func TestApplyContextTimeoutIntegration(t *testing.T) {
 	// This integration test can be forced to pass or fail at different stages by altering the
 	// Values section of the podinfo.yaml HelmRelease in the directory below.
 	sourcePath := "testdata/apply/simpleapply"
-	coreClient, hrClient := kubeClients(t)
-	baseContext := context.Background()
-	timeoutContext, _ := context.WithTimeout(baseContext, 15*time.Second)
+	//coreClient, hrClient := kubeClients(t)
+	//baseContext := context.Background()
+	//timeoutContext, _ := context.WithTimeout(baseContext, 15*time.Second)
 
 	mockLayer := layers.NewMockLayer(mockCtl)
 	mockLayer.EXPECT().GetNamespace().Return("simple").AnyTimes()
 	mockLayer.EXPECT().GetName().Return("testLayer").AnyTimes()
 	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
-	mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()
-	mockLayer.EXPECT().GetK8sClient().Return(coreClient).AnyTimes()
-	mockLayer.EXPECT().GetHelmReleaseClient().Return(hrClient).AnyTimes()
-	mockLayer.EXPECT().GetContext().Return(timeoutContext).AnyTimes()
+	//mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()
+	//mockLayer.EXPECT().GetK8sClient().Return(coreClient).AnyTimes()
+	//mockLayer.EXPECT().GetHelmReleaseClient().Return(hrClient).AnyTimes()
+	//mockLayer.EXPECT().GetContext().Return(timeoutContext).AnyTimes()
 
 	err = applier.Apply(mockLayer)
 	if err != nil {

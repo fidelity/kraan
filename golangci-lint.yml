@@ -193,6 +193,11 @@ issues:
         - gci
         - gomnd
         - gosec
+        - dupl
+        - godox
+        - goerr113
+        - gocritic
+        - gosimple
     - path: pkg/controllers
       linters:
         - godot
@@ -200,12 +205,7 @@ issues:
     - path: pkg/api
       linters:
         - godot
-    - path: pkg/internal/actors
-      linters:
-        - godox
-        - goerr113
-        - gocritic
-        - gosimple
+
 
   # Independently from option `exclude` we use default exclude patterns,
   # it can be disabled by this option. To list all

@@ -19,14 +19,10 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -56,45 +52,13 @@ func NewReconciler(client client.Client, logger logr.Logger,
 	return reconciler, err
 }
 
-// GetK8sClient gets the Kubernetes client.
-func GetK8sClient() (*kubernetes.Clientset, error) {
-	kubeConfig := os.Getenv("KUBECONFIG")
-	if len(kubeConfig) > 0 {
-		// use the current context in kubeconfig
-		config, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
-		if err != nil {
-			return nil, err
-		}
-
-		// create the clientset
-		clientset, err := kubernetes.NewForConfig(config)
-		if err != nil {
-			return nil, err
-		}
-
-		return clientset, nil
-	}
-	// creates the in-cluster config
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		panic(err.Error())
-	}
-	// creates the clientset
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	return clientset, nil
-}
-
 func logBadStatusError(log logr.Logger, status string) {
 	utils.Log(log, 3, 1, fmt.Sprintf("invalid AddonLayer status: %s, ignoring", status))
 }
 
 func processEmptyStatus(l *layers.Layer) {
 	utils.Log(l.GetLogger(), 2, 1, "processing", "Status", "")
-	l.StatusPrunePending()
+	
 	l.SetRequeue()
 	utils.Log(l.GetLogger(), 2, 1, "processed",
 		"Previous Status", "",
@@ -104,30 +68,9 @@ func processEmptyStatus(l *layers.Layer) {
 
 func processDeployed(l *layers.Layer) {
 	utils.Log(l.GetLogger(), 2, 1, "processing", "Status", kraanv1alpha1.DeployedCondition)
-	if !l.IsVersionCurrent() {
-		// Version has changed set to prune pending.
-		l.StatusPrunePending()
-		l.SetRequeue()
-	}
+
 	utils.Log(l.GetLogger(), 2, 1, "processed",
 		"Previous Status", kraanv1alpha1.DeployedCondition,
-		"Status", l.GetFullStatus(),
-		"Spec:", l.GetSpec())
-}
-
-func processPrunePending(l *layers.Layer) {
-	utils.Log(l.GetLogger(), 2, 1, "processing", "Status", kraanv1alpha1.PrunePendingCondition)
-	if !l.CheckK8sVersion() {
-		l.SetRequeue()
-		l.SetDelayed()
-		return
-	}
-	l.StatusPrune()
-	// Thinking about this, implementing a reliable reverse DependsOn is non trivial so suggest
-	// that for now we just transition to Prune state and revist waiting for layers that depend on
-	// this layer later.
-	utils.Log(l.GetLogger(), 2, 1, "processed",
-		"Previous Status", kraanv1alpha1.PrunePendingCondition,
 		"Status", l.GetFullStatus(),
 		"Spec:", l.GetSpec())
 }
@@ -174,17 +117,6 @@ func processApplying(l *layers.Layer, r *AddonsLayerReconciler) {
 	// If completed, set status to Deployed
 }
 
-func processHold(l *layers.Layer) {
-	utils.Log(l.GetLogger(), 2, 0, "processing", "Status", kraanv1alpha1.HoldCondition)
-	if l.IsHold() {
-		l.SetHold()
-	}
-	utils.Log(l.GetLogger(), 2, 1, "processed",
-		"Previous Status", kraanv1alpha1.HoldCondition,
-		"Status", l.GetFullStatus(),
-		"Spec:", l.GetSpec())
-}
-
 func processFailed(l *layers.Layer) {
 	utils.Log(l.GetLogger(), 2, 1, "processing", "Status", kraanv1alpha1.FailedCondition)
 	// Perform a retry if failed condition is more than 'interval' duration ago
@@ -197,10 +129,52 @@ func processFailed(l *layers.Layer) {
 		"Spec:", l.GetSpec())
 }
 
+func processAddonLayer(l *layers.Layer) error {
+	if l.IsHold() {
+		l.SetHold()
+		return nil
+	}
+
+	if !l.CheckK8sVersion() {
+		l.StatusK8sVersionMismatch()
+		return nil
+	}
+	/*
+	if !l.IsVersionCurrent() {
+		// Version has changed set to prune pending.
+		l.StatusPrunePending()
+		l.SetRequeue()
+		return
+	}
+	*/
+	// IsPruneRequired
+		// set status to pruning
+		// set everybody else to prunepending
+		// prune if not deleting
+		// return	
+
+	// check if anyone else is pruning
+		// set pruned
+		// return
+	
+	// set anyone else who is purned to applypending
+
+	// if dependsOn are not deployed
+		// set applypending
+		// return
+
+	// IfApplyRequired
+		// apply and set status to applying
+		// return
+
+	// set status to deployed
+
+}
+
 // Reconcile process AddonsLayers custom resources.
 // +kubebuilder:rbac:groups=kraan.io,resources=addons,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kraan.io,resources=addons/status,verbs=get;update;patch
-func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) { // nolint:gocyclo,funlen // ok
+func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) { // nolint:gocyclo // ok
 	ctx := context.Background()
 
 	var addonsLayer *kraanv1alpha1.AddonsLayer = &kraanv1alpha1.AddonsLayer{}
@@ -212,34 +186,15 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 		"requestNamespace", req.NamespacedName.Namespace,
 		"requestName", req.NamespacedName.Name)
 
-	k8sClient, err := GetK8sClient()
-	if err != nil {
-		log.Error(err, "unable to get kubernetes client")
-	}
-	l := layers.CreateLayer(ctx, k8sClient, log, addonsLayer)
+	l := layers.CreateLayer(ctx, r.Client, log, addonsLayer)
 
-	s := l.GetStatus()
-	switch s {
-	case "":
-		processEmptyStatus(l)
-	case kraanv1alpha1.DeployedCondition:
-		processDeployed(l)
-	case kraanv1alpha1.PrunePendingCondition:
-		processPrunePending(l)
-
-	case kraanv1alpha1.PruneCondition:
+	
 		processPrune(l, r)
-	case kraanv1alpha1.PruningCondition:
 		processPruning(l, r)
-	case kraanv1alpha1.ApplyPendingCondition:
 		processApplyPending(l)
-	case kraanv1alpha1.ApplyCondition:
 		processApply(l, r)
-	case kraanv1alpha1.ApplyingCondition:
 		processApplying(l, r)
-	case kraanv1alpha1.HoldCondition:
 		processHold(l)
-	case kraanv1alpha1.FailedCondition:
 		processFailed(l)
 	default:
 		logBadStatusError(log, s)

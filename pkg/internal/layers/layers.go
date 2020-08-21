@@ -140,7 +140,7 @@ func (l *KraanLayer) CheckK8sVersion() bool {
 	return versionInfo.String() > l.GetRequiredK8sVersion()
 }
 
-// getK8sClient gets the Kubernetes client.
+// GetK8sClient gets the Kubernetes client.
 func getK8sClient() *kubernetes.Clientset {
 	kubeConfig := os.Getenv("KUBECONFIG")
 	if len(kubeConfig) > 0 {

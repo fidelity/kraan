@@ -1,11 +1,12 @@
-package kubectl
+package kubectl // nolint:package // unit tests should be in same package as code under test
 
 /*
 
 The mockgen tool generates the MockExecProvider type defined in the kubectl/mockExecProvider.go code file.
 
 From the project root directory, you can generate mock definitions for interfaces in individual code files by calling mockgen.  Example:
-	mockgen -destination=pkg/internal/kubectl/mockExecProvider.go -package=kubectl -source=pkg/internal/kubectl/execProvider.go gitlab.fmr.com/common-platform/addons-manager/pkg/internal/kubectl ExecProvider
+	mockgen -destination=pkg/internal/kubectl/mockExecProvider.go -package=kubectl -source=pkg/internal/kubectl/execProvider.go \
+	gitlab.fmr.com/common-platform/addons-manager/pkg/internal/kubectl ExecProvider
 
 Or you can generate all the
 
@@ -51,7 +52,7 @@ func TestNewKubectl(t *testing.T) {
 	}
 }
 
-// TestLoggerCompare compares two Logger structs to see if they're the same
+// TestLoggerCompare compares two Logger structs to see if they're the same.
 func TestLoggerCompare(t *testing.T) {
 	l1 := testLogger(t)
 	l2 := l1.WithValues("somekey", "somevalue")
@@ -106,11 +107,13 @@ func (p FakeExecProvider) setFindOnPathFunc(mockFunc func(file string) (string, 
 	return p
 }
 
+/* Not used
 func (p FakeExecProvider) setExecCmdFunc(mockFunc func(name string, arg ...string) ([]byte, error)) FakeExecProvider {
 	p.execCmdFunc = mockFunc
 	return p
 }
-
+*/
+// BaseFakeExecProvider implements a fake exec.
 func BaseFakeExecProvider() FakeExecProvider {
 	return FakeExecProvider{
 		findOnPathFunc: func(file string) (string, error) {
@@ -198,7 +201,7 @@ func TestKubectlCommandNotFoundInPath(t *testing.T) {
 	}
 }
 
-func TestKubectlApplyReturnsApplyCommand(t *testing.T) {
+func TestKubectlApplyReturnsApplyCommand(t *testing.T) { // nolint:funlen,gocyclo // allow longer test functions
 	mockCtl := gomock.NewController(t)
 	defer mockCtl.Finish()
 
@@ -234,7 +237,10 @@ func TestKubectlApplyReturnsApplyCommand(t *testing.T) {
 	default:
 		t.Fatalf("return value from Kubectl.Apply is not an ApplyCommand type: (%T) %#v", c, c)
 	}
-	a := c.(*ApplyCommand)
+	a, ok := c.(*ApplyCommand)
+	if !ok {
+		t.Logf("error casting to ApplyCommand")
+	}
 
 	// verify that the returned ApplyCommand.kubectlSubCmd matches expectations
 	if expectedSubCmd != a.kubectlSubCmd() {

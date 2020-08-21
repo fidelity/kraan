@@ -15,7 +15,8 @@ limitations under the License.
 */
 
 //Package kubectl executes various kubectl sub-commands in a forked shell
-//   OLD - mockgen -destination=pkg/internal/kubectl/mockKubectl.go -package=kubectl -source=pkg/internal/kubectl/kubectl.go gitlab.fmr.com/common-platform/addons-manager/pkg/internal/kubectl Kubectl,Command
+//   OLD - mockgen -destination=pkg/internal/kubectl/mockKubectl.go -package=kubectl -source=pkg/internal/kubectl/kubectl.go
+//   gitlab.fmr.com/common-platform/addons-manager/pkg/internal/kubectl Kubectl,Command
 //go:generate mockgen -destination=mockKubectl.go -package=kubectl -source=kubectl.go . Kubectl,Command
 package kubectl
 
@@ -31,7 +32,7 @@ var (
 	execProvider = NewExecProvider()
 )
 
-// Kubectl is a Factory interface that returns concrete Command implementations from named constructors
+// Kubectl is a Factory interface that returns concrete Command implementations from named constructors.
 type Kubectl interface {
 	Apply(path string) (c Command)
 	Delete(args ...string) (c Command)
@@ -39,13 +40,13 @@ type Kubectl interface {
 	getPath() string
 }
 
-// CommandFactory is a concrete Factory implementation of the Kubectl interface's API
+// CommandFactory is a concrete Factory implementation of the Kubectl interface's API.
 type CommandFactory struct {
 	logger logr.Logger
 	path   string
 }
 
-// NewKubectl returns a Kubectl object for creating and running kubectl sub-commands
+// NewKubectl returns a Kubectl object for creating and running kubectl sub-commands.
 func NewKubectl(logger logr.Logger) (factory Kubectl, err error) {
 	kFactory := CommandFactory{
 		logger: logger,
@@ -65,14 +66,14 @@ func (f CommandFactory) getPath() string {
 	return f.path
 }
 
-// Command defines an interface for commands created by the Kubectl factory type
+// Command defines an interface for commands created by the Kubectl factory type.
 type Command interface {
 	Run() (output []byte, err error)
 	DryRun() (output []byte, err error)
 	WithLogger(logger logr.Logger) (self *abstractCommand)
 }
 
-// abstractCommand is a parent type with common logic and fields used by concrete Command types
+// abstractCommand is a parent type with common logic and fields used by concrete Command types.
 type abstractCommand struct {
 	logger     logr.Logger
 	factory    *CommandFactory
@@ -112,7 +113,7 @@ func (c *abstractCommand) asString() (cmdString string) {
 	return c.cmd
 }
 
-// Run executes the Kubectl command with all its arguments and returns the output
+// Run executes the Kubectl command with all its arguments and returns the output.
 func (c *abstractCommand) Run() (output []byte, err error) {
 	if c.jsonOutput {
 		c.args = append(c.args, "-o", "json")
@@ -125,13 +126,13 @@ func (c *abstractCommand) Run() (output []byte, err error) {
 	return c.output, err
 }
 
-// DryRun executes the Kubectl command as a dry run and returns the output without making any changes to the cluster
+// DryRun executes the Kubectl command as a dry run and returns the output without making any changes to the cluster.
 func (c *abstractCommand) DryRun() (output []byte, err error) {
 	c.args = append(c.args, "--dry-run")
 	return c.Run()
 }
 
-// WithLogger sets the Logger the command should use to log actions if passed a Logger that is not nil
+// WithLogger sets the Logger the command should use to log actions if passed a Logger that is not nil.
 func (c *abstractCommand) WithLogger(logger logr.Logger) (self *abstractCommand) {
 	if logger != nil {
 		c.logger = logger
@@ -144,7 +145,7 @@ type ApplyCommand struct {
 	abstractCommand
 }
 
-// Apply instantiates an ApplyCommand instance using the provided directory path
+// Apply instantiates an ApplyCommand instance using the provided directory path.
 func (f *CommandFactory) Apply(path string) (c Command) {
 	c = &ApplyCommand{
 		abstractCommand: abstractCommand{
@@ -158,12 +159,12 @@ func (f *CommandFactory) Apply(path string) (c Command) {
 	return c
 }
 
-// DeleteCommand implements the Command interface to delete resources from the KubeAPI service
+// DeleteCommand implements the Command interface to delete resources from the KubeAPI service.
 type DeleteCommand struct {
 	abstractCommand
 }
 
-// Delete instantiates a DeleteCommand instance for the described Kubernetes resource
+// Delete instantiates a DeleteCommand instance for the described Kubernetes resource.
 func (f *CommandFactory) Delete(args ...string) (c Command) {
 	c = &DeleteCommand{
 		abstractCommand: abstractCommand{

@@ -129,28 +129,25 @@ type Condition struct {
 }
 
 const (
-	// DeployedCondition represents the fact that the addons are deployed.
-	DeployedCondition string = "Deployed"
-
 	// PrunePendingCondition represents the fact that the addons are pending being pruned.
 	// Used when pruning is pending a prereq being met.
 	PrunePendingCondition string = "PrunePending"
 
-	// PruneCondition represents the fact that a given layer is ready to be pruned.
-	PruneCondition string = "Prune"
-
 	// PruningCondition represents the fact that the addons are being pruned.
 	PruningCondition string = "Pruning"
+
+	// PrunedCondition represents the fact that a given layer is pruned.
+	PrunedCondition string = "Pruned"
 
 	// ApplyPendingCondition represents the fact that the addons are pending being applied.
 	// Used when applying is pending a prereq being met.
 	ApplyPendingCondition string = "ApplyPending"
 
-	// ApplyCondition represents the fact that a given layer is ready to be applied.
-	ApplyCondition string = "Apply"
-
 	// ApplyingCondition represents the fact that the addons are being deployed.
 	ApplyingCondition string = "Applying"
+
+	// DeployedCondition represents the fact that the addons are deployed.
+	DeployedCondition string = "Deployed"
 
 	// FailedCondition represents the fact that the procesing of the addons failed.
 	FailedCondition string = "Failed"
@@ -175,9 +172,6 @@ type AddonsLayerStatus struct {
 }
 
 const (
-	// AddonsLayerDeployedReason represents the fact that the addons has been successfully deployed.
-	AddonsLayerDeployedReason string = "AddonsLayer is Deployed"
-
 	// AddonsLayerPrunePendingReason represents the fact that the puruning of addons is pending.
 	AddonsLayerPrunePendingReason string = "AddonsLayer pruning is pending a prerequisite being satisfied"
 
@@ -187,18 +181,17 @@ const (
 		" satisified, i.e. a layer that depends on this one has not been pruned yet" +
 		"or another custom prerequisite is not yet met.")
 
-	// AddonsLayerPruneReason represents the fact that the addons is ready to be purned.
-	AddonsLayerPruneReason string = "AddonsLayer ready to be pruned"
-
-	// AddonsLayerPruneMsg explains the prune status.
-	AddonsLayerPruneMsg string = ("The prune status means the manager has detected that" +
-		" the AddonsLayer is ready to be pruned.")
-
 	// AddonsLayerPruningReason represents the fact that the addons are being pruned.
 	AddonsLayerPruningReason string = "AddonsLayer is being applied"
 
 	// AddonsLayerPruningMsg explains that pruning status.
 	AddonsLayerPruningMsg string = "The pruning status means the manager is pruning objects removed from this layer"
+
+	// AddonsLayerPrunedReason represents the fact that the addons have been purned.
+	AddonsLayerPrunedReason string = "AddonsLayer is pruned"
+
+	// AddonsLayerPrunedMsg explains the pruned status.
+	AddonsLayerPrunedMsg string = ("The pruned status means the AddonsLayer has been pruned.")
 
 	// AddonsLayerApplyPendingReason represents the fact that the applying of addons is pending.
 	AddonsLayerApplyPendingReason string = "AddonsLayer applying is pending a prerequisite being satisfied"
@@ -207,13 +200,6 @@ const (
 	AddonsLayerApplyPendingMsg string = ("The apply-pending status means the manager has detected that the AddonsLayer" +
 		" needs to be applied but a prerequisite is not yet satisified, i.e. a layer that this layer depends on has " +
 		"not been applied yet or another custom prerequisite is not yet met.")
-
-	// AddonsLayerApplyReason represents the fact that addons are ready to be applied.
-	AddonsLayerApplyReason string = "AddonsLayer is on hold, preventing execution"
-
-	// AddonsLayerApplyMsg explains the apply status.
-	AddonsLayerApplyMsg string = ("The apply status means the manager has detected that the AddonsLayer is ready" +
-		"to be applied")
 
 	// AddonsLayerApplyingReason represents the fact that the addons are being deployed.
 	AddonsLayerApplyingReason string = "AddonsLayer is being applied"
@@ -232,6 +218,9 @@ const (
 	AddonsLayerHoldMsg string = ("AddonsLayer custom resource has the 'Hold' element set to ture" +
 		"preventing it from being processed. To clear this state update the custom resource object" +
 		"setting Hold to false")
+
+	// AddonsLayerDeployedReason represents the fact that the addons has been successfully deployed.
+	AddonsLayerDeployedReason string = "AddonsLayer is Deployed"
 )
 
 // AddonsLayer is the Schema for the addons API.

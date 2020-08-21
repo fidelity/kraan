@@ -38,6 +38,7 @@ type KraanLayer struct {
 
 // Layer defines the interface for managing the layer.
 type Layer interface {
+	SetStatusK8sVersion()
 	SetStatusApplying()
 	SetStatusApply()
 	SetStatusApplyPending()
@@ -197,6 +198,12 @@ func (l *KraanLayer) setStatus(status, reason, message string) {
 	l.addonsLayer.Status.Version = l.addonsLayer.Spec.Version
 	l.updated = true
 	l.requeue = true
+}
+
+// SetStatusK8sVersion sets the addon layer's status to waiting for required K8s Version.
+func (l *KraanLayer) SetStatusK8sVersion() {
+	l.setStatus(kraanv1alpha1.K8sVersionCondition,
+		kraanv1alpha1.AddonsLayerK8sVersionReason, kraanv1alpha1.AddonsLayerK8sVersionMsg)
 }
 
 // SetStatusDeployed sets the addon layer's status to deployed.

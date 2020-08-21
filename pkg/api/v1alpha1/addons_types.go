@@ -129,6 +129,9 @@ type Condition struct {
 }
 
 const (
+	// K8sVersionCondition represents the fact that the addons layer is waiting for the required k8s Version.
+	K8sVersionCondition string = "K8sVersion"
+
 	// PrunePendingCondition represents the fact that the addons are pending being pruned.
 	// Used when pruning is pending a prereq being met.
 	PrunePendingCondition string = "PrunePending"
@@ -172,6 +175,14 @@ type AddonsLayerStatus struct {
 }
 
 const (
+	// AddonsLayerK8sVersionReason represents the addons layer is wating for the required K8s Version.
+	AddonsLayerK8sVersionReason string = "AddonsLayer is waiting for the required K8sVersion"
+
+	// AddonsLayerK8sVersionMsg explains that the addons k8s Version state.
+	AddonsLayerK8sVersionMsg string = ("The k8sVersion status means the manager has detected" +
+		" that the AddonsLayer needs a higher version of the Kubernetes API than the current" +
+		" version running on the cluster.")
+
 	// AddonsLayerPrunePendingReason represents the fact that the puruning of addons is pending.
 	AddonsLayerPrunePendingReason string = "AddonsLayer pruning is pending a prerequisite being satisfied"
 

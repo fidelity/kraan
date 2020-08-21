@@ -69,13 +69,8 @@ func processAddonLayer(l layers.Layer) error { // nolint:gocyclo // ok
 
 	processFailed(l)
 
-	if !l.IsVersionCurrent() {
-		l.SetStatusPrunePending()
-		return nil
-	}
-
 	if !l.CheckK8sVersion() {
-		l.SetStatusPrunePending()
+		l.SetStatusK8sVersion()
 		l.SetDelayed()
 		return nil
 	}

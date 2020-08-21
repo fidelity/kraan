@@ -269,9 +269,9 @@ func (l *KraanLayer) SetAllPrunePending() error {
 	return nil
 }
 
-// SetStatusPruningToPruned sets the status to pruned if it is currently pruning.
+// SetStatusPruningToPruned sets the status to pruned if it is currently pruning or prune pending.
 func (l *KraanLayer) SetStatusPruningToPruned() {
-	if l.GetStatus() == kraanv1alpha1.PruningCondition {
+	if l.GetStatus() == kraanv1alpha1.PruningCondition || l.GetStatus() == kraanv1alpha1.PrunePendingCondition {
 		l.SetStatusPruned()
 	}
 }

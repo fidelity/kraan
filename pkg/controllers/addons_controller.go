@@ -135,23 +135,25 @@ func processAddonLayer(l *layers.Layer) error {
 		return nil
 	}
 
-	if !l.CheckK8sVersion() {
-		l.StatusK8sVersionMismatch()
-		return nil
-	}
-	/*
 	if !l.IsVersionCurrent() {
 		// Version has changed set to prune pending.
 		l.StatusPrunePending()
 		l.SetRequeue()
 		return
 	}
-	*/
-	// IsPruneRequired
-		// set status to pruning
-		// set everybody else to prunepending
-		// prune if not deleting
-		// return	
+
+	if !l.CheckK8sVersion() {
+		l.StatusK8sVersionMismatch()
+		return nil
+	}
+
+	if l.IsPruneRequired() {
+		l.StatusPruning()
+		l.SetAllPruePending()
+		l.Prune()
+		l.SetRequeue()
+		return	
+	}	
 
 	// check if anyone else is pruning
 		// set pruned

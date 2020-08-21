@@ -319,6 +319,11 @@ func (l *KraanLayer) GetInterval() time.Duration {
 	return l.addonsLayer.Spec.Interval.Duration
 }
 
+// GetDelay returns the delay period.
+func (l *KraanLayer) GetDelay() time.Duration {
+	return l.delay
+}
+
 // GetStatus returns the status.
 func (l *KraanLayer) GetStatus() string {
 	return l.addonsLayer.Status.State

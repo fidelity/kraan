@@ -1,6 +1,6 @@
-// +build integration
-
 package apply
+
+// TEMPMOVE +build integration
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	//hrclientset "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned"
 	kraanscheme "github.com/fidelity/kraan/pkg/api/v1alpha1"
@@ -18,6 +19,7 @@ import (
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -136,11 +138,61 @@ func TestSimpleApply(t *testing.T) {
 	sourcePath := "testdata/apply/simpleapply"
 	//baseContext := context.Background()
 
+	typeMeta := metav1.TypeMeta{
+		Kind:       "AddonsLayer",
+		APIVersion: "v1alpha1",
+	}
+	now := metav1.Time{Time: time.Now()}
+	layerMeta := metav1.ObjectMeta{
+		Name: "TestLayer",
+		//Namespace:         "TestNamespace",
+		UID:               "FakeUID",
+		ResourceVersion:   "FakeVersion",
+		Generation:        1,
+		CreationTimestamp: now,
+		ClusterName:       "testCluster",
+	}
+	sourceSpec := kraanscheme.SourceSpec{
+		Name: "TestSource",
+		// NameSpace: "TestNamespace",
+		Path: sourcePath,
+	}
+	layerPreReqs := kraanscheme.PreReqs{
+		K8sVersion: "1.15.3",
+		//K8sVersion string `json:"k8sVersion"`
+		//DependsOn []string `json:"dependsOn,omitempty"`
+	}
+	layerSpec := kraanscheme.AddonsLayerSpec{
+		Source:  sourceSpec,
+		PreReqs: layerPreReqs,
+		Hold:    false,
+		Version: "v1",
+		//Source SourceSpec `json:"source"`
+		//PreReqs PreReqs `json:"prereqs,omitempty"`
+		//Hold bool `json:"hold,omitempty"`
+		//Interval metav1.Duration `json:"interval"`
+		//Timeout *metav1.Duration `json:"timeout,omitempty"`
+		//Version string `json:"version"`
+	}
+	layerStatus := kraanscheme.AddonsLayerStatus{
+		State:   "Happy",
+		Version: "v1",
+		//Conditions []Condition `json:"conditions,omitempty"`
+		//State string `json:"state,omitempty"`
+		//Version string `json:"version,omitempty"`
+	}
+	addonsLayer := &kraanscheme.AddonsLayer{
+		TypeMeta:   typeMeta,
+		ObjectMeta: layerMeta,
+		Spec:       layerSpec,
+		Status:     layerStatus,
+	}
 	mockLayer := layers.NewMockLayer(mockCtl)
-	mockLayer.EXPECT().GetNamespace().Return("simple").AnyTimes()
+	//mockLayer.EXPECT().GetNamespace().Return("simple").AnyTimes()
 	mockLayer.EXPECT().GetName().Return("testLayer").AnyTimes()
 	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
 	mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()
+	mockLayer.EXPECT().GetAddonsLayer().Return(addonsLayer).Times(1)
 	//mockLayer.EXPECT().GetHelmReleaseClient().Return(hrClient).AnyTimes()
 	//mockLayer.EXPECT().GetContext().Return(baseContext).AnyTimes()
 
@@ -171,7 +223,7 @@ func TestApplyContextTimeoutIntegration(t *testing.T) {
 	//timeoutContext, _ := context.WithTimeout(baseContext, 15*time.Second)
 
 	mockLayer := layers.NewMockLayer(mockCtl)
-	mockLayer.EXPECT().GetNamespace().Return("simple").AnyTimes()
+	//mockLayer.EXPECT().GetNamespace().Return("simple").AnyTimes()
 	mockLayer.EXPECT().GetName().Return("testLayer").AnyTimes()
 	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
 	//mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()

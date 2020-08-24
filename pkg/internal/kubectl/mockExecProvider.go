@@ -5,9 +5,8 @@
 package kubectl
 
 import (
-	reflect "reflect"
-
 	gomock "github.com/golang/mock/gomock"
+	reflect "reflect"
 )
 
 // MockExecProvider is a mock of ExecProvider interface

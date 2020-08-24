@@ -5,10 +5,9 @@
 package kubectl
 
 import (
-	reflect "reflect"
-
 	logr "github.com/go-logr/logr"
 	gomock "github.com/golang/mock/gomock"
+	reflect "reflect"
 )
 
 // MockKubectl is a mock of Kubectl interface

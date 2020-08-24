@@ -14,7 +14,7 @@ spec:
     listKind: AddonsLayerList
     plural: addonslayers
     singular: addonslayer
-  scope: Cluster
+  scope: Namespaced
   subresources:
     status: {}
   validation:

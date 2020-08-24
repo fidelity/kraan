@@ -59,6 +59,7 @@ type Layer interface {
 	SetAllPrunedToApplyPending() error
 	DependenciesDeployed() bool
 	IsApplyRequired() bool
+	SuccessfullyApplied() bool
 	Apply() error
 
 	GetStatus() string
@@ -67,11 +68,9 @@ type Layer interface {
 	GetK8sClient() client.Client
 	GetContext() context.Context
 	GetSourcePath() string
-	GetInterval() time.Duration
 	GetTimeout() time.Duration
 	IsUpdated() bool
 	NeedsRequeue() bool
-	IsVersionCurrent() bool
 	IsDelayed() bool
 	GetDelay() time.Duration
 	SetRequeue()
@@ -82,6 +81,8 @@ type Layer interface {
 	GetFullStatus() *kraanv1alpha1.AddonsLayerStatus
 	GetSpec() *kraanv1alpha1.AddonsLayerSpec
 	GetAddonsLayer() *kraanv1alpha1.AddonsLayer
+
+	GetAddonsLayers() (map[string]*kraanv1alpha1.AddonsLayer, error)
 }
 
 // CreateLayer creates a layer object.
@@ -89,7 +90,7 @@ func CreateLayer(ctx context.Context, client client.Client,
 	log logr.Logger, addonsLayer *kraanv1alpha1.AddonsLayer) Layer {
 	l := &KraanLayer{requeue: false, delayed: false, updated: false, ctx: ctx, client: client, log: log,
 		addonsLayer: addonsLayer}
-	l.delay = l.GetInterval()
+	l.delay = l.addonsLayer.Spec.Interval.Duration
 	return l
 }
 
@@ -139,38 +140,6 @@ func (l *KraanLayer) CheckK8sVersion() bool {
 		return false
 	}
 	return versionInfo.String() > l.GetRequiredK8sVersion()
-}
-
-// GetK8sClient gets the Kubernetes client.
-func getK8sClient() *kubernetes.Clientset {
-	kubeConfig := os.Getenv("KUBECONFIG")
-	if len(kubeConfig) > 0 {
-		// use the current context in kubeconfig
-		config, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
-		if err != nil {
-			panic(err.Error())
-		}
-
-		// create the clientset
-		clientset, err := kubernetes.NewForConfig(config)
-		if err != nil {
-			panic(err.Error())
-		}
-
-		return clientset
-	}
-	// creates the in-cluster config
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		panic(err.Error())
-	}
-	// creates the clientset
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	return clientset
 }
 
 /*
@@ -254,24 +223,25 @@ func (l *KraanLayer) IsHold() bool {
 	return l.addonsLayer.Spec.Hold
 }
 
-// IsVersionCurrent returns true if the spec version matches the status version.
-func (l *KraanLayer) IsVersionCurrent() bool {
-	return l.addonsLayer.Spec.Version == l.addonsLayer.Status.Version
-}
-
 // IsPruningRequired checks if there are any objects owned by the addons layer on the cluster that need to be pruned.
 func (l *KraanLayer) IsPruningRequired() bool {
-	return false
+	return true
 }
 
-// SetAllPrunePending sets all addons layer custom  resources to prune pending status.
+// SetAllPrunePending sets all addons layer custom resources to prune pending status.
 func (l *KraanLayer) SetAllPrunePending() error {
+	items, err := l.GetAddonsLayers()
+	if err != nil {
+		return err
+	}
+	utils.Log(l.GetLogger(), 2, 1, "processing", "Layers", items)
 	return nil
 }
 
 // SetStatusPruningToPruned sets the status to pruned if it is currently pruning or prune pending.
 func (l *KraanLayer) SetStatusPruningToPruned() {
-	if l.GetStatus() == kraanv1alpha1.PruningCondition || l.GetStatus() == kraanv1alpha1.PrunePendingCondition {
+	if l.GetStatus() == kraanv1alpha1.PruningCondition ||
+		l.GetStatus() == kraanv1alpha1.PrunePendingCondition {
 		l.SetStatusPruned()
 	}
 }
@@ -288,6 +258,11 @@ func (l *KraanLayer) DependenciesDeployed() bool {
 
 // IsApplyRequired checks if an apply is required.
 func (l *KraanLayer) IsApplyRequired() bool {
+	return false
+}
+
+// SuccessfullyApplied checks if all Helm Releases in a layer have beem successfully applied.
+func (l *KraanLayer) SuccessfullyApplied() bool {
 	return false
 }
 
@@ -319,11 +294,6 @@ func (l *KraanLayer) IsDelayed() bool {
 // NeedsRequeue returns true if the AddonsLayer needed to be reprocessed.
 func (l *KraanLayer) NeedsRequeue() bool {
 	return l.requeue
-}
-
-// GetInterval returns the interval.
-func (l *KraanLayer) GetInterval() time.Duration {
-	return l.addonsLayer.Spec.Interval.Duration
 }
 
 // GetDelay returns the delay period.
@@ -372,4 +342,50 @@ func (l *KraanLayer) GetLogger() logr.Logger {
 // GetName gets the layer name.
 func (l *KraanLayer) GetName() string {
 	return l.addonsLayer.ObjectMeta.Name
+}
+
+// GetAddonsLayers returns a map containing the current state of all other AddonsLayers.
+func (l *KraanLayer) GetAddonsLayers() (map[string]*kraanv1alpha1.AddonsLayer, error) {
+	list := &kraanv1alpha1.AddonsLayerList{}
+	opt := &client.ListOptions{}
+	if err := l.client.List(l.GetContext(), list, opt); err != nil {
+		return nil, err
+	}
+	addonsLayers := map[string]*kraanv1alpha1.AddonsLayer{}
+	for _, item := range list.Items {
+		addonsLayers[item.ObjectMeta.Name] = &item // nolint:scopelint,exportloopref // should be ok
+	}
+	return addonsLayers, nil
+}
+
+// GetK8sClient gets the Kubernetes client.
+func getK8sClient() *kubernetes.Clientset {
+	kubeConfig := os.Getenv("KUBECONFIG")
+	if len(kubeConfig) > 0 {
+		// use the current context in kubeconfig
+		config, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		// create the clientset
+		clientset, err := kubernetes.NewForConfig(config)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		return clientset
+	}
+	// creates the in-cluster config
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		panic(err.Error())
+	}
+	// creates the clientset
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	return clientset
 }

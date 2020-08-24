@@ -103,7 +103,9 @@ func processAddonLayer(l layers.Layer) error { // nolint:gocyclo // ok
 		return nil
 	}
 
-	l.SetStatusDeployed()
+	if l.SuccessfullyApplied() {
+		l.SetStatusDeployed()
+	}
 	return nil
 }
 

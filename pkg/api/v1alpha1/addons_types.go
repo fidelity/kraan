@@ -236,7 +236,7 @@ const (
 
 // AddonsLayer is the Schema for the addons API.
 // +genclient
-// +genclient:Namespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 type AddonsLayer struct {
@@ -247,15 +247,60 @@ type AddonsLayer struct {
 	Status AddonsLayerStatus `json:"status,omitempty"`
 }
 
-// +kubebuilder:object:root=true
-
 // AddonsLayerList contains a list of AddonsLayer.
+// +genclient
+// +kubebuilder:object:root=true
 type AddonsLayerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []AddonsLayer `json:"items"`
 }
 
+// LayerMgrSpec defines the desired state of LayerMgr.
+type LayerMgrSpec struct {
+	// The phase of addons layer processing to execute
+	// +required
+	Phase string `json:"phase"`
+
+	// This flag tells the controller to hold off deployment of all addons,
+	// +optional
+	Hold bool `json:"hold,omitempty"`
+}
+
+// LayerMgrStatus defines the observed status.
+type LayerMgrStatus struct {
+	// Conditions history.
+	// +optional
+	Conditions []Condition `json:"conditions,omitempty"`
+
+	// State is the current state of the layer manager.
+	// +required
+	State string `json:"state,omitempty"`
+}
+
+// LayerMgr is the Schema for the layer manager API.
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+type LayerMgr struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   LayerMgrSpec   `json:"spec,omitempty"`
+	Status LayerMgrStatus `json:"status,omitempty"`
+}
+
+// LayerMgrList contains a list of LayerMgrs.
+// +genclient
+// +kubebuilder:object:root=true
+type LayerMgrList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []LayerMgr `json:"items"`
+}
+
 func init() {
 	SchemeBuilder.Register(&AddonsLayer{}, &AddonsLayerList{})
+	SchemeBuilder.Register(&LayerMgr{}, &LayerMgrList{})
 }

@@ -51,14 +51,6 @@ func NewReconciler(client client.Client, logger logr.Logger,
 	return reconciler, err
 }
 
-func processFailed(l layers.Layer) {
-	if l.GetStatus() == kraanv1alpha1.FailedCondition {
-		return
-		// Reset failed status if it was set more than 'interval' duration ago
-		// Use previous condition to detect what to set status to
-	}
-}
-
 func processAddonLayer(l layers.Layer) error { // nolint:gocyclo // ok
 	utils.Log(l.GetLogger(), 2, 1, "processing", "Status", l.GetStatus())
 
@@ -67,20 +59,21 @@ func processAddonLayer(l layers.Layer) error { // nolint:gocyclo // ok
 		return nil
 	}
 
-	processFailed(l)
-
 	if !l.CheckK8sVersion() {
 		l.SetStatusK8sVersion()
 		l.SetDelayed()
 		return nil
 	}
 
+	if l.IsPruningRequired() || l.IsApplyRequired() {
+		if err := l.SetAllPrunePending(); err != nil {
+			return err
+		}
+	}
+
 	if l.IsPruningRequired() {
 		l.SetStatusPruning()
 		if err := l.Prune(); err != nil {
-			return err
-		}
-		if err := l.SetAllPrunePending(); err != nil {
 			return err
 		}
 		l.SetDelayed()
@@ -93,7 +86,6 @@ func processAddonLayer(l layers.Layer) error { // nolint:gocyclo // ok
 		if err := l.SetAllPrunedToApplyPending(); err != nil {
 			return err
 		}
-		return nil
 	}
 
 	if !l.DependenciesDeployed() {

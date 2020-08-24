@@ -95,6 +95,7 @@ func main() {
 	}
 
 	r, err := controllers.NewReconciler(
+		mgr.GetConfig(),
 		mgr.GetClient(),
 		ctrl.Log.WithName("controllers").WithName("AddonsLayer"),
 		mgr.GetScheme())

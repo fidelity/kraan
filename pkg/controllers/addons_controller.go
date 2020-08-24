@@ -23,6 +23,7 @@ import (
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -35,23 +36,38 @@ import (
 // AddonsLayerReconciler reconciles a AddonsLayer object.
 type AddonsLayerReconciler struct {
 	client.Client
-	Log     logr.Logger
-	Scheme  *runtime.Scheme
-	Context context.Context
-	Applier apply.LayerApplier
+	Config   *rest.Config
+	k8client *kubernetes.Clientset
+	Log      logr.Logger
+	Scheme   *runtime.Scheme
+	Context  context.Context
+	Applier  apply.LayerApplier
 }
 
 // NewReconciler returns an AddonsLayerReconciler instance
-func NewReconciler(client client.Client, logger logr.Logger,
+func NewReconciler(config *rest.Config, client client.Client, logger logr.Logger,
 	scheme *runtime.Scheme) (reconciler *AddonsLayerReconciler, err error) {
 	reconciler = &AddonsLayerReconciler{
+		Config: config,
 		Client: client,
 		Log:    logger,
 		Scheme: scheme,
 	}
+	reconciler.k8client = reconciler.getK8sClient()
 	reconciler.Context = context.Background()
 	reconciler.Applier, err = apply.NewApplier(client, logger, scheme)
 	return reconciler, err
+}
+
+func (r *AddonsLayerReconciler) getK8sClient() *kubernetes.Clientset {
+	// creates the clientset
+	clientset, err := kubernetes.NewForConfig(r.Config)
+	if err != nil {
+		//TODO - Adjust error handling?
+		panic(err.Error())
+	}
+
+	return clientset
 }
 
 func processAddonLayer(l layers.Layer) error { // nolint:gocyclo // ok
@@ -115,13 +131,8 @@ func processAddonLayer(l layers.Layer) error { // nolint:gocyclo // ok
 // Reconcile process AddonsLayers custom resources.
 // +kubebuilder:rbac:groups=kraan.io,resources=addons,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kraan.io,resources=addons/status,verbs=get;update;patch
-<<<<<<< HEAD
-func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
-=======
 func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) { // nolint:gocyclo,funlen // ok
 	ctx := r.Context
->>>>>>> Applier uses the reconciler's rest client
 
 	var addonsLayer *kraanv1alpha1.AddonsLayer = &kraanv1alpha1.AddonsLayer{}
 	if err := r.Get(ctx, req.NamespacedName, addonsLayer); err != nil {
@@ -132,7 +143,7 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 		"requestNamespace", req.NamespacedName.Namespace,
 		"requestName", req.NamespacedName.Name)
 
-	l := layers.CreateLayer(ctx, r.Client, log, addonsLayer)
+	l := layers.CreateLayer(ctx, r.Client, r.k8client, log, addonsLayer)
 
 	err := processAddonLayer(l)
 	if err != nil {

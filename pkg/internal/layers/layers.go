@@ -5,16 +5,12 @@ package layers
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
-	helmrelease "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
@@ -54,7 +50,6 @@ type Layer interface {
 	GetStatus() string
 	GetName() string
 	GetLogger() logr.Logger
-	GetK8sClient() client.Client
 	GetContext() context.Context
 	GetSourcePath() string
 	GetTimeout() time.Duration
@@ -81,18 +76,26 @@ type KraanLayer struct {
 	delayed     bool
 	delay       time.Duration
 	ctx         context.Context
-	client      *kubernetes.Clientset
-	hrclient    *helmrelease.Clientset
+	client      client.Client
+	k8client    *kubernetes.Clientset
 	log         logr.Logger
 	Layer       `json:"-"`
 	addonsLayer *kraanv1alpha1.AddonsLayer
 }
 
 // CreateLayer creates a layer object.
-func CreateLayer(ctx context.Context, client client.Client,
+func CreateLayer(ctx context.Context, client client.Client, k8client *kubernetes.Clientset,
 	log logr.Logger, addonsLayer *kraanv1alpha1.AddonsLayer) Layer {
-	l := &KraanLayer{requeue: false, delayed: false, updated: false, ctx: ctx, client: client, log: log,
-		addonsLayer: addonsLayer}
+	l := &KraanLayer{
+		requeue:     false,
+		delayed:     false,
+		updated:     false,
+		ctx:         ctx,
+		client:      client,
+		k8client:    k8client,
+		log:         log,
+		addonsLayer: addonsLayer,
+	}
 	l.delay = l.addonsLayer.Spec.Interval.Duration
 	return l
 }
@@ -132,9 +135,15 @@ func (l *KraanLayer) GetRequiredK8sVersion() string {
 	return l.addonsLayer.Spec.PreReqs.K8sVersion
 }
 
+func (l *KraanLayer) getK8sClient() *kubernetes.Clientset {
+	return l.k8client
+}
+
 // CheckK8sVersion checks if the cluster api server version is equal to or above the required version.
 func (l *KraanLayer) CheckK8sVersion() bool {
-	versionInfo, err := getK8sClient().Discovery().ServerVersion()
+	// TODO - research how to obtain this information using the generic REST client and remove the
+	//        kubernetes.Clientset management functions from the main and addons_controller go files.
+	versionInfo, err := l.getK8sClient().Discovery().ServerVersion()
 	if err != nil {
 		utils.LogError(l.GetLogger(), 2, err, "failed get server version")
 		l.StatusUpdate(l.GetStatus(), "failed to obtain cluster api server version",
@@ -145,6 +154,7 @@ func (l *KraanLayer) CheckK8sVersion() bool {
 	return versionInfo.String() > l.GetRequiredK8sVersion()
 }
 
+// TODO - Paul do you still need this function?
 /*
 func (l *KraanLayer) trimConditions() {
 	for {
@@ -332,16 +342,6 @@ func (l *KraanLayer) GetContext() context.Context {
 	return l.ctx
 }
 
-// GetK8sClient gets the k8sClient.
-func (l *KraanLayer) GetK8sClient() client.Client {
-	return l.client
-}
-
-// GetHelmReleaeClient gets the HelmRelease API client.
-func (l *KraanLayer) GetHelmReleaseClient() *helmrelease.Clientset {
-	return l.hrclient
-}
-
 // GetLogger gets the layer logger.
 func (l *KraanLayer) GetLogger() logr.Logger {
 	return l.log
@@ -364,36 +364,4 @@ func (l *KraanLayer) GetAddonsLayers() (map[string]*kraanv1alpha1.AddonsLayer, e
 		addonsLayers[item.ObjectMeta.Name] = &item // nolint:scopelint,exportloopref // should be ok
 	}
 	return addonsLayers, nil
-}
-
-// GetK8sClient gets the Kubernetes client.
-func getK8sClient() *kubernetes.Clientset {
-	kubeConfig := os.Getenv("KUBECONFIG")
-	if len(kubeConfig) > 0 {
-		// use the current context in kubeconfig
-		config, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
-		if err != nil {
-			panic(err.Error())
-		}
-
-		// create the clientset
-		clientset, err := kubernetes.NewForConfig(config)
-		if err != nil {
-			panic(err.Error())
-		}
-
-		return clientset
-	}
-	// creates the in-cluster config
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		panic(err.Error())
-	}
-	// creates the clientset
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	return clientset
 }

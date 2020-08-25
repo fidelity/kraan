@@ -34,10 +34,6 @@ func fakeLogger() logr.Logger {
 	return testlogr.NullLogger{}
 }
 
-func testLogger(t *testing.T) logr.Logger {
-	return testlogr.TestLogger{T: t}
-}
-
 func TestNewKubectl(t *testing.T) {
 	logger := fakeLogger()
 	k, err := NewKubectl(logger)
@@ -49,43 +45,6 @@ func TestNewKubectl(t *testing.T) {
 	t.Logf("gotLogger (%T) %#v", gotLogger, gotLogger)
 	if logger != gotLogger {
 		t.Errorf("The passed logger was not stored as the new Kubectl instance's Logger")
-	}
-}
-
-// TestLoggerCompare compares two Logger structs to see if they're the same.
-func TestLoggerCompare(t *testing.T) {
-	l1 := testLogger(t)
-	l2 := l1.WithValues("somekey", "somevalue")
-	l2.Error(fmt.Errorf("arbitrary error"), "error message", "errorKey", "errorValue")
-	if l1 == l2 {
-		// t.Errorf("Logger did not change after WithValues! %#v / %#v", l1, l2)
-	} else {
-		t.Logf("Logger changed after WithValues: %#v / %#v", l1, l2)
-	}
-}
-func TestRealKubectlBinaryInstalled(t *testing.T) {
-	k, err := NewKubectl(fakeLogger())
-	//t.Logf("Kubectl (%T) %#v", k, k)
-	if err != nil {
-		t.Errorf("Error from NewKubectl constructor function: %w", err)
-	} else {
-		t.Logf("Found '%s' binary at '%s'", kubectlCmd, k.getPath())
-	}
-}
-
-func TestRealOtherBinaryNotInstalled(t *testing.T) {
-	restoreCmd := kubectlCmd
-	defer func() { kubectlCmd = restoreCmd }()
-
-	kubectlCmd = "not-kubectl-and-not-installed"
-
-	k, err := NewKubectl(fakeLogger())
-	//t.Logf("Kubectl (%T) %#v", k, k)
-	if err == nil {
-		foundCmdMsg := fmt.Sprintf("Found '%s' binary at '%s'", kubectlCmd, k.getPath())
-		t.Errorf("Expected error 'executable file not found' was not returned from NewKubectl constructor: %s", foundCmdMsg)
-	} else {
-		t.Logf("Expected error was returned: %#v", err)
 	}
 }
 

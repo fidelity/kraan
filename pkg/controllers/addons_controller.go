@@ -131,7 +131,7 @@ func processAddonLayer(l layers.Layer) error { // nolint:gocyclo // ok
 // Reconcile process AddonsLayers custom resources.
 // +kubebuilder:rbac:groups=kraan.io,resources=addons,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kraan.io,resources=addons/status,verbs=get;update;patch
-func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) { // nolint:gocyclo,funlen // ok
+func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := r.Context
 
 	var addonsLayer *kraanv1alpha1.AddonsLayer = &kraanv1alpha1.AddonsLayer{}

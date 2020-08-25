@@ -199,6 +199,7 @@ issues:
         - gocritic
         - gosimple
         - goconst
+        - godot
     - path: pkg/controllers
       linters:
         - godot

@@ -1,7 +1,6 @@
-package apply
+package apply // nolint:package // unittest code should be in same package
 
 import (
-	"context"
 	"testing"
 
 	hrscheme "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/scheme"
@@ -18,7 +17,7 @@ import (
 
 var (
 	testScheme = runtime.NewScheme()
-	testCtx    = context.Background()
+	// testCtx    = context.Background()
 )
 
 func init() {
@@ -31,10 +30,11 @@ func fakeLogger() logr.Logger {
 	return testlogr.NullLogger{}
 }
 
+/*
 func testLogger(t *testing.T) logr.Logger {
 	return testlogr.TestLogger{T: t}
 }
-
+*/
 func TestNewApplier(t *testing.T) {
 	logger := fakeLogger()
 	client := fake.NewFakeClientWithScheme(testScheme)

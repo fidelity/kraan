@@ -15,15 +15,12 @@ import (
 	"github.com/fidelity/kraan/pkg/internal/layers"
 
 	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
-	//helmopscheme "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/scheme"
 
 	"github.com/go-logr/logr"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-
-	//kscheme "k8s.io/client-go/kubernetes/scheme"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -106,7 +103,7 @@ func (a KubectlLayerApplier) logAddons(hrs []*helmopv1.HelmRelease, layer layers
 		a.logInfo("Deployed HelmRelease for AddonsLayer", layer, "index", i, "helmRelease", hr)
 		key, err := client.ObjectKeyFromObject(hr)
 		if err != nil {
-			return fmt.Errorf("Unable to get an ObjectKey from HelmRelease '%s'", getLabel(hr))
+			return fmt.Errorf("unable to get an ObjectKey from HelmRelease '%s'", getLabel(hr))
 		}
 		foundHr := &helmopv1.HelmRelease{}
 		err = a.client.Get(context.Background(), key, foundHr)

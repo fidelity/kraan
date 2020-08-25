@@ -34,10 +34,6 @@ func fakeLogger() logr.Logger {
 	return testlogr.NullLogger{}
 }
 
-func testLogger(t *testing.T) logr.Logger {
-	return testlogr.TestLogger{T: t}
-}
-
 func TestNewKubectl(t *testing.T) {
 	logger := fakeLogger()
 	k, err := NewKubectl(logger)

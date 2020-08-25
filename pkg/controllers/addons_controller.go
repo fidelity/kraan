@@ -70,8 +70,8 @@ func (r *AddonsLayerReconciler) getK8sClient() *kubernetes.Clientset {
 	return clientset
 }
 
-func processAddonLayer(l layers.Layer) error { // nolint:gocyclo // ok
-	utils.Log(l.GetLogger(), 2, 1, "processing", "Status", l.GetStatus())
+func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error { // nolint:gocyclo // ok
+	utils.Log(r.Log, 2, 1, "processing", "Status", l.GetStatus())
 
 	if l.IsHold() {
 		l.SetHold()
@@ -128,6 +128,20 @@ func processAddonLayer(l layers.Layer) error { // nolint:gocyclo // ok
 	return nil
 }
 
+func (r *AddonsLayerReconciler) updateRequeue(l layers.Layer, res *ctrl.Result, rerr *error) {
+	if l.IsUpdated() {
+		*rerr = r.update(r.Context, r.Log, l.GetAddonsLayer())
+	}
+	if l.NeedsRequeue() {
+		if l.IsDelayed() {
+			*res = ctrl.Result{RequeueAfter: l.GetDelay()}
+			return
+		}
+		*res = ctrl.Result{Requeue: true}
+		return
+	}
+}
+
 // Reconcile process AddonsLayers custom resources.
 // +kubebuilder:rbac:groups=kraan.io,resources=addons,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kraan.io,resources=addons/status,verbs=get;update;patch
@@ -139,29 +153,17 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	log := r.Log.WithValues(
-		"requestNamespace", req.NamespacedName.Namespace,
-		"requestName", req.NamespacedName.Name)
+	log := r.Log.WithValues("requestName", req.NamespacedName.Name)
 
 	l := layers.CreateLayer(ctx, r.Client, r.k8client, log, addonsLayer)
-
-	err := processAddonLayer(l)
+	var rerr error = nil
+	var res ctrl.Result = ctrl.Result{}
+	defer r.updateRequeue(l, &res, &rerr)
+	err := r.processAddonLayer(l)
 	if err != nil {
 		l.StatusUpdate(kraanv1alpha1.FailedCondition, kraanv1alpha1.AddonsLayerFailedReason, err.Error())
 	}
-
-	if l.IsUpdated() {
-		if e := r.update(ctx, log, addonsLayer); e != nil {
-			return ctrl.Result{Requeue: true}, e
-		}
-	}
-	if l.NeedsRequeue() {
-		if l.IsDelayed() {
-			return ctrl.Result{RequeueAfter: l.GetDelay()}, err
-		}
-		return ctrl.Result{Requeue: true}, err
-	}
-	return ctrl.Result{}, err
+	return res, rerr
 }
 
 func (r *AddonsLayerReconciler) update(ctx context.Context, log logr.Logger,

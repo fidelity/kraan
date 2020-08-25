@@ -6,13 +6,14 @@ package layers
 
 import (
 	context "context"
+	reflect "reflect"
+	time "time"
+
 	v1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
 	versioned "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned"
 	logr "github.com/go-logr/logr"
 	gomock "github.com/golang/mock/gomock"
 	kubernetes "k8s.io/client-go/kubernetes"
-	reflect "reflect"
-	time "time"
 )
 
 // MockLayer is a mock of Layer interface

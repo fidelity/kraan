@@ -1,4 +1,4 @@
-//Package layers xxx
+//Package layers provides an interface for processing AddonsLayers.
 //go:generate mockgen -destination=mockLayers.go -package=layers -source=layers.go . Layer
 package layers
 
@@ -156,14 +156,14 @@ func (l *KraanLayer) trimConditions() {
 	if length < MaxConditions {
 		return
 	}
-	trimedCond := l.addonsLayer.Status.Conditions[length - MaxConditions:]
+	trimedCond := l.addonsLayer.Status.Conditions[length-MaxConditions:]
 	l.addonsLayer.Status.Conditions = trimedCond
 }
 
 func (l *KraanLayer) setStatus(status, reason, message string) {
 	length := len(l.addonsLayer.Status.Conditions)
-	if length  > 0 {
-		last :=  l.addonsLayer.Status.Conditions[length-1]
+	if length > 0 {
+		last := l.addonsLayer.Status.Conditions[length-1]
 		if last.Reason == reason && last.Message == message && last.Type == status {
 			return
 		}
@@ -187,26 +187,26 @@ func (l *KraanLayer) setStatus(status, reason, message string) {
 // SetStatusK8sVersion sets the addon layer's status to waiting for required K8s Version.
 func (l *KraanLayer) SetStatusK8sVersion() {
 	l.setStatus(kraanv1alpha1.K8sVersionCondition,
-			kraanv1alpha1.AddonsLayerK8sVersionReason, kraanv1alpha1.AddonsLayerK8sVersionMsg)
+		kraanv1alpha1.AddonsLayerK8sVersionReason, kraanv1alpha1.AddonsLayerK8sVersionMsg)
 }
 
 // SetStatusDeployed sets the addon layer's status to deployed.
 func (l *KraanLayer) SetStatusDeployed() {
 	l.setStatus(kraanv1alpha1.DeployedCondition,
-			kraanv1alpha1.AddonsLayerDeployedReason, "")
+		kraanv1alpha1.AddonsLayerDeployedReason, "")
 }
 
 // SetStatusApplying sets the addon layer's status to apply in progress.
 func (l *KraanLayer) SetStatusApplying() {
 	l.setStatus(kraanv1alpha1.ApplyingCondition,
-			kraanv1alpha1.AddonsLayerApplyingReason, kraanv1alpha1.AddonsLayerApplyingMsg)
+		kraanv1alpha1.AddonsLayerApplyingReason, kraanv1alpha1.AddonsLayerApplyingMsg)
 
 }
 
 // SetStatusPruning sets the addon layer's status to pruning.
 func (l *KraanLayer) SetStatusPruning() {
 	l.setStatus(kraanv1alpha1.PruningCondition,
-			kraanv1alpha1.AddonsLayerPruningReason, kraanv1alpha1.AddonsLayerPruningMsg)
+		kraanv1alpha1.AddonsLayerPruningReason, kraanv1alpha1.AddonsLayerPruningMsg)
 }
 
 // StatusUpdate sets the addon layer's status.

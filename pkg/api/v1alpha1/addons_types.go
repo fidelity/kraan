@@ -183,18 +183,18 @@ const (
 	AddonsLayerPruningMsg string = "The pruning status means the manager is pruning objects removed from this layer"
 
 	// AddonsLayerApplyPendingReason represents the fact that the applying of addons is pending.
-	AddonsLayerApplyPendingReason string = "AddonsLayer applying is pending until layers it is dependent on are deployed"
+	AddonsLayerApplyPendingReason string = "Deployment of the AddonsLayer is pending because layers it is depends on are not deployed"
 
-	// AddonsLayerApplyPendingMsg explains that the addons apply-pending state.
-	AddonsLayerApplyPendingMsg string = ("The apply-pending status means the manager has detected that the AddonsLayer" +
-		" needs to be applied a layer that this layer depends on has not been applied yet")
+	// AddonsLayerApplyPendingMsg explains that the addons ApplyPending state.
+	AddonsLayerApplyPendingMsg string = ("The ApplyPending status means the manager has detected that the AddonsLayer" +
+		" needs to be applied a layer that ome or more layers depends on has not been applied yet")
 
 	// AddonsLayerApplyingReason represents the fact that the addons are being deployed.
 	AddonsLayerApplyingReason string = "AddonsLayer is being applied"
 
 	// AddonsLayerApplyingMsg explains that the addons are being deployed.
 	AddonsLayerApplyingMsg string = ("The applying status means the manager is either applying the yaml files" +
-		"or waiting for the HelmReleases to successfully deploy.")
+		" or waiting for the HelmReleases to successfully deploy.")
 
 	// AddonsLayerFailedReason represents the fact that the deployment of the addons failed.
 	AddonsLayerFailedReason string = "AddonsLayer processsing has failed"
@@ -204,8 +204,8 @@ const (
 
 	// AddonsLayerHoldMsg explains the hold status.
 	AddonsLayerHoldMsg string = ("AddonsLayer custom resource has the 'Hold' element set to ture" +
-		"preventing it from being processed. To clear this state update the custom resource object" +
-		"setting Hold to false")
+		" preventing it from being processed. To clear this state update the custom resource object" +
+		" setting Hold to false")
 
 	// AddonsLayerDeployedReason represents the fact that the addons has been successfully deployed.
 	AddonsLayerDeployedReason string = "AddonsLayer is Deployed"

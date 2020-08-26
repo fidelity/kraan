@@ -10,7 +10,6 @@ import (
 	time "time"
 
 	v1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
-	versioned "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned"
 	logr "github.com/go-logr/logr"
 	gomock "github.com/golang/mock/gomock"
 	kubernetes "k8s.io/client-go/kubernetes"
@@ -39,100 +38,64 @@ func (m *MockLayer) EXPECT() *MockLayerMockRecorder {
 	return m.recorder
 }
 
-// StatusReady mocks base method
-func (m *MockLayer) StatusReady() {
+// SetStatusK8sVersion mocks base method
+func (m *MockLayer) SetStatusK8sVersion() {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "StatusReady")
+	m.ctrl.Call(m, "SetStatusK8sVersion")
 }
 
-// StatusReady indicates an expected call of StatusReady
-func (mr *MockLayerMockRecorder) StatusReady() *gomock.Call {
+// SetStatusK8sVersion indicates an expected call of SetStatusK8sVersion
+func (mr *MockLayerMockRecorder) SetStatusK8sVersion() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StatusReady", reflect.TypeOf((*MockLayer)(nil).StatusReady))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusK8sVersion", reflect.TypeOf((*MockLayer)(nil).SetStatusK8sVersion))
 }
 
-// StatusApplying mocks base method
-func (m *MockLayer) StatusApplying() {
+// SetStatusApplying mocks base method
+func (m *MockLayer) SetStatusApplying() {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "StatusApplying")
+	m.ctrl.Call(m, "SetStatusApplying")
 }
 
-// StatusApplying indicates an expected call of StatusApplying
-func (mr *MockLayerMockRecorder) StatusApplying() *gomock.Call {
+// SetStatusApplying indicates an expected call of SetStatusApplying
+func (mr *MockLayerMockRecorder) SetStatusApplying() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StatusApplying", reflect.TypeOf((*MockLayer)(nil).StatusApplying))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusApplying", reflect.TypeOf((*MockLayer)(nil).SetStatusApplying))
 }
 
-// StatusApply mocks base method
-func (m *MockLayer) StatusApply() {
+// SetStatusPruning mocks base method
+func (m *MockLayer) SetStatusPruning() {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "StatusApply")
+	m.ctrl.Call(m, "SetStatusPruning")
 }
 
-// StatusApply indicates an expected call of StatusApply
-func (mr *MockLayerMockRecorder) StatusApply() *gomock.Call {
+// SetStatusPruning indicates an expected call of SetStatusPruning
+func (mr *MockLayerMockRecorder) SetStatusPruning() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StatusApply", reflect.TypeOf((*MockLayer)(nil).StatusApply))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusPruning", reflect.TypeOf((*MockLayer)(nil).SetStatusPruning))
 }
 
-// StatusApplyPending mocks base method
-func (m *MockLayer) StatusApplyPending() {
+// SetStatusDeployed mocks base method
+func (m *MockLayer) SetStatusDeployed() {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "StatusApplyPending")
+	m.ctrl.Call(m, "SetStatusDeployed")
 }
 
-// StatusApplyPending indicates an expected call of StatusApplyPending
-func (mr *MockLayerMockRecorder) StatusApplyPending() *gomock.Call {
+// SetStatusDeployed indicates an expected call of SetStatusDeployed
+func (mr *MockLayerMockRecorder) SetStatusDeployed() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StatusApplyPending", reflect.TypeOf((*MockLayer)(nil).StatusApplyPending))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusDeployed", reflect.TypeOf((*MockLayer)(nil).SetStatusDeployed))
 }
 
-// StatusPrunePending mocks base method
-func (m *MockLayer) StatusPrunePending() {
+// StatusUpdate mocks base method
+func (m *MockLayer) StatusUpdate(status, reason, message string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "StatusPrunePending")
+	m.ctrl.Call(m, "StatusUpdate", status, reason, message)
 }
 
-// StatusPrunePending indicates an expected call of StatusPrunePending
-func (mr *MockLayerMockRecorder) StatusPrunePending() *gomock.Call {
+// StatusUpdate indicates an expected call of StatusUpdate
+func (mr *MockLayerMockRecorder) StatusUpdate(status, reason, message interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StatusPrunePending", reflect.TypeOf((*MockLayer)(nil).StatusPrunePending))
-}
-
-// StatusPrune mocks base method
-func (m *MockLayer) StatusPrune() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "StatusPrune")
-}
-
-// StatusPrune indicates an expected call of StatusPrune
-func (mr *MockLayerMockRecorder) StatusPrune() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StatusPrune", reflect.TypeOf((*MockLayer)(nil).StatusPrune))
-}
-
-// StatusPruning mocks base method
-func (m *MockLayer) StatusPruning() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "StatusPruning")
-}
-
-// StatusPruning indicates an expected call of StatusPruning
-func (mr *MockLayerMockRecorder) StatusPruning() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StatusPruning", reflect.TypeOf((*MockLayer)(nil).StatusPruning))
-}
-
-// StatusDeployed mocks base method
-func (m *MockLayer) StatusDeployed(reason, message string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "StatusDeployed", reason, message)
-}
-
-// StatusDeployed indicates an expected call of StatusDeployed
-func (mr *MockLayerMockRecorder) StatusDeployed(reason, message interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StatusDeployed", reflect.TypeOf((*MockLayer)(nil).StatusDeployed), reason, message)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StatusUpdate", reflect.TypeOf((*MockLayer)(nil).StatusUpdate), status, reason, message)
 }
 
 // IsHold mocks base method
@@ -159,6 +122,90 @@ func (m *MockLayer) SetHold() {
 func (mr *MockLayerMockRecorder) SetHold() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetHold", reflect.TypeOf((*MockLayer)(nil).SetHold))
+}
+
+// IsPruningRequired mocks base method
+func (m *MockLayer) IsPruningRequired() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsPruningRequired")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsPruningRequired indicates an expected call of IsPruningRequired
+func (mr *MockLayerMockRecorder) IsPruningRequired() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsPruningRequired", reflect.TypeOf((*MockLayer)(nil).IsPruningRequired))
+}
+
+// Prune mocks base method
+func (m *MockLayer) Prune() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Prune")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Prune indicates an expected call of Prune
+func (mr *MockLayerMockRecorder) Prune() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Prune", reflect.TypeOf((*MockLayer)(nil).Prune))
+}
+
+// DependenciesDeployed mocks base method
+func (m *MockLayer) DependenciesDeployed() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DependenciesDeployed")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// DependenciesDeployed indicates an expected call of DependenciesDeployed
+func (mr *MockLayerMockRecorder) DependenciesDeployed() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DependenciesDeployed", reflect.TypeOf((*MockLayer)(nil).DependenciesDeployed))
+}
+
+// IsApplyRequired mocks base method
+func (m *MockLayer) IsApplyRequired() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsApplyRequired")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsApplyRequired indicates an expected call of IsApplyRequired
+func (mr *MockLayerMockRecorder) IsApplyRequired() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsApplyRequired", reflect.TypeOf((*MockLayer)(nil).IsApplyRequired))
+}
+
+// SuccessfullyApplied mocks base method
+func (m *MockLayer) SuccessfullyApplied() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SuccessfullyApplied")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// SuccessfullyApplied indicates an expected call of SuccessfullyApplied
+func (mr *MockLayerMockRecorder) SuccessfullyApplied() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SuccessfullyApplied", reflect.TypeOf((*MockLayer)(nil).SuccessfullyApplied))
+}
+
+// Apply mocks base method
+func (m *MockLayer) Apply() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Apply")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Apply indicates an expected call of Apply
+func (mr *MockLayerMockRecorder) Apply() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Apply", reflect.TypeOf((*MockLayer)(nil).Apply))
 }
 
 // GetStatus mocks base method
@@ -189,20 +236,6 @@ func (mr *MockLayerMockRecorder) GetName() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetName", reflect.TypeOf((*MockLayer)(nil).GetName))
 }
 
-// GetNamespace mocks base method
-func (m *MockLayer) GetNamespace() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetNamespace")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// GetNamespace indicates an expected call of GetNamespace
-func (mr *MockLayerMockRecorder) GetNamespace() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNamespace", reflect.TypeOf((*MockLayer)(nil).GetNamespace))
-}
-
 // GetLogger mocks base method
 func (m *MockLayer) GetLogger() logr.Logger {
 	m.ctrl.T.Helper()
@@ -215,34 +248,6 @@ func (m *MockLayer) GetLogger() logr.Logger {
 func (mr *MockLayerMockRecorder) GetLogger() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLogger", reflect.TypeOf((*MockLayer)(nil).GetLogger))
-}
-
-// GetK8sClient mocks base method
-func (m *MockLayer) GetK8sClient() *kubernetes.Clientset {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetK8sClient")
-	ret0, _ := ret[0].(*kubernetes.Clientset)
-	return ret0
-}
-
-// GetK8sClient indicates an expected call of GetK8sClient
-func (mr *MockLayerMockRecorder) GetK8sClient() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetK8sClient", reflect.TypeOf((*MockLayer)(nil).GetK8sClient))
-}
-
-// GetHelmReleaseClient mocks base method
-func (m *MockLayer) GetHelmReleaseClient() *versioned.Clientset {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetHelmReleaseClient")
-	ret0, _ := ret[0].(*versioned.Clientset)
-	return ret0
-}
-
-// GetHelmReleaseClient indicates an expected call of GetHelmReleaseClient
-func (mr *MockLayerMockRecorder) GetHelmReleaseClient() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHelmReleaseClient", reflect.TypeOf((*MockLayer)(nil).GetHelmReleaseClient))
 }
 
 // GetContext mocks base method
@@ -271,34 +276,6 @@ func (m *MockLayer) GetSourcePath() string {
 func (mr *MockLayerMockRecorder) GetSourcePath() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSourcePath", reflect.TypeOf((*MockLayer)(nil).GetSourcePath))
-}
-
-// IsReadyToProcess mocks base method
-func (m *MockLayer) IsReadyToProcess() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsReadyToProcess")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// IsReadyToProcess indicates an expected call of IsReadyToProcess
-func (mr *MockLayerMockRecorder) IsReadyToProcess() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsReadyToProcess", reflect.TypeOf((*MockLayer)(nil).IsReadyToProcess))
-}
-
-// GetInterval mocks base method
-func (m *MockLayer) GetInterval() time.Duration {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetInterval")
-	ret0, _ := ret[0].(time.Duration)
-	return ret0
-}
-
-// GetInterval indicates an expected call of GetInterval
-func (mr *MockLayerMockRecorder) GetInterval() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInterval", reflect.TypeOf((*MockLayer)(nil).GetInterval))
 }
 
 // GetTimeout mocks base method
@@ -343,20 +320,6 @@ func (mr *MockLayerMockRecorder) NeedsRequeue() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NeedsRequeue", reflect.TypeOf((*MockLayer)(nil).NeedsRequeue))
 }
 
-// IsVersionCurrent mocks base method
-func (m *MockLayer) IsVersionCurrent() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsVersionCurrent")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// IsVersionCurrent indicates an expected call of IsVersionCurrent
-func (mr *MockLayerMockRecorder) IsVersionCurrent() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsVersionCurrent", reflect.TypeOf((*MockLayer)(nil).IsVersionCurrent))
-}
-
 // IsDelayed mocks base method
 func (m *MockLayer) IsDelayed() bool {
 	m.ctrl.T.Helper()
@@ -385,18 +348,6 @@ func (mr *MockLayerMockRecorder) GetDelay() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDelay", reflect.TypeOf((*MockLayer)(nil).GetDelay))
 }
 
-// CheckPreReqs mocks base method
-func (m *MockLayer) CheckPreReqs() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "CheckPreReqs")
-}
-
-// CheckPreReqs indicates an expected call of CheckPreReqs
-func (mr *MockLayerMockRecorder) CheckPreReqs() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckPreReqs", reflect.TypeOf((*MockLayer)(nil).CheckPreReqs))
-}
-
 // SetRequeue mocks base method
 func (m *MockLayer) SetRequeue() {
 	m.ctrl.T.Helper()
@@ -409,16 +360,16 @@ func (mr *MockLayerMockRecorder) SetRequeue() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRequeue", reflect.TypeOf((*MockLayer)(nil).SetRequeue))
 }
 
-// SetDelayed mocks base method
-func (m *MockLayer) SetDelayed() {
+// SetDelayedRequeue mocks base method
+func (m *MockLayer) SetDelayedRequeue() {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetDelayed")
+	m.ctrl.Call(m, "SetDelayedRequeue")
 }
 
-// SetDelayed indicates an expected call of SetDelayed
-func (mr *MockLayerMockRecorder) SetDelayed() *gomock.Call {
+// SetDelayedRequeue indicates an expected call of SetDelayedRequeue
+func (mr *MockLayerMockRecorder) SetDelayedRequeue() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDelayed", reflect.TypeOf((*MockLayer)(nil).SetDelayed))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDelayedRequeue", reflect.TypeOf((*MockLayer)(nil).SetDelayedRequeue))
 }
 
 // SetUpdated mocks base method
@@ -501,4 +452,59 @@ func (m *MockLayer) GetAddonsLayer() *v1alpha1.AddonsLayer {
 func (mr *MockLayerMockRecorder) GetAddonsLayer() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAddonsLayer", reflect.TypeOf((*MockLayer)(nil).GetAddonsLayer))
+}
+
+// getOtherAddonsLayer mocks base method
+func (m *MockLayer) getOtherAddonsLayer(name string) (*v1alpha1.AddonsLayer, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "getOtherAddonsLayer", name)
+	ret0, _ := ret[0].(*v1alpha1.AddonsLayer)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// getOtherAddonsLayer indicates an expected call of getOtherAddonsLayer
+func (mr *MockLayerMockRecorder) getOtherAddonsLayer(name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "getOtherAddonsLayer", reflect.TypeOf((*MockLayer)(nil).getOtherAddonsLayer), name)
+}
+
+// getK8sClient mocks base method
+func (m *MockLayer) getK8sClient() *kubernetes.Clientset {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "getK8sClient")
+	ret0, _ := ret[0].(*kubernetes.Clientset)
+	return ret0
+}
+
+// getK8sClient indicates an expected call of getK8sClient
+func (mr *MockLayerMockRecorder) getK8sClient() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "getK8sClient", reflect.TypeOf((*MockLayer)(nil).getK8sClient))
+}
+
+// setStatus mocks base method
+func (m *MockLayer) setStatus(status, reason, message string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "setStatus", status, reason, message)
+}
+
+// setStatus indicates an expected call of setStatus
+func (mr *MockLayerMockRecorder) setStatus(status, reason, message interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "setStatus", reflect.TypeOf((*MockLayer)(nil).setStatus), status, reason, message)
+}
+
+// isOtherDeployed mocks base method
+func (m *MockLayer) isOtherDeployed(otherVersion string, otherLayer *v1alpha1.AddonsLayer) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "isOtherDeployed", otherVersion, otherLayer)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// isOtherDeployed indicates an expected call of isOtherDeployed
+func (mr *MockLayerMockRecorder) isOtherDeployed(otherVersion, otherLayer interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "isOtherDeployed", reflect.TypeOf((*MockLayer)(nil).isOtherDeployed), otherVersion, otherLayer)
 }

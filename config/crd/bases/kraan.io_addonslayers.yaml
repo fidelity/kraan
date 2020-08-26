@@ -36,10 +36,6 @@ spec:
         spec:
           description: AddonsLayerSpec defines the desired state of AddonsLayer.
           properties:
-            group-name:
-              description: GroupName is the name of the layer manager that this layer
-                is managed by.
-              type: string
             hold:
               description: This flag tells the controller to hold off deployment of
                 these addons,
@@ -88,7 +84,6 @@ spec:
               description: Version is the version of the addon layer
               type: string
           required:
-          - group-name
           - source
           - version
           type: object

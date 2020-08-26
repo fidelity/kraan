@@ -106,17 +106,6 @@ func main() {
 	r.SetupWithManager(mgr)
 	// +kubebuilder:scaffold:builder
 
-	r, err = controllers.NewReconciler(
-		mgr.GetConfig(),
-		mgr.GetClient(),
-		ctrl.Log.WithName("controllers").WithName("LayerMgr"),
-		mgr.GetScheme())
-	if err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "LayerMgr")
-		os.Exit(1)
-	}
-	r.SetupWithManager(mgr)
-
 	if err := mgr.AddReadyzCheck("ping", readinessCheck); err != nil {
 		setupLog.Error(err, "unable to create ready check")
 		os.Exit(1)

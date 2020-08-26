@@ -81,10 +81,6 @@ type AddonsLayerSpec struct {
 	// Version is the version of the addon layer
 	// +required
 	Version string `json:"version"`
-
-	// GroupName is the name of the layer manager that this layer is managed by.
-	// +required
-	GroupName string `json:"group-name"`
 }
 
 // Condition contains condition information for an AddonLayer.
@@ -136,15 +132,8 @@ const (
 	// K8sVersionCondition represents the fact that the addons layer is waiting for the required k8s Version.
 	K8sVersionCondition string = "K8sVersion"
 
-	// PrunePendingCondition represents the fact that the addons are pending being pruned.
-	// Used when pruning is pending a prereq being met.
-	PrunePendingCondition string = "PrunePending"
-
 	// PruningCondition represents the fact that the addons are being pruned.
 	PruningCondition string = "Pruning"
-
-	// PrunedCondition represents the fact that a given layer is pruned.
-	PrunedCondition string = "Pruned"
 
 	// ApplyPendingCondition represents the fact that the addons are pending being applied.
 	// Used when applying is pending a prereq being met.
@@ -187,34 +176,18 @@ const (
 		" that the AddonsLayer needs a higher version of the Kubernetes API than the current" +
 		" version running on the cluster.")
 
-	// AddonsLayerPrunePendingReason represents the fact that the puruning of addons is pending.
-	AddonsLayerPrunePendingReason string = "AddonsLayer pruning is pending a prerequisite being satisfied"
-
-	// AddonsLayerPrunePendingMsg explains that the addons prune-pending state.
-	AddonsLayerPrunePendingMsg string = ("The prune-pending status means the manager has detected" +
-		" that the AddonsLayer needs to be pruned but a prerequisite is not yet" +
-		" satisified, i.e. a layer that depends on this one has not been pruned yet" +
-		"or another custom prerequisite is not yet met.")
-
 	// AddonsLayerPruningReason represents the fact that the addons are being pruned.
-	AddonsLayerPruningReason string = "AddonsLayer is being applied"
+	AddonsLayerPruningReason string = "AddonsLayer is being pruned"
 
 	// AddonsLayerPruningMsg explains that pruning status.
 	AddonsLayerPruningMsg string = "The pruning status means the manager is pruning objects removed from this layer"
 
-	// AddonsLayerPrunedReason represents the fact that the addons have been purned.
-	AddonsLayerPrunedReason string = "AddonsLayer is pruned"
-
-	// AddonsLayerPrunedMsg explains the pruned status.
-	AddonsLayerPrunedMsg string = ("The pruned status means the AddonsLayer has been pruned.")
-
 	// AddonsLayerApplyPendingReason represents the fact that the applying of addons is pending.
-	AddonsLayerApplyPendingReason string = "AddonsLayer applying is pending a prerequisite being satisfied"
+	AddonsLayerApplyPendingReason string = "AddonsLayer applying is pending until layers it is dependent on are deployed"
 
 	// AddonsLayerApplyPendingMsg explains that the addons apply-pending state.
 	AddonsLayerApplyPendingMsg string = ("The apply-pending status means the manager has detected that the AddonsLayer" +
-		" needs to be applied but a prerequisite is not yet satisified, i.e. a layer that this layer depends on has " +
-		"not been applied yet or another custom prerequisite is not yet met.")
+		" needs to be applied a layer that this layer depends on has not been applied yet")
 
 	// AddonsLayerApplyingReason represents the fact that the addons are being deployed.
 	AddonsLayerApplyingReason string = "AddonsLayer is being applied"
@@ -262,130 +235,6 @@ type AddonsLayerList struct {
 	Items           []AddonsLayer `json:"items"`
 }
 
-type MgrCondition struct {
-	// Type of the condition.
-	// +required
-	Type string `json:"type"`
-
-	// Status of the condition, one of ('True', 'False', 'Unknown').
-	// +required
-	Status corev1.ConditionStatus `json:"status"`
-
-	// LastTransitionTime is the timestamp corresponding to the last status
-	// change of this condition.
-	// +required
-	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
-
-	// Reason is a brief machine readable explanation for the condition's last
-	// transition.
-	// +required
-	Reason string `json:"reason,omitempty"`
-
-	// Message is a human readable description of the details of the last
-	// transition, complementing reason.
-	// +optional
-	Message string `json:"message,omitempty"`
-}
-
-const (
-	// PrunePhaseCondition represents the fact that the addonsLayers are are pruning if required.
-	// Used when one AddonsLayer need to apply or prune to force all AddonsLayers in the same group to prune if required.
-	PrunePhaseCondition string = "Prune"
-
-	// ApplyPhaseCondition represents the fact that the addonsLayers are are applying if required.
-	// Used when one AddonsLayer need to apply to force all AddonsLayers in the same group to apply if required.
-	ApplyPhaseCondition string = "Apply"
-
-	// DonePhaseCondition represents the fact that the addonsLayers are are applied.
-	// Used when all AddonsLayers the group are applied.
-	DonePhaseCondition string = "Done"
-)
-
-const (
-	// LayerMgrPruneReason represents the fact that the AddonsLayers in this group need to prune.
-	LayerMgrPruneReason string = "AddonsLayers in this group should prune if required"
-
-	// LayerMgrPruneMsg explains that the LayerMgr prune phase.
-	LayerMgrPruneMsg string = ("The prune phase is set to force all AddonsLayers in this manager's group" +
-		" to prune if required. This ensures that all AddonsLayers prune before any start to apply." +
-		" The LayerMgr sets its phase to prune if any AddonLayer detects it needs to prune or apply.")
-
-	// LayerMgrDeployReason represents the fact that the AddonsLayers in this group need to deploy.
-	LayerMgrDeployReason string = "AddonsLayers in this group should deploy if required"
-
-	// LayerMgrDeployMsg explains that the LayerMgr deploy phase.
-	LayerMgrDeployMsg string = ("The deploy phase is set to force all AddonsLayers in this manager's group" +
-		" to deploy if required.")
-
-	// LayerMgrDoneReason represents the fact that the AddonsLayers in this group are done applying.
-	LayerMgrDoneReason string = "AddonsLayers in this group are applied"
-
-	// LayerMgrDoneMsg explains that the LayerMgr done phase.
-	LayerMgrDoneMsg string = ("The done phase is set when all AddonsLayers in this manager's group" +
-		" are deployed.")
-
-	// LayerMgrFailedReason represents the fact that the deployment of the addons failed.
-	LayerMgrFailedReason string = "LayerMgr processsing has failed"
-
-	// LayerMgrHoldReason represents the fact that LayerMgr is held.
-	LayerMgrHoldReason string = ("LayerMgr is on hold, preventing any changes to the current phase")
-
-	// LayerMgrHoldMsg explains the hold status.
-	LayerMgrHoldMsg string = ("LayerMgr custom resource has the 'Hold' element set to true" +
-		"preventing it from being processed. To clear this state update the custom resource object" +
-		"setting Hold to false")
-)
-
-// LayerMgrSpec defines the desired state of LayerMgr.
-type LayerMgrSpec struct {
-	// The phase of addons layer processing to execute
-	// +required
-	Phase string `json:"phase"`
-
-	// This flag tells the controller to hold off deployment of all addons,
-	// +optional
-	Hold bool `json:"hold,omitempty"`
-
-	// Generation is used to distinguish between different updates
-	Generation int64 `json:"generation,omitempty"`
-}
-
-// LayerMgrStatus defines the observed status.
-type LayerMgrStatus struct {
-	// Conditions history.
-	// +optional
-	Conditions []MgrCondition `json:"conditions,omitempty"`
-
-	// State is the current state of the layer manager.
-	// +required
-	State string `json:"state,omitempty"`
-}
-
-// LayerMgr is the Schema for the layer manager API.
-// +genclient:nonNamespaced
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:scope=Cluster
-// +kubebuilder:subresource:status
-type LayerMgr struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   LayerMgrSpec   `json:"spec,omitempty"`
-	Status LayerMgrStatus `json:"status,omitempty"`
-}
-
-// LayerMgrList contains a list of LayerMgrs.
-// +genclient:nonNamespaced
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:scope=Cluster
-type LayerMgrList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []LayerMgr `json:"items"`
-}
-
 func init() {
 	SchemeBuilder.Register(&AddonsLayer{}, &AddonsLayerList{})
-	SchemeBuilder.Register(&LayerMgr{}, &LayerMgrList{})
 }

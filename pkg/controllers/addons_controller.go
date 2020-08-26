@@ -70,8 +70,8 @@ func (r *AddonsLayerReconciler) getK8sClient() *kubernetes.Clientset {
 	return clientset
 }
 
-func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error { // nolint:gocyclo // ok
-	utils.Log(r.Log, 2, 1, "processing", "Status", l.GetStatus())
+func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error {
+	utils.Log(r.Log, 1, 1, "processing", "Name", l.GetName(), "Status", l.GetStatus())
 
 	if l.IsHold() {
 		l.SetHold()
@@ -80,14 +80,8 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error { // nol
 
 	if !l.CheckK8sVersion() {
 		l.SetStatusK8sVersion()
-		l.SetDelayed()
+		l.SetDelayedRequeue()
 		return nil
-	}
-
-	if l.IsPruningRequired() || l.IsApplyRequired() {
-		if err := l.SetAllPrunePending(); err != nil {
-			return err
-		}
 	}
 
 	if l.IsPruningRequired() {
@@ -95,30 +89,22 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error { // nol
 		if err := l.Prune(); err != nil {
 			return err
 		}
-		l.SetDelayed()
-		return nil
-	}
-
-	l.SetStatusPruningToPruned()
-
-	if l.AllPruned() {
-		if err := l.SetAllPrunedToApplyPending(); err != nil {
-			return err
-		}
-	}
-
-	if !l.DependenciesDeployed() {
-		l.SetStatusApplyPending()
-		l.SetDelayed()
+		l.SetDelayedRequeue()
 		return nil
 	}
 
 	if l.IsApplyRequired() {
+		l.SetStatusApplyPending()
+		if !l.DependenciesDeployed() {
+			l.SetDelayedRequeue()
+			return nil
+		}
+
 		l.SetStatusApplying()
 		if err := l.Apply(); err != nil {
 			return err
 		}
-		l.SetDelayed()
+		l.SetDelayedRequeue()
 		return nil
 	}
 
@@ -134,7 +120,7 @@ func (r *AddonsLayerReconciler) updateRequeue(l layers.Layer, res *ctrl.Result, 
 	}
 	if l.NeedsRequeue() {
 		if l.IsDelayed() {
-			*res = ctrl.Result{RequeueAfter: l.GetDelay()}
+			*res = ctrl.Result{Requeue: true, RequeueAfter: l.GetDelay()}
 			return
 		}
 		*res = ctrl.Result{Requeue: true}
@@ -158,11 +144,12 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	l := layers.CreateLayer(ctx, r.Client, r.k8client, log, addonsLayer)
 	var rerr error = nil
 	var res ctrl.Result = ctrl.Result{}
-	defer r.updateRequeue(l, &res, &rerr)
+	//defer r.updateRequeue(l, &res, &rerr)
 	err := r.processAddonLayer(l)
 	if err != nil {
 		l.StatusUpdate(kraanv1alpha1.FailedCondition, kraanv1alpha1.AddonsLayerFailedReason, err.Error())
 	}
+	r.updateRequeue(l, &res, &rerr)
 	return res, rerr
 }
 
@@ -177,30 +164,30 @@ func (r *AddonsLayerReconciler) update(ctx context.Context, log logr.Logger,
 }
 
 /*
-func (r *AddonsLayerReconciler) gitRepositorySource(o handler.MapObject) []ctrl.Request {
+func (r *AddonsLayerReconciler) sourceController(o handler.MapObject) []ctrl.Request {
 	//ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	//defer cancel()
 
 	return []ctrl.Request{
 		{
 			NamespacedName: types.NamespacedName{
-				//Name:      sourcev1.GitRepository.Name,
-				//Namespace: sourcev1.GitRepository.Namespace,
+				Name:      sourcev1.GitRepository.Name,
+				Namespace: sourcev1.GitRepository.Namespace,
 			},
 		},
 	}
 }
 */
-
 // SetupWithManager is used to setup the controller
 func (r *AddonsLayerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	addonsLayer := &kraanv1alpha1.AddonsLayer{}
 	_, err := ctrl.NewControllerManagedBy(mgr).
 		For(addonsLayer).
-		/*		Watches(
-				&source.Kind{Type: &sourcev1.GitRepository{}},
+		/*
+			Watches(
+				&source.Kind{Type: sourcev1.GitRepository{}},
 				&handler.EnqueueRequestsFromMapFunc{
-					ToRequests: handler.ToRequestsFunc(r.gitRepositorySource),
+					ToRequests: handler.ToRequestsFunc(r.sourceController),
 				},
 			).*/
 		Build(r)

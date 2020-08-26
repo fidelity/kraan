@@ -5,11 +5,13 @@ package layers
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -25,23 +27,15 @@ var rootPath = "/repos"
 type Layer interface {
 	SetStatusK8sVersion()
 	SetStatusApplying()
-	SetStatusApply()
 	SetStatusApplyPending()
-	SetStatusPrunePending()
-	SetStatusPruned()
 	SetStatusPruning()
 	SetStatusDeployed()
 	StatusUpdate(status, reason, message string)
-	setStatus(status, reason, message string)
 
 	IsHold() bool
 	SetHold()
 	IsPruningRequired() bool
 	Prune() error
-	SetAllPrunePending() error
-	SetStatusPruningToPruned()
-	AllPruned() bool
-	SetAllPrunedToApplyPending() error
 	DependenciesDeployed() bool
 	IsApplyRequired() bool
 	SuccessfullyApplied() bool
@@ -58,7 +52,7 @@ type Layer interface {
 	IsDelayed() bool
 	GetDelay() time.Duration
 	SetRequeue()
-	SetDelayed()
+	SetDelayedRequeue()
 	SetUpdated()
 	GetRequiredK8sVersion() string
 	CheckK8sVersion() bool
@@ -66,7 +60,9 @@ type Layer interface {
 	GetSpec() *kraanv1alpha1.AddonsLayerSpec
 	GetAddonsLayer() *kraanv1alpha1.AddonsLayer
 
-	GetAddonsLayers() (map[string]*kraanv1alpha1.AddonsLayer, error)
+	getOtherAddonsLayer(name string) (*kraanv1alpha1.AddonsLayer, error)
+	getK8sClient() *kubernetes.Clientset
+	setStatus(status, reason, message string)
 }
 
 // KraanLayer is the Schema for the addons API.
@@ -110,9 +106,10 @@ func (l *KraanLayer) SetUpdated() {
 	l.updated = true
 }
 
-// SetDelayed sets the delayed flag to cause the AddonsLayer to delay the requeue.
-func (l *KraanLayer) SetDelayed() {
+// SetDelayedRequeue sets the delayed flag to cause the AddonsLayer to delay the requeue.
+func (l *KraanLayer) SetDelayedRequeue() {
 	l.delayed = true
+	l.requeue = true
 }
 
 // GetFullStatus returns the AddonsLayers Status sub resource.
@@ -148,25 +145,30 @@ func (l *KraanLayer) CheckK8sVersion() bool {
 		utils.LogError(l.GetLogger(), 2, err, "failed get server version")
 		l.StatusUpdate(l.GetStatus(), "failed to obtain cluster api server version",
 			err.Error())
-		l.SetDelayed()
+		l.SetDelayedRequeue()
 		return false
 	}
 	return versionInfo.String() > l.GetRequiredK8sVersion()
 }
 
-// TODO - Paul do you still need this function?
-/*
 func (l *KraanLayer) trimConditions() {
-	for {
-		if len(l.addonsLayer.Status.Conditions) > MaxConditions {
-			t := l.addonsLayer.Status.Conditions[1:]
-			l.addonsLayer.Status.Conditions = t // might losee order, will need a sort
-		}
+	length := len(l.addonsLayer.Status.Conditions)
+	if length < MaxConditions {
+		return
 	}
+	trimedCond := l.addonsLayer.Status.Conditions[length - MaxConditions:]
+	l.addonsLayer.Status.Conditions = trimedCond
 }
-*/
 
 func (l *KraanLayer) setStatus(status, reason, message string) {
+	length := len(l.addonsLayer.Status.Conditions)
+	if length  > 0 {
+		last :=  l.addonsLayer.Status.Conditions[length-1]
+		if last.Reason == reason && last.Message == message && last.Type == status {
+			return
+		}
+	}
+
 	l.addonsLayer.Status.Conditions = append(l.addonsLayer.Status.Conditions, kraanv1alpha1.Condition{
 		Type:               status,
 		Version:            l.addonsLayer.Spec.Version,
@@ -175,7 +177,7 @@ func (l *KraanLayer) setStatus(status, reason, message string) {
 		Reason:             reason,
 		Message:            message,
 	})
-	//l.trimConditions()
+	l.trimConditions()
 	l.addonsLayer.Status.State = status
 	l.addonsLayer.Status.Version = l.addonsLayer.Spec.Version
 	l.updated = true
@@ -184,8 +186,10 @@ func (l *KraanLayer) setStatus(status, reason, message string) {
 
 // SetStatusK8sVersion sets the addon layer's status to waiting for required K8s Version.
 func (l *KraanLayer) SetStatusK8sVersion() {
-	l.setStatus(kraanv1alpha1.K8sVersionCondition,
-		kraanv1alpha1.AddonsLayerK8sVersionReason, kraanv1alpha1.AddonsLayerK8sVersionMsg)
+	if l.GetStatus() != kraanv1alpha1.K8sVersionCondition {
+		l.setStatus(kraanv1alpha1.K8sVersionCondition,
+			kraanv1alpha1.AddonsLayerK8sVersionReason, kraanv1alpha1.AddonsLayerK8sVersionMsg)
+	}
 }
 
 // SetStatusDeployed sets the addon layer's status to deployed.
@@ -198,32 +202,26 @@ func (l *KraanLayer) SetStatusDeployed() {
 
 // SetStatusApplyPending sets the addon layer's status to apply pending.
 func (l *KraanLayer) SetStatusApplyPending() {
-	l.setStatus(kraanv1alpha1.ApplyPendingCondition,
-		kraanv1alpha1.AddonsLayerApplyPendingReason, kraanv1alpha1.AddonsLayerApplyPendingMsg)
+	if l.GetStatus() != kraanv1alpha1.ApplyPendingCondition {
+		l.setStatus(kraanv1alpha1.ApplyPendingCondition,
+			kraanv1alpha1.AddonsLayerApplyPendingReason, kraanv1alpha1.AddonsLayerApplyPendingMsg)
+	}
 }
 
 // SetStatusApplying sets the addon layer's status to apply in progress.
 func (l *KraanLayer) SetStatusApplying() {
-	l.setStatus(kraanv1alpha1.ApplyingCondition,
-		kraanv1alpha1.AddonsLayerApplyingReason, kraanv1alpha1.AddonsLayerApplyingMsg)
-}
-
-// SetStatusPrunePending sets the addon layer's status to prune pending.
-func (l *KraanLayer) SetStatusPrunePending() {
-	l.setStatus(kraanv1alpha1.PrunePendingCondition,
-		kraanv1alpha1.AddonsLayerPrunePendingReason, kraanv1alpha1.AddonsLayerPrunePendingMsg)
-}
-
-// SetStatusPruned sets the addon layer's status to prune.
-func (l *KraanLayer) SetStatusPruned() {
-	l.setStatus(kraanv1alpha1.PrunedCondition,
-		kraanv1alpha1.AddonsLayerPrunedReason, kraanv1alpha1.AddonsLayerPrunedMsg)
+	if l.GetStatus() != kraanv1alpha1.ApplyingCondition {
+		l.setStatus(kraanv1alpha1.ApplyingCondition,
+			kraanv1alpha1.AddonsLayerApplyingReason, kraanv1alpha1.AddonsLayerApplyingMsg)
+	}
 }
 
 // SetStatusPruning sets the addon layer's status to pruning.
 func (l *KraanLayer) SetStatusPruning() {
-	l.setStatus(kraanv1alpha1.PruningCondition,
-		kraanv1alpha1.AddonsLayerPruningReason, kraanv1alpha1.AddonsLayerPruningMsg)
+	if l.GetStatus() != kraanv1alpha1.PruningCondition {
+		l.setStatus(kraanv1alpha1.PruningCondition,
+			kraanv1alpha1.AddonsLayerPruningReason, kraanv1alpha1.AddonsLayerPruningMsg)
+	}
 }
 
 // StatusUpdate sets the addon layer's status.
@@ -238,40 +236,56 @@ func (l *KraanLayer) IsHold() bool {
 
 // IsPruningRequired checks if there are any objects owned by the addons layer on the cluster that need to be pruned.
 func (l *KraanLayer) IsPruningRequired() bool {
-	return true
-}
-
-// SetAllPrunePending sets all addons layer custom resources to prune pending status.
-func (l *KraanLayer) SetAllPrunePending() error {
-	items, err := l.GetAddonsLayers()
-	if err != nil {
-		return err
-	}
-	utils.Log(l.GetLogger(), 2, 1, "processing", "Layers", items)
-	return nil
-}
-
-// SetStatusPruningToPruned sets the status to pruned if it is currently pruning or prune pending.
-func (l *KraanLayer) SetStatusPruningToPruned() {
-	if l.GetStatus() == kraanv1alpha1.PruningCondition ||
-		l.GetStatus() == kraanv1alpha1.PrunePendingCondition {
-		l.SetStatusPruned()
-	}
-}
-
-// AllPruned checks if all AddonsLayer custom resources are in the pruned status.
-func (l *KraanLayer) AllPruned() bool {
 	return false
+}
+
+func getNameVersion(nameVersion string) (string, string) {
+	parts := strings.Split(nameVersion, "@")
+	if len(parts) < 2 {
+		return parts[0], ""
+	}
+	return parts[0], parts[1]
+}
+
+func (l *KraanLayer) isOtherDeployed(otherVersion string, otherLayer *kraanv1alpha1.AddonsLayer) bool {
+	if otherLayer.Spec.Version != otherVersion {
+		reason := fmt.Sprintf("waiting for layer: %s, version: %s to be applied.", otherLayer.ObjectMeta.Name, otherVersion)
+		message := fmt.Sprintf("Layer: %s, current version is: %s, require version: %s.",
+			otherLayer.ObjectMeta.Name, otherLayer.Spec.Version, otherVersion)
+		l.setStatus(kraanv1alpha1.ApplyPendingCondition, reason, message)
+		return false
+	}
+	if otherLayer.Status.State != kraanv1alpha1.DeployedCondition {
+		reason := fmt.Sprintf("waiting for layer: %s, version: %s to be applied.", otherLayer.ObjectMeta.Name, otherVersion)
+		message := fmt.Sprintf("Layer: %s, current state: %s.", otherLayer.ObjectMeta.Name, otherLayer.Status.State)
+		l.setStatus(kraanv1alpha1.ApplyPendingCondition, reason, message)
+		return false
+	}
+	return true
 }
 
 // DependenciesDeployed checks that all the layers this layer is dependent on are deployed.
 func (l *KraanLayer) DependenciesDeployed() bool {
-	return false
+	for _, otherNameVersion := range l.GetSpec().PreReqs.DependsOn {
+		otherName, otherVersion := getNameVersion(otherNameVersion)
+		otherLayer, err := l.getOtherAddonsLayer(otherName)
+		if err != nil {
+			l.StatusUpdate(kraanv1alpha1.FailedCondition, kraanv1alpha1.AddonsLayerFailedReason, err.Error())
+			return false
+		}
+		if !l.isOtherDeployed(otherVersion, otherLayer) {
+			return false
+		}
+	}
+	return true
 }
 
 // IsApplyRequired checks if an apply is required.
 func (l *KraanLayer) IsApplyRequired() bool {
-	return false
+	// Not yet implemented, for now return true if it is not in applying status otherrwise true
+	// This forces the processing to set applying status wait for dependencies and the apply
+	// at which point the applying condition is set so we can progress
+	return l.GetStatus() != kraanv1alpha1.ApplyingCondition
 }
 
 // SuccessfullyApplied checks if all Helm Releases in a layer have beem successfully applied.
@@ -281,11 +295,6 @@ func (l *KraanLayer) SuccessfullyApplied() bool {
 
 // Apply addons layer objects to cluster.
 func (l *KraanLayer) Apply() error {
-	return nil
-}
-
-// SetAllPrunedToApplyPending sets all AddonsLayer custom resources  in the pruned status to apply pending status.
-func (l *KraanLayer) SetAllPrunedToApplyPending() error {
 	return nil
 }
 
@@ -352,16 +361,11 @@ func (l *KraanLayer) GetName() string {
 	return l.addonsLayer.ObjectMeta.Name
 }
 
-// GetAddonsLayers returns a map containing the current state of all other AddonsLayers.
-func (l *KraanLayer) GetAddonsLayers() (map[string]*kraanv1alpha1.AddonsLayer, error) {
-	list := &kraanv1alpha1.AddonsLayerList{}
-	opt := &client.ListOptions{}
-	if err := l.client.List(l.GetContext(), list, opt); err != nil {
+// GetAddonsLayers returns a map containing the current state of all AddonsLayers in this group.
+func (l *KraanLayer) getOtherAddonsLayer(name string) (*kraanv1alpha1.AddonsLayer, error) {
+	obj := &kraanv1alpha1.AddonsLayer{}
+	if err := l.client.Get(l.GetContext(), types.NamespacedName{Name: name}, obj); err != nil {
 		return nil, err
 	}
-	addonsLayers := map[string]*kraanv1alpha1.AddonsLayer{}
-	for _, item := range list.Items {
-		addonsLayers[item.ObjectMeta.Name] = &item // nolint:scopelint,exportloopref // should be ok
-	}
-	return addonsLayers, nil
+	return obj, nil
 }

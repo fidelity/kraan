@@ -60,7 +60,7 @@ type Layer interface {
 	GetAddonsLayer() *kraanv1alpha1.AddonsLayer
 
 	getOtherAddonsLayer(name string) (*kraanv1alpha1.AddonsLayer, error)
-	getK8sClient() *kubernetes.Clientset
+	getK8sClient() kubernetes.Interface
 	setStatus(status, reason, message string)
 	isOtherDeployed(otherVersion string, otherLayer *kraanv1alpha1.AddonsLayer) bool
 }
@@ -73,14 +73,14 @@ type KraanLayer struct {
 	delay       time.Duration
 	ctx         context.Context
 	client      client.Client
-	k8client    *kubernetes.Clientset
+	k8client    kubernetes.Interface
 	log         logr.Logger
 	Layer       `json:"-"`
 	addonsLayer *kraanv1alpha1.AddonsLayer
 }
 
 // CreateLayer creates a layer object.
-func CreateLayer(ctx context.Context, client client.Client, k8client *kubernetes.Clientset,
+func CreateLayer(ctx context.Context, client client.Client, k8client kubernetes.Interface,
 	log logr.Logger, addonsLayer *kraanv1alpha1.AddonsLayer) Layer {
 	l := &KraanLayer{
 		requeue:     false,
@@ -132,7 +132,7 @@ func (l *KraanLayer) GetRequiredK8sVersion() string {
 	return l.addonsLayer.Spec.PreReqs.K8sVersion
 }
 
-func (l *KraanLayer) getK8sClient() *kubernetes.Clientset {
+func (l *KraanLayer) getK8sClient() kubernetes.Interface {
 	return l.k8client
 }
 
@@ -200,7 +200,6 @@ func (l *KraanLayer) SetStatusDeployed() {
 func (l *KraanLayer) SetStatusApplying() {
 	l.setStatus(kraanv1alpha1.ApplyingCondition,
 		kraanv1alpha1.AddonsLayerApplyingReason, kraanv1alpha1.AddonsLayerApplyingMsg)
-
 }
 
 // SetStatusPruning sets the addon layer's status to pruning.

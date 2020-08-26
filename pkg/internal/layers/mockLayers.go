@@ -470,10 +470,10 @@ func (mr *MockLayerMockRecorder) getOtherAddonsLayer(name interface{}) *gomock.C
 }
 
 // getK8sClient mocks base method
-func (m *MockLayer) getK8sClient() *kubernetes.Clientset {
+func (m *MockLayer) getK8sClient() kubernetes.Interface {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "getK8sClient")
-	ret0, _ := ret[0].(*kubernetes.Clientset)
+	ret0, _ := ret[0].(kubernetes.Interface)
 	return ret0
 }
 

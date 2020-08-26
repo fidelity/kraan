@@ -1,0 +1,70 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "kraan.io/v1alpha1",
+            "kind": "AddonsLayer",
+            "metadata": {
+                "name": "apps"
+            },
+            "spec": {
+                "prereqs": {
+                    "dependsOn": [
+                        "base@1.16-fideks-0.0.79",
+                        "mgmt@1.16-fideks-0.0.79"
+                    ],
+                    "k8sVersion": "1.16"
+                },
+                "source": {
+                    "name": "global-config",
+                    "namespace": "gitops-system",
+                    "path": "./addons/apps"
+                },
+                "version": "1.16-fideks-0.0.79"
+            }
+        },
+        {
+            "apiVersion": "kraan.io/v1alpha1",
+            "kind": "AddonsLayer",
+            "metadata": {
+                "name": "bootstrap"
+            },
+            "spec": {
+                "hold": false,
+                "interval": "1m",
+                "prereqs": {
+                    "k8sVersion": "1.16"
+                },
+                "source": {
+                    "name": "global-config",
+                    "namespace": "gitops-system",
+                    "path": "./addons/bootstrap"
+                },
+                "version": "1.16-fideks-0.0.79"
+            }
+        },
+        {
+            "apiVersion": "kraan.io/v1alpha1",
+            "kind": "AddonsLayer",
+            "metadata": {
+                "name": "mgmt"
+            },
+            "spec": {
+                "interval": "1m",
+                "prereqs": {
+                    "dependsOn": [
+                        "base@1.16-fideks-0.0.79"
+                    ],
+                    "k8sVersion": "1.16"
+                },
+                "source": {
+                    "name": "global-config",
+                    "namespace": "gitops-system",
+                    "path": "./addons/mgmt"
+                },
+                "version": "1.16-fideks-0.0.79"
+            }
+        }
+    ],
+    "kind": "List"
+}

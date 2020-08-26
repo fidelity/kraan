@@ -23,7 +23,7 @@ import (
 	"io/ioutil"
 	"testing"
 
-	kraanscheme "github.com/fidelity/kraan/pkg/api/v1alpha1"
+	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
 	"github.com/go-logr/logr"
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"
@@ -39,8 +39,8 @@ var (
 )
 
 func init() {
-	_ = k8sscheme.AddToScheme(testScheme)   // nolint:errcheck // ok
-	_ = kraanscheme.AddToScheme(testScheme) // nolint:errcheck // ok
+	_ = k8sscheme.AddToScheme(testScheme)     // nolint:errcheck // ok
+	_ = kraanv1alpha1.AddToScheme(testScheme) // nolint:errcheck // ok
 }
 
 func fakeLogger() logr.Logger {
@@ -51,15 +51,17 @@ func TestCreateLayer(t *testing.T) {
 
 }
 
-func GetDataFromFile(fileName string) (interface{}, error) {
+func getLayerFromFile(fileName string) (*kraanv1alpha1.AddonsLayer, error) {
 	buffer, err := ioutil.ReadFile(fileName)
 	if err != nil {
 		return nil, err
 	}
-	err = json.Unmarshal(buffer, &x)
+	addonsLayer := &kraanv1alpha1.AddonsLayer{}
+	err = json.Unmarshal(buffer, addonsLayer)
 	if err != nil {
 		return nil, err
 	}
+	return addonsLayer, nil
 }
 
 func TestSetRequeue(t *testing.T) {
@@ -68,23 +70,30 @@ func TestSetRequeue(t *testing.T) {
 
 	logger := fakeLogger()
 	client := fake.NewFakeClientWithScheme(testScheme)
-	fakeK8sClient := fakeK8s.NewSimpleClientSet()
+	fakeK8sClient := fakeK8s.NewSimpleClientset()
+	data, err := getLayerFromFile("testdata/testlayer1.json")
+	if err != nil {
+		t.Errorf("failed to get testdata, error: %s", err.Error())
+		return
+	}
 	l := CreateLayer(context.Background(), client, fakeK8sClient, logger, data)
 
-	mockLayer := NewMockLayer(mockCtl)
+	//mockLayer := NewMockLayer(mockCtl)
 
-	// Verifies that the "findOnPath" method was called once with the exact expected string input as the parameter
-	mockLayer.EXPECT().SetRequeue().Times(1)
+	//mockLayer.EXPECT().SetRequeue().Times(1)
 
 	l.SetRequeue()
 	k, ok := l.(*KraanLayer)
 	if !ok {
-		t.Logf("failed to cast layer interface to *KraanLayer")
+		t.Errorf("failed to cast layer interface to *KraanLayer")
+		return
 	}
 	if !k.requeue {
-
+		t.Errorf("failed to set requeue using SetRequeue")
+		return
 	}
 	if !l.NeedsRequeue() {
-		t.Logf("failed to set requeue using SetRequeue")
+		t.Errorf("failed to set requeue using SetRequeue")
+		return
 	}
 }

@@ -37,7 +37,7 @@ import (
 type AddonsLayerReconciler struct {
 	client.Client
 	Config   *rest.Config
-	k8client *kubernetes.Clientset
+	k8client kubernetes.Interface
 	Log      logr.Logger
 	Scheme   *runtime.Scheme
 	Context  context.Context
@@ -59,7 +59,7 @@ func NewReconciler(config *rest.Config, client client.Client, logger logr.Logger
 	return reconciler, err
 }
 
-func (r *AddonsLayerReconciler) getK8sClient() *kubernetes.Clientset {
+func (r *AddonsLayerReconciler) getK8sClient() kubernetes.Interface {
 	// creates the clientset
 	clientset, err := kubernetes.NewForConfig(r.Config)
 	if err != nil {

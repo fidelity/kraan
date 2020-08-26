@@ -94,7 +94,6 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error {
 	}
 
 	if l.IsApplyRequired() {
-		l.SetStatusApplyPending()
 		if !l.DependenciesDeployed() {
 			l.SetDelayedRequeue()
 			return nil

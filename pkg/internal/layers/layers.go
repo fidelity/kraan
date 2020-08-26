@@ -27,7 +27,6 @@ var rootPath = "/repos"
 type Layer interface {
 	SetStatusK8sVersion()
 	SetStatusApplying()
-	SetStatusApplyPending()
 	SetStatusPruning()
 	SetStatusDeployed()
 	StatusUpdate(status, reason, message string)
@@ -63,6 +62,7 @@ type Layer interface {
 	getOtherAddonsLayer(name string) (*kraanv1alpha1.AddonsLayer, error)
 	getK8sClient() *kubernetes.Clientset
 	setStatus(status, reason, message string)
+	isOtherDeployed(otherVersion string, otherLayer *kraanv1alpha1.AddonsLayer) bool
 }
 
 // KraanLayer is the Schema for the addons API.
@@ -186,42 +186,27 @@ func (l *KraanLayer) setStatus(status, reason, message string) {
 
 // SetStatusK8sVersion sets the addon layer's status to waiting for required K8s Version.
 func (l *KraanLayer) SetStatusK8sVersion() {
-	if l.GetStatus() != kraanv1alpha1.K8sVersionCondition {
-		l.setStatus(kraanv1alpha1.K8sVersionCondition,
+	l.setStatus(kraanv1alpha1.K8sVersionCondition,
 			kraanv1alpha1.AddonsLayerK8sVersionReason, kraanv1alpha1.AddonsLayerK8sVersionMsg)
-	}
 }
 
 // SetStatusDeployed sets the addon layer's status to deployed.
 func (l *KraanLayer) SetStatusDeployed() {
-	if l.GetStatus() != kraanv1alpha1.DeployedCondition {
-		l.setStatus(kraanv1alpha1.DeployedCondition,
+	l.setStatus(kraanv1alpha1.DeployedCondition,
 			kraanv1alpha1.AddonsLayerDeployedReason, "")
-	}
-}
-
-// SetStatusApplyPending sets the addon layer's status to apply pending.
-func (l *KraanLayer) SetStatusApplyPending() {
-	if l.GetStatus() != kraanv1alpha1.ApplyPendingCondition {
-		l.setStatus(kraanv1alpha1.ApplyPendingCondition,
-			kraanv1alpha1.AddonsLayerApplyPendingReason, kraanv1alpha1.AddonsLayerApplyPendingMsg)
-	}
 }
 
 // SetStatusApplying sets the addon layer's status to apply in progress.
 func (l *KraanLayer) SetStatusApplying() {
-	if l.GetStatus() != kraanv1alpha1.ApplyingCondition {
-		l.setStatus(kraanv1alpha1.ApplyingCondition,
+	l.setStatus(kraanv1alpha1.ApplyingCondition,
 			kraanv1alpha1.AddonsLayerApplyingReason, kraanv1alpha1.AddonsLayerApplyingMsg)
-	}
+
 }
 
 // SetStatusPruning sets the addon layer's status to pruning.
 func (l *KraanLayer) SetStatusPruning() {
-	if l.GetStatus() != kraanv1alpha1.PruningCondition {
-		l.setStatus(kraanv1alpha1.PruningCondition,
+	l.setStatus(kraanv1alpha1.PruningCondition,
 			kraanv1alpha1.AddonsLayerPruningReason, kraanv1alpha1.AddonsLayerPruningMsg)
-	}
 }
 
 // StatusUpdate sets the addon layer's status.
@@ -285,12 +270,12 @@ func (l *KraanLayer) IsApplyRequired() bool {
 	// Not yet implemented, for now return true if it is not in applying status otherrwise true
 	// This forces the processing to set applying status wait for dependencies and the apply
 	// at which point the applying condition is set so we can progress
-	return l.GetStatus() != kraanv1alpha1.ApplyingCondition
+	return l.GetStatus() != kraanv1alpha1.ApplyingCondition && l.GetStatus() != kraanv1alpha1.DeployedCondition
 }
 
 // SuccessfullyApplied checks if all Helm Releases in a layer have beem successfully applied.
 func (l *KraanLayer) SuccessfullyApplied() bool {
-	return false
+	return true
 }
 
 // Apply addons layer objects to cluster.

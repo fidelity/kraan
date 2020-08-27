@@ -16,7 +16,7 @@ limitations under the License.
 
 //Package kubectl executes various kubectl sub-commands in a forked shell
 //   OLD - mockgen -destination=pkg/internal/kubectl/mockKubectl.go -package=kubectl -source=pkg/internal/kubectl/kubectl.go
-//   gitlab.fmr.com/common-platform/addons-manager/pkg/internal/kubectl Kubectl,Command
+//   github.com/fidelity/kraan/pkg/internal/kubectl Kubectl,Command
 //go:generate mockgen -destination=mockKubectl.go -package=kubectl -source=kubectl.go . Kubectl,Command
 package kubectl
 

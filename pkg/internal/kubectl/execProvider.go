@@ -1,7 +1,7 @@
 /*Package kubectl xxx
  */
 //  Old - mockgen -destination=pkg/internal/kubectl/mockExecProvider.go -package=kubectl -source=pkg/internal/kubectl/execProvider.go
-//  gitlab.fmr.com/common-platform/addons-manager/pkg/internal/kubectl ExecProvider
+//  github.com/fidelity/kraan/pkg/internal/kubectl ExecProvider
 //go:generate mockgen -destination=mockExecProvider.go -package=kubectl -source=execProvider.go . ExecProvider
 //go:generate mockgen -destination=../mocks/logr/mockLogger.go -package=mocks github.com/go-logr/logr Logger
 package kubectl

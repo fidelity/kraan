@@ -3,13 +3,15 @@ package apply // nolint:package // unittest code should be in same package
 import (
 	"testing"
 
-	hrscheme "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/scheme"
-
 	kraanscheme "github.com/fidelity/kraan/pkg/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/internal/kubectl"
+
+	hrscheme "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/scheme"
+
 	"github.com/go-logr/logr"
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -17,7 +19,6 @@ import (
 
 var (
 	testScheme = runtime.NewScheme()
-	// testCtx    = context.Background()
 )
 
 func init() {
@@ -26,17 +27,8 @@ func init() {
 	_ = hrscheme.AddToScheme(testScheme)    // nolint:errcheck // ok
 }
 
-func fakeLogger() logr.Logger {
-	return testlogr.NullLogger{}
-}
-
-/*
-func testLogger(t *testing.T) logr.Logger {
-	return testlogr.TestLogger{T: t}
-}
-*/
 func TestNewApplier(t *testing.T) {
-	logger := fakeLogger()
+	logger := testlogr.TestLogger{T: t}
 	client := fake.NewFakeClientWithScheme(testScheme)
 	applier, err := NewApplier(client, logger, testScheme)
 	if err != nil {
@@ -54,7 +46,7 @@ func TestMockKubectl(t *testing.T) {
 		return mockKubectl, nil
 	}
 
-	logger := fakeLogger()
+	logger := testlogr.TestLogger{T: t}
 	client := fake.NewFakeClientWithScheme(testScheme)
 	applier, err := NewApplier(client, logger, testScheme)
 	if err != nil {

@@ -1,4 +1,4 @@
-package kubectl // nolint:package // unit tests should be in same package as code under test
+package kubectl // Xnolint:package // unit tests should be in same package as code under test
 
 /*
 
@@ -23,19 +23,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-logr/logr"
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"
 
 	mocklogr "github.com/fidelity/kraan/pkg/internal/mocks/logr"
 )
 
-func fakeLogger() logr.Logger {
-	return testlogr.NullLogger{}
-}
-
 func TestNewKubectl(t *testing.T) {
-	logger := fakeLogger()
+	logger := testlogr.TestLogger{T: t}
 	k, err := NewKubectl(logger)
 	if err != nil {
 		t.Errorf("The NewKubectl function returned an error! %w", err)
@@ -90,7 +85,8 @@ func TestFakeKubectlCommandFoundInPath(t *testing.T) {
 
 	execProvider = BaseFakeExecProvider()
 
-	k, err := NewKubectl(fakeLogger())
+	logger := testlogr.TestLogger{T: t}
+	k, err := NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
 	if err != nil {
 		t.Errorf("Error returned from the execLookPath function : %w", err)
@@ -108,7 +104,8 @@ func TestFakeKubectlCommandNotFoundInPath(t *testing.T) {
 		},
 	)
 
-	k, err := NewKubectl(fakeLogger())
+	logger := testlogr.TestLogger{T: t}
+	k, err := NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
 	if err == nil {
 		t.Errorf("Expected error 'executable file not found' was not returned from NewKubectl constructor")
@@ -129,7 +126,8 @@ func TestKubectlCommandFoundInPath(t *testing.T) {
 	// Verifies that the "findOnPath" method was called once with the exact expected string input as the parameter
 	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return("/mocked/path/to/kubectl/binary", nil).Times(1)
 
-	k, err := NewKubectl(fakeLogger())
+	logger := testlogr.TestLogger{T: t}
+	k, err := NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
 	if err != nil {
 		t.Errorf("Error returned from the execLookPath function : %w", err)
@@ -151,7 +149,8 @@ func TestKubectlCommandNotFoundInPath(t *testing.T) {
 	// Verifies that the "findOnPath" method was called once with the exact expected string input as the parameter
 	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return("MOCKED", fmt.Errorf("MOCK exec \"%s\": executable file not found in $PATH", kubectlCmd)).Times(1)
 
-	k, err := NewKubectl(fakeLogger())
+	logger := testlogr.TestLogger{T: t}
+	k, err := NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
 	if err == nil {
 		t.Errorf("Expected error 'executable file not found' was not returned from NewKubectl constructor")
@@ -174,7 +173,8 @@ func TestKubectlApplyReturnsApplyCommand(t *testing.T) { // nolint:funlen,gocycl
 	// Verifies that the "findOnPath" method was called once with the exact expected string input as the parameter
 	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return(fakeCommandPath, nil).Times(1)
 
-	k, err := NewKubectl(fakeLogger())
+	logger := testlogr.TestLogger{T: t}
+	k, err := NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
 	if err != nil {
 		t.Errorf("Error returned from the execLookPath function : %w", err)
@@ -260,7 +260,8 @@ func TestKubectlApplyRunHandlesExecError(t *testing.T) {
 	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return(fakeCommandPath, nil).Times(1)
 	mockExecProvider.EXPECT().execCmd(fakeCommandPath, expectedArgs).Return([]byte(expectedOutput), nil).Times(1)
 
-	k, err := NewKubectl(fakeLogger())
+	logger := testlogr.TestLogger{T: t}
+	k, err := NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
 	if err != nil {
 		t.Errorf("Error returned from the execLookPath function : %w", err)
@@ -304,7 +305,8 @@ func TestKubectlApplyDryRun(t *testing.T) {
 	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return(fakeCommandPath, nil).Times(1)
 	mockExecProvider.EXPECT().execCmd(fakeCommandPath, expectedArgs).Return([]byte(expectedOutput), nil).Times(1)
 
-	k, err := NewKubectl(fakeLogger())
+	logger := testlogr.TestLogger{T: t}
+	k, err := NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
 	if err != nil {
 		t.Errorf("Error returned from the execLookPath function : %w", err)
@@ -348,7 +350,8 @@ func TestKubectlApplyRun(t *testing.T) {
 	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return(fakeCommandPath, nil).Times(1)
 	mockExecProvider.EXPECT().execCmd(fakeCommandPath, expectedArgs).Return([]byte(expectedOutput), fmt.Errorf("MOCK error executing command")).Times(1)
 
-	k, err := NewKubectl(fakeLogger())
+	logger := testlogr.TestLogger{T: t}
+	k, err := NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
 	if err != nil {
 		t.Errorf("Error returned from the execLookPath function : %w", err)

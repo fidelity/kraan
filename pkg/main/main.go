@@ -1,6 +1,5 @@
 /*
 
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -28,6 +27,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	_ "sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	hrscheme "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/scheme"
 
@@ -80,6 +80,20 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseDevMode(!logJSON)))
 
+	mgr, err := createManager(metricsAddr, healthAddr, enableLeaderElection, leaderElectionNamespace)
+	if err != nil {
+		setupLog.Error(err, "problem creating manager")
+		os.Exit(1)
+	}
+
+	setupLog.Info("starting manager")
+	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+		setupLog.Error(err, "problem running manager")
+		os.Exit(1)
+	}
+}
+
+func createManager(metricsAddr string, healthAddr string, enableLeaderElection bool, leaderElectionNamespace string) (manager.Manager, error) {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                  scheme,
 		MetricsBindAddress:      metricsAddr,
@@ -90,36 +104,39 @@ func main() {
 		Namespace:               os.Getenv("RUNTIME_NAMESPACE"),
 	})
 	if err != nil {
-		setupLog.Error(err, "unable to start manager")
-		os.Exit(1)
+		return nil, fmt.Errorf("unable to start manager: %w", err)
 	}
 
+	if err := createController(mgr); err != nil {
+		return nil, fmt.Errorf("unable to create controller: %w", err)
+	}
+
+	if err := mgr.AddReadyzCheck("ping", readinessCheck); err != nil {
+		return nil, fmt.Errorf("unable to create ready check: %w", err)
+	}
+
+	if err := mgr.AddHealthzCheck("ping", livenessCheck); err != nil {
+		return nil, fmt.Errorf("unable to create health check: %w", err)
+	}
+
+	return mgr, nil
+}
+
+func createController(mgr manager.Manager) error {
 	r, err := controllers.NewReconciler(
 		mgr.GetConfig(),
 		mgr.GetClient(),
 		ctrl.Log.WithName("controllers").WithName("AddonsLayer"),
 		mgr.GetScheme())
 	if err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "AddonsLayer")
-		os.Exit(1)
+		return fmt.Errorf("unable to create Reconciler: %w", err)
 	}
-	r.SetupWithManager(mgr)
+	err = r.SetupWithManager(mgr)
 	// +kubebuilder:scaffold:builder
-
-	if err := mgr.AddReadyzCheck("ping", readinessCheck); err != nil {
-		setupLog.Error(err, "unable to create ready check")
-		os.Exit(1)
+	if err != nil {
+		return fmt.Errorf("unable to setup Reconciler with Manager")
 	}
-
-	if err := mgr.AddHealthzCheck("ping", livenessCheck); err != nil {
-		setupLog.Error(err, "unable to create health check")
-		os.Exit(1)
-	}
-	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
-	}
+	return nil
 }
 
 func readinessCheck(req *http.Request) error {

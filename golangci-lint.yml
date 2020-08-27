@@ -3,7 +3,6 @@
 
 # options for analysis running
 run:
-  modules-download-mode: vendor
   # timeout for analysis, e.g. 30s, 5m, default is 1m
   deadline: 1m
 
@@ -14,7 +13,7 @@ run:
   tests: true
 
   # list of build tags, all linters use it. Default is empty list.
-  build-tags: []
+  build-tags: ["integration"]
 
   # which dirs to skip: they won't be analyzed;
   # can use regexp here: generated.*, regexp is applied on full path;
@@ -41,6 +40,8 @@ run:
   # directory holds the correct copies of dependencies and ignores
   # the dependency descriptions in go.mod.
   #modules-download-mode: readonly|release|vendor
+  #modules-download-mode: vendor
+  modules-download-mode: readonly
 
 
 # output configuration options
@@ -95,7 +96,7 @@ linters-settings:
   goimports:
     # put imports beginning with prefix after 3rd-party packages;
     # it's a comma-separated list of prefixes
-    local-prefixes: github.com/org/project
+    local-prefixes: github.com/fidelity/kraan
   gocyclo:
     # minimal code complexity to report, 30 by default (but we recommend 10-20)
     min-complexity: 10
@@ -172,34 +173,92 @@ linters-settings:
     #    sizeThreshold: 32
 
 linters:
-  enable-all: true
+  enable-all: false
+  enable:
+    - asciicheck
+    - bodyclose
+    - deadcode
+    - depguard
+    - dogsled
+    - dupl
+    - exhaustive
+    - errcheck
+    - exportloopref
+    - funlen
+    - gocognit
+    - gocyclo
+    - goheader
+    - goimports
+    - golint
+    - gomodguard
+    - goprintffuncname
+    - govet
+    - ineffassign
+    - interfacer
+    - lll
+    - maligned
+    - misspell
+    - nakedret
+    - nestif
+    - staticcheck
+    - structcheck
+    - typecheck
+    - unused
+    - varcheck
+    - noctx
+    - nolintlint
+    - prealloc
+    - rowserrcheck
+    - scopelint
+    - sqlclosecheck
+    - stylecheck
+    - unconvert
+    - unparam
+    - whitespace
+  disable:
+    - gci
+    - gochecknoglobals
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - godot
+    - godox
+    - goerr113
+    - gofmt
+    - gofumpt
+    - gomnd
+    - gosec
+    - gosimple
+    - nlreturn
+    - testpackage
+    - wsl
 
 issues:
   # List of regexps of issue texts to exclude, empty list by default.
   # But independently from this option we use default exclude patterns,
   # it can be disabled by `exclude-use-default: false`. To list all
   # excluded by default patterns execute `golangci-lint run --help`
-  exclude: []
+  exclude:
+    - ^Top level comment should end in a period
 
   # Excluding configuration per-path, per-linter, per-text and per-source
   exclude-rules:
-    - path: pkg
+    - path: pkg/
       linters:
+        - dupl
+        - gci
         - gochecknoglobals
         - gochecknoinits
-        - wsl
-        - nlreturn
+        - goconst
+        - gocritic
+        - godot
+        - goerr113
         - gofumpt
-        - gci
         - gomnd
         - gosec
-        - dupl
-        - godox
-        - goerr113
-        - gocritic
         - gosimple
-        - goconst
-        - godot
+        - nlreturn
+        - wsl
     - path: pkg/controllers
       linters:
         - godot

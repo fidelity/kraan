@@ -7,7 +7,9 @@ package kubectl
 The mockgen tool generates the MockExecProvider type defined in the kubectl/mockExecProvider.go code file.
 
 From the project root directory, you can generate mock definitions for interfaces in individual code files by calling mockgen.  Example:
-	mockgen -destination=pkg/internal/kubectl/mockExecProvider.go -package=kubectl -source=pkg/internal/kubectl/execProvider.go gitlab.fmr.com/common-platform/addons-manager/pkg/internal/kubectl ExecProvider
+	mockgen -destination=pkg/internal/kubectl/mockExecProvider.go
+		-package=kubectl -source=pkg/internal/kubectl/execProvider.go
+		gitlab.fmr.com/common-platform/addons-manager/pkg/internal/kubectl ExecProvider
 
 Or you can generate all the
 
@@ -21,10 +23,13 @@ From the project root directory, you can then generate mocks for all the interfa
 import (
 	"fmt"
 	"testing"
+
+	testlogr "github.com/go-logr/logr/testing"
 )
 
 func TestRealKubectlBinaryInstalled(t *testing.T) {
-	k, err := NewKubectl(fakeLogger())
+	logger := testlogr.TestLogger{T: t}
+	k, err := NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
 	if err != nil {
 		t.Errorf("Error from NewKubectl constructor function: %w", err)
@@ -39,7 +44,8 @@ func TestRealOtherBinaryNotInstalled(t *testing.T) {
 
 	kubectlCmd = "not-kubectl-and-not-installed"
 
-	k, err := NewKubectl(fakeLogger())
+	logger := testlogr.TestLogger{T: t}
+	k, err := NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
 	if err == nil {
 		foundCmdMsg := fmt.Sprintf("Found '%s' binary at '%s'", kubectlCmd, k.getPath())
@@ -50,7 +56,8 @@ func TestRealOtherBinaryNotInstalled(t *testing.T) {
 }
 
 func TestSimpleApply(t *testing.T) {
-	k, err := NewKubectl(fakeLogger())
+	logger := testlogr.TestLogger{T: t}
+	k, err := NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
 	if err != nil {
 		t.Fatalf("Error from NewKubectl constructor function: %s", err)

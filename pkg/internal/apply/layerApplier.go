@@ -155,7 +155,7 @@ func (a KubectlLayerApplier) addOwnerRefs(layer layers.Layer, hrs []*helmopv1.He
 		err := controllerutil.SetControllerReference(layer.GetAddonsLayer(), hr, a.scheme)
 		if err != nil {
 			// could not apply owner ref for object
-			return fmt.Errorf("unable to apply owner reference for AddonsLayer '%s' to HelmRelease '%s'", layer.GetName(), getLabel(hr))
+			return fmt.Errorf("unable to apply owner reference for AddonsLayer '%s' to HelmRelease '%s': %w", layer.GetName(), getLabel(hr), err)
 		}
 	}
 	return nil

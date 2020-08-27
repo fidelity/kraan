@@ -28,7 +28,7 @@ represents a single addon. For more details on *HelmRelease*, check
 source-controller is one of the components in [gitops-toolkit](https://toolkit.fluxcd.io/) which 
 helps abstracting away git interaction from kraan. By design, an AddonLayer will
 point to a *directory in a git repository* which contains the list of
-HelmReleases. Whenever kraans' reconciliation logic is kicked off, it order to
+HelmReleases. Whenever kraans' reconciliation logic is kicked off, in order to
 fetch the list of helm releases that are part of that addon layer, it will reach out
 to source-controller api to fetch repo files instead of reaching out to git directly. 
 
@@ -100,15 +100,14 @@ Kraan controller is built using the [kubebuilder](https://github.com/kubernetes-
 From a controllers' perspective, reconciliation is where it attempts to bring the
 current state of the layer into its desired state. The reconciliation logic is 
 kicked off whenever there is a change detected in the AddonLayer custom resource.
-It could be an addition, deletion or an update to the resource.Following is 
-the step by step reconciliation logic in kraan. Whenever an event is 
+It could be an addition, deletion or an update to the resource. Whenever an event is 
 received for an AddonLayer,
 
-* check whether prereqs.k8sVersion == cluster version. If the cluster is not
-  yet in the expected version, return back without throwing an error. 
+* Check whether the version of the Kubernetes API deployed on the cluster is greater than or equal to prereqs.K8sVersion.
+  If the cluster is not yet in the expected version, return back without throwing an error. 
   Controllers' periodic sync will trigger the reconcile next time.
 * execute a custom prune logic, where any addon that is present in the cluster
-  but NOT in the remove the layer from the cluster. Basically any addon that is 
+  but NOT in the repo will be removed from the cluster. Basically any addon that is 
   not part of the current layer spec is removed from the cluster. Note that removal
   of an addon does not check for dependencies between layers. If the prune is
   not successful, then return an error, which should trigger an exponential
@@ -117,12 +116,12 @@ received for an AddonLayer,
     * The dependent layer is identified by a combination of name and a version.
       i.e base@0.1.2 means that a layer with name "base" and spec.version = 0.1.2 is expected.
     * If the dependent layer isn't found, return nil and requeue the request
-      to process after 10 mins (RequeueAfter: 10mins).
+      to process after 10 mins.
     * If the layer is found, check whether the status of the layer is set to
       successfully deployed by inspecting the status subresource of that custom
       resource.
     * If the layer is not successfully deployed yet, return to requeue the request
-      after 10 mins (RequeueAfter: 10mins).    
+      after 10 mins.    
 * If the dependent layer is successfully deployed, then proceed to deploy this layers'
   addons. Return error on failure which will trigger an exponential backoff.
 

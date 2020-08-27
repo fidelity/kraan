@@ -30,7 +30,7 @@ kraan promotes the idea of building model based platforms on top of k8s i.e you 
 build a "general purpose" k8s platform which might have a "common" and "security" 
 layers which packages all the common tooling, applications inside that cluster might
 need as well as organization specific bits (e.g org specific security addons etc). 
-You can also say that the "common-layer" *depends-on* "security-layer" to be up first. 
+You can also say that the "common-layer" *depends-on* "security-layer" to be deployed first. 
 This "general purpose" k8s platform can then be *extended* by applying another "ml-layer" 
 which can then be exposed as an ML platform to the development teams. The end result here 
 is developers working on top of secure and custom-built platforms which adheres

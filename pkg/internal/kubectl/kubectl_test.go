@@ -5,7 +5,7 @@ package kubectl
 The mockgen tool generates the MockExecProvider type defined in the kubectl/mockExecProvider.go code file.
 
 From the project root directory, you can generate mock definitions for interfaces in individual code files by calling mockgen.  Example:
-	mockgen -destination=pkg/internal/kubectl/mockExecProvider.go -package=kubectl -source=pkg/internal/kubectl/execProvider.go gitlab.fmr.com/common-platform/addons-manager/pkg/internal/kubectl ExecProvider
+	mockgen -destination=pkg/internal/kubectl/mockExecProvider.go -package=kubectl -source=pkg/internal/kubectl/execProvider.go github.com/fidelity/kraan/pkg/internal/kubectl ExecProvider
 
 Or you can generate all the
 

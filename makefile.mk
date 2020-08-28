@@ -31,7 +31,7 @@ clean: clean-lint clean-coverage clean-test
 
 goimports: ${GO_SOURCES}
 	echo "${YELLOW}Running goimports${NC_DIR}" && \
-	goimports -w --local github.com/fidelity/kraan$^
+	goimports -w --local github.com/fidelity/kraan $^
 
 
 gofmt: ${GO_SOURCES}

@@ -190,8 +190,8 @@ func TestSingleApply(t *testing.T) {
 	// This integration test can be forced to pass or fail at different stages by altering the
 	// Values section of the microservice.yaml HelmRelease in the directory below.
 	sourcePath := "testdata/apply/single_release"
-	layerName := "single-microservice-layer"
-	layerUID := types.UID("test-layer-UID")
+	layerName := "test"
+	layerUID := types.UID("test-UID")
 	addonsLayer := fakeAddonsLayer(sourcePath, layerName, layerUID)
 
 	mockLayer := layers.NewMockLayer(mockCtl)
@@ -203,6 +203,44 @@ func TestSingleApply(t *testing.T) {
 	err = applier.Apply(mockLayer)
 	if err != nil {
 		t.Fatalf("LayerApplier.Apply returned an error: %s", err)
+	}
+}
+
+func TestPruneIsRequired(t *testing.T) {
+	mockCtl := gomock.NewController(t)
+	defer mockCtl.Finish()
+
+	logger := testlogr.TestLogger{T: t}
+	scheme := combinedScheme()
+	client := runtimeClient(t, scheme)
+
+	applier, err := NewApplier(client, logger, scheme)
+	if err != nil {
+		t.Fatalf("The NewApplier constructor returned an error: %s", err)
+	}
+	t.Logf("NewApplier returned (%T) %#v", applier, applier)
+
+	// This integration test can be forced to pass or fail at different stages by altering the
+	// Values section of the microservice.yaml HelmRelease in the directory below.
+	sourcePath := "testdata/apply/single_release"
+	layerName := "test"
+	layerUID := types.UID("test-UID")
+	addonsLayer := fakeAddonsLayer(sourcePath, layerName, layerUID)
+
+	mockLayer := layers.NewMockLayer(mockCtl)
+	mockLayer.EXPECT().GetName().Return(layerName).AnyTimes()
+	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
+	mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()
+	mockLayer.EXPECT().GetAddonsLayer().Return(addonsLayer).Times(1)
+
+	pruneRequired, pruneHrs, err := applier.PruneIsRequired(mockLayer)
+	if err != nil {
+		t.Fatalf("LayerApplier.PruneIsRequired returned an error: %s", err)
+	}
+	t.Logf("LayerApplier.PruneIsRequired returned %v", pruneRequired)
+	t.Logf("LayerApplier.PruneIsRequired returned %d hrs to prune", len(pruneHrs))
+	if pruneRequired {
+		t.Fatalf("LayerApplier.PruneIsRequired returned %v when false was expected", pruneRequired)
 	}
 }
 

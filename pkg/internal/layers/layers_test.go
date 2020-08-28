@@ -40,6 +40,17 @@ var (
 	// testCtx    = context.Background()
 )
 
+const (
+	holdSet       = "hold-set"
+	oneCondition  = "k8s-pending"
+	emptyStatus   = "empty-status"
+	maxConditions = "max-conditions"
+	layersData    = "testdata/layersdata.json"
+	versionOne    = "0.1.01"
+	//layersData1 = "testdata/layersdata1.json"
+	//layersData2 = "testdata/layersdata2.json"
+)
+
 func init() {
 	_ = k8sscheme.AddToScheme(testScheme)     // nolint:errcheck // ok
 	_ = kraanv1alpha1.AddToScheme(testScheme) // nolint:errcheck // ok
@@ -103,7 +114,7 @@ func getFromList(name string, layerList *kraanv1alpha1.AddonsLayerList) *kraanv1
 	return nil
 }
 
-func getLayer(layerName, testDataFileName string) (Layer, error) {
+func getLayer(layerName, testDataFileName string) (Layer, error) { // nolint:unparam // ok
 	logger := fakeLogger()
 	layers, err := getLayersFromFile(testDataFileName)
 	if err != nil {
@@ -125,6 +136,45 @@ func getLayer(layerName, testDataFileName string) (Layer, error) {
 	return CreateLayer(context.Background(), client, fakeK8sClient, logger, data), nil
 }
 
+func testDelayedRequeue(t *testing.T, l Layer) bool {
+	l.SetDelayedRequeue()
+	k, ok := l.(*KraanLayer)
+	if !ok {
+		t.Errorf("failed to cast layer interface to *KraanLayer")
+		return false
+	}
+	if !k.requeue {
+		t.Errorf("failed to set requeue using SetDelayedRequeue")
+		return false
+	}
+	if !l.NeedsRequeue() {
+		t.Errorf("failed to set requeue using SetDelayedRequeue")
+		return false
+	}
+	if !k.delayed {
+		t.Errorf("failed to set delayed using SetDelayedRequeue")
+		return false
+	}
+	if !l.IsDelayed() {
+		t.Errorf("failed to set delayed using SetDelayedRequeue")
+		return false
+	}
+	return true
+}
+
+func TestSetDelayedRequeue(t *testing.T) {
+	l, e := getLayer(emptyStatus, layersData)
+	if e != nil {
+		t.Fatalf("failed to create layer, error: %s", e.Error())
+	}
+	if !testDelayedRequeue(t, l) {
+		return
+	}
+	if !testDelayedRequeue(t, l) { // Verify it works if set again when already set
+		return
+	}
+}
+
 func testRequeue(t *testing.T, l Layer) bool {
 	l.SetRequeue()
 	k, ok := l.(*KraanLayer)
@@ -144,7 +194,7 @@ func testRequeue(t *testing.T, l Layer) bool {
 }
 
 func TestSetRequeue(t *testing.T) {
-	l, e := getLayer("bootstrap", "testdata/layerslist1.json")
+	l, e := getLayer(emptyStatus, layersData)
 	if e != nil {
 		t.Fatalf("failed to create layer, error: %s", e.Error())
 	}
@@ -156,82 +206,399 @@ func TestSetRequeue(t *testing.T) {
 	}
 }
 
-func compareConditions(actual, expected []kraanv1alpha1.Condition) bool {
-	if len(actual) != len(expected) {
+func testUpdated(t *testing.T, l Layer) bool {
+	l.SetUpdated()
+	k, ok := l.(*KraanLayer)
+	if !ok {
+		t.Errorf("failed to cast layer interface to *KraanLayer")
 		return false
 	}
-	for index, condition := range actual {
-		expect := expected[index]
-		if condition.Message != expect.Message ||
-			condition.Reason != expect.Reason ||
-			condition.Status != expect.Status ||
-			condition.Type != expect.Type ||
-			condition.Version != expect.Version {
-			return false
-		}
+	if !k.updated {
+		t.Errorf("failed to set updated using SetUpdated")
+		return false
+	}
+	if !l.IsUpdated() {
+		t.Errorf("failed to set updated using SetUpdated")
+		return false
 	}
 	return true
 }
 
-func compareStatus(t *testing.T, actual, expected *kraanv1alpha1.AddonsLayerStatus) {
-	if actual.State != expected.State ||
-		actual.Version != expected.Version ||
-		!compareConditions(actual.Conditions, expected.Conditions) {
-		actualJSON, err := goutils.ToJSON(actual)
-		if err != nil {
-			t.Fatalf("failed to generate json output for actual result, error: %s", err.Error())
-		}
-
-		expectedJSON, err := goutils.ToJSON(expected)
-		if err != nil {
-			t.Fatalf("failed to generate json output for expected result, error: %s", err.Error())
-		}
-		t.Fatalf("status not set to expected values...\n\nActual...\n%s\n\nExpected...\n%s",
-			actualJSON, expectedJSON)
+func TestSetUpdated(t *testing.T) {
+	l, e := getLayer(emptyStatus, layersData)
+	if e != nil {
+		t.Fatalf("failed to create layer, error: %s", e.Error())
+	}
+	if !testUpdated(t, l) {
+		return
+	}
+	if !testUpdated(t, l) { // Verify it works if set again when already set
+		return
 	}
 }
 
-func TestSetStatusSetting(t *testing.T) {
+func compareConditions(actual, expected []kraanv1alpha1.Condition) error {
+	if len(actual) != len(expected) {
+		return fmt.Errorf("mismatch in number of conditions")
+	}
+	for index, condition := range actual {
+		expect := expected[index]
+		if condition.Message != expect.Message {
+			return fmt.Errorf("mismatch in condition: %d, message...\nActual: %s\nExpected: %s",
+				index, condition.Message, expect.Message)
+		}
+		if condition.Reason != expect.Reason {
+			return fmt.Errorf("mismatch in condition: %d, reason...\nActual: %s\nExpected: %s",
+				index, condition.Reason, expect.Reason)
+		}
+		if condition.Status != expect.Status {
+			return fmt.Errorf("mismatch in condition: %d, status...\nActual: %s\nExpected: %s",
+				index, condition.Status, expect.Status)
+		}
+		if condition.Type != expect.Type {
+			return fmt.Errorf("mismatch in condition: %d, type..\nActual: %s\nExpected: %s",
+				index, condition.Type, expect.Type)
+		}
+		if condition.Version != expect.Version {
+			return fmt.Errorf("mismatch in condition: %d, version...\nActual: %s\nExpected: %s",
+				index, condition.Version, expect.Version)
+		}
+	}
+	return nil
+}
+
+func resetConditions(l Layer) {
+	l.GetFullStatus().Conditions = []kraanv1alpha1.Condition{}
+}
+
+func displayStatus(status *kraanv1alpha1.AddonsLayerStatus) string {
+	statusJSON, err := goutils.ToJSON(status)
+	if err != nil {
+		return fmt.Sprintf("failed to generate json output for actual result, error: %s", err.Error())
+	}
+
+	return fmt.Sprintf("%s", statusJSON)
+}
+
+func compareStatus(actual, expected *kraanv1alpha1.AddonsLayerStatus) error {
+	if actual.State != expected.State {
+		return fmt.Errorf("mismatch in status state...\nActual: %s\nExpected: %s", actual.State, expected.State)
+	}
+	if actual.Version != expected.Version {
+		return fmt.Errorf("mismatch in status version...\nActual: %s\nExpected: %s", actual.Version, expected.Version)
+	}
+	if err := compareConditions(actual.Conditions, expected.Conditions); err != nil {
+		return fmt.Errorf("mismatch in status conditions...\nActual: %s\nExpected: %s\n\n%s",
+			displayStatus(actual), displayStatus(expected), err.Error())
+	}
+	return nil
+}
+
+func TestSetStatusSetting(t *testing.T) { // nolint:funlen // ok
 	type testsData struct {
+		name     string
 		setFunc  func()
 		expected *kraanv1alpha1.AddonsLayerStatus
 	}
 
-	l, e := getLayer("empty-status", "testdata/layersdata.json")
+	l, e := getLayer(emptyStatus, layersData)
 	if e != nil {
 		t.Fatalf("failed to create layer, error: %s", e.Error())
 	}
 
 	tests := []testsData{{
+		name:    "SetStatusK8sVersion",
 		setFunc: l.SetStatusK8sVersion,
 		expected: &kraanv1alpha1.AddonsLayerStatus{
 			State:   kraanv1alpha1.K8sVersionCondition,
-			Version: "1.16-fideks-0.0.79",
+			Version: versionOne,
 			Conditions: []kraanv1alpha1.Condition{{
 				Status:  corev1.ConditionTrue,
-				Version: "1.16-fideks-0.0.79",
+				Version: versionOne,
 				Type:    kraanv1alpha1.K8sVersionCondition,
 				Reason:  kraanv1alpha1.AddonsLayerK8sVersionReason,
 				Message: kraanv1alpha1.AddonsLayerK8sVersionMsg},
 			},
+		}}, {
+		name:    "SetStatusPruning",
+		setFunc: l.SetStatusPruning,
+		expected: &kraanv1alpha1.AddonsLayerStatus{
+			State:   kraanv1alpha1.PruningCondition,
+			Version: versionOne,
+			Conditions: []kraanv1alpha1.Condition{{
+				Status:  corev1.ConditionTrue,
+				Version: versionOne,
+				Type:    kraanv1alpha1.PruningCondition,
+				Reason:  kraanv1alpha1.AddonsLayerPruningReason,
+				Message: kraanv1alpha1.AddonsLayerPruningMsg},
+			},
+		}}, {
+		name:    "SetStatusApplying",
+		setFunc: l.SetStatusApplying,
+		expected: &kraanv1alpha1.AddonsLayerStatus{
+			State:   kraanv1alpha1.ApplyingCondition,
+			Version: versionOne,
+			Conditions: []kraanv1alpha1.Condition{{
+				Status:  corev1.ConditionTrue,
+				Version: versionOne,
+				Type:    kraanv1alpha1.ApplyingCondition,
+				Reason:  kraanv1alpha1.AddonsLayerApplyingReason,
+				Message: kraanv1alpha1.AddonsLayerApplyingMsg},
+			},
+		}}, {
+		name:    "SetStatusDeployed",
+		setFunc: l.SetStatusDeployed,
+		expected: &kraanv1alpha1.AddonsLayerStatus{
+			State:   kraanv1alpha1.DeployedCondition,
+			Version: versionOne,
+			Conditions: []kraanv1alpha1.Condition{{
+				Status:  corev1.ConditionTrue,
+				Version: versionOne,
+				Type:    kraanv1alpha1.DeployedCondition,
+				Reason:  kraanv1alpha1.AddonsLayerDeployedReason,
+				Message: ""},
+			},
 		}},
-		{
-			setFunc: l.SetStatusPruning,
-			expected: &kraanv1alpha1.AddonsLayerStatus{
-				State:   kraanv1alpha1.PruningCondition,
-				Version: "1.16-fideks-0.0.79",
-				Conditions: []kraanv1alpha1.Condition{{
-					Status:  corev1.ConditionTrue,
-					Version: "1.16-fideks-0.0.79",
-					Type:    kraanv1alpha1.PruningCondition,
-					Reason:  kraanv1alpha1.AddonsLayerPruningReason,
-					Message: kraanv1alpha1.AddonsLayerPruningMsg},
-				},
-			}},
 	}
 
 	for _, test := range tests {
+		resetConditions(l)
 		test.setFunc()
-		compareStatus(t, l.GetFullStatus(), test.expected)
+		if err := compareStatus(l.GetFullStatus(), test.expected); err != nil {
+			t.Fatalf("test: %s, failed, error: %s", test.name, err.Error())
+		}
+	}
+}
+
+func TestSetStatusUpdate(t *testing.T) {
+	type testsData struct {
+		status   string
+		reason   string
+		message  string
+		expected *kraanv1alpha1.AddonsLayerStatus
+	}
+
+	const (
+		reason  = "the reason"
+		message = "the message"
+	)
+
+	l, e := getLayer(emptyStatus, layersData)
+	if e != nil {
+		t.Fatalf("failed to create layer, error: %s", e.Error())
+	}
+
+	tests := []testsData{{
+		status:  kraanv1alpha1.ApplyingCondition,
+		reason:  reason,
+		message: message,
+		expected: &kraanv1alpha1.AddonsLayerStatus{
+			State:   kraanv1alpha1.ApplyingCondition,
+			Version: versionOne,
+			Conditions: []kraanv1alpha1.Condition{{
+				Status:  corev1.ConditionTrue,
+				Version: versionOne,
+				Type:    kraanv1alpha1.ApplyingCondition,
+				Reason:  reason,
+				Message: message},
+			},
+		}},
+	}
+
+	for number, test := range tests {
+		resetConditions(l)
+		l.StatusUpdate(test.status, test.reason, test.message)
+		if err := compareStatus(l.GetFullStatus(), test.expected); err != nil {
+			t.Fatalf("test: %d, failed, error: %s", number+1, err.Error())
+		}
+	}
+}
+
+func TestHold(t *testing.T) {
+	type testsData struct {
+		layerName string
+		expected  bool
+		status    *kraanv1alpha1.AddonsLayerStatus
+	}
+	tests := []testsData{{
+		layerName: emptyStatus,
+		expected:  false,
+		status:    &kraanv1alpha1.AddonsLayerStatus{},
+	}, {
+		layerName: holdSet,
+		expected:  true,
+		status: &kraanv1alpha1.AddonsLayerStatus{
+			State:   kraanv1alpha1.HoldCondition,
+			Version: versionOne,
+			Conditions: []kraanv1alpha1.Condition{{
+				Status:  corev1.ConditionTrue,
+				Version: versionOne,
+				Type:    kraanv1alpha1.HoldCondition,
+				Reason:  kraanv1alpha1.AddonsLayerHoldReason,
+				Message: kraanv1alpha1.AddonsLayerHoldMsg},
+			},
+		}},
+	}
+	for number, test := range tests {
+		l, e := getLayer(test.layerName, layersData)
+		if e != nil {
+			t.Fatalf("failed to create layer, error: %s", e.Error())
+		}
+		if l.IsHold() != test.expected {
+			t.Fatalf("expected hold to be %t", test.expected)
+		}
+		l.SetHold()
+		if err := compareStatus(l.GetFullStatus(), test.status); err != nil {
+			t.Fatalf("test: %d, failed", number+1)
+		}
+	}
+}
+
+func TestSetStatus(t *testing.T) { // nolint:funlen // ok
+	type testsData struct {
+		name      string
+		layerName string
+		status    string
+		reason    string
+		message   string
+		expected  *kraanv1alpha1.AddonsLayerStatus
+	}
+
+	tests := []testsData{{
+		name:      "set status adding a condition when there is an existing condition",
+		layerName: oneCondition,
+		status:    kraanv1alpha1.PruningCondition,
+		reason:    kraanv1alpha1.AddonsLayerPruningReason,
+		message:   kraanv1alpha1.AddonsLayerPruningMsg,
+		expected: &kraanv1alpha1.AddonsLayerStatus{
+			State:   kraanv1alpha1.PruningCondition,
+			Version: versionOne,
+			Conditions: []kraanv1alpha1.Condition{{
+				Status:  corev1.ConditionTrue,
+				Version: versionOne,
+				Type:    kraanv1alpha1.K8sVersionCondition,
+				Reason:  kraanv1alpha1.AddonsLayerK8sVersionReason,
+				Message: kraanv1alpha1.AddonsLayerK8sVersionMsg},
+				{
+					Status:  corev1.ConditionTrue,
+					Version: versionOne,
+					Type:    kraanv1alpha1.PruningCondition,
+					Reason:  kraanv1alpha1.AddonsLayerPruningReason,
+					Message: kraanv1alpha1.AddonsLayerPruningMsg},
+			},
+		}}, {
+		name:      "set status when no existing status",
+		layerName: emptyStatus,
+		status:    kraanv1alpha1.PruningCondition,
+		reason:    kraanv1alpha1.AddonsLayerPruningReason,
+		message:   kraanv1alpha1.AddonsLayerPruningMsg,
+		expected: &kraanv1alpha1.AddonsLayerStatus{
+			State:   kraanv1alpha1.PruningCondition,
+			Version: versionOne,
+			Conditions: []kraanv1alpha1.Condition{{
+				Status:  corev1.ConditionTrue,
+				Version: versionOne,
+				Type:    kraanv1alpha1.PruningCondition,
+				Reason:  kraanv1alpha1.AddonsLayerPruningReason,
+				Message: kraanv1alpha1.AddonsLayerPruningMsg},
+			},
+		}}, {
+		name:      "set status when no existing status is same",
+		layerName: oneCondition,
+		status:    kraanv1alpha1.K8sVersionCondition,
+		reason:    kraanv1alpha1.AddonsLayerK8sVersionReason,
+		message:   kraanv1alpha1.AddonsLayerK8sVersionMsg,
+		expected: &kraanv1alpha1.AddonsLayerStatus{
+			State:   kraanv1alpha1.K8sVersionCondition,
+			Version: versionOne,
+			Conditions: []kraanv1alpha1.Condition{{
+				Status:  corev1.ConditionTrue,
+				Version: versionOne,
+				Type:    kraanv1alpha1.K8sVersionCondition,
+				Reason:  kraanv1alpha1.AddonsLayerK8sVersionReason,
+				Message: kraanv1alpha1.AddonsLayerK8sVersionMsg},
+			},
+		}}, {
+		name:      "set status when maximum number of conditions already",
+		layerName: maxConditions,
+		status:    kraanv1alpha1.PruningCondition,
+		reason:    kraanv1alpha1.AddonsLayerPruningReason,
+		message:   kraanv1alpha1.AddonsLayerPruningMsg,
+		expected: &kraanv1alpha1.AddonsLayerStatus{
+			State:   kraanv1alpha1.PruningCondition,
+			Version: versionOne,
+			Conditions: []kraanv1alpha1.Condition{
+				{
+					Status:  corev1.ConditionTrue,
+					Version: versionOne,
+					Type:    kraanv1alpha1.PruningCondition,
+					Reason:  kraanv1alpha1.AddonsLayerPruningReason,
+					Message: kraanv1alpha1.AddonsLayerPruningMsg},
+				{
+					Status:  corev1.ConditionTrue,
+					Version: versionOne,
+					Type:    kraanv1alpha1.ApplyPendingCondition,
+					Reason:  "waiting for layer: test-layer2, version: 0.1.01 to be applied.",
+					Message: "Layer: test-layer2, current state: Applying."},
+				{
+					Status:  corev1.ConditionTrue,
+					Version: versionOne,
+					Type:    kraanv1alpha1.ApplyingCondition,
+					Reason:  kraanv1alpha1.AddonsLayerApplyingReason,
+					Message: kraanv1alpha1.AddonsLayerApplyingMsg},
+				{
+					Status:  corev1.ConditionTrue,
+					Version: versionOne,
+					Type:    kraanv1alpha1.DeployedCondition,
+					Reason:  kraanv1alpha1.AddonsLayerDeployedReason,
+					Message: ""},
+				{
+					Status:  corev1.ConditionTrue,
+					Version: versionOne,
+					Type:    kraanv1alpha1.K8sVersionCondition,
+					Reason:  kraanv1alpha1.AddonsLayerK8sVersionReason,
+					Message: kraanv1alpha1.AddonsLayerK8sVersionMsg},
+				{
+					Status:  corev1.ConditionTrue,
+					Version: versionOne,
+					Type:    kraanv1alpha1.PruningCondition,
+					Reason:  kraanv1alpha1.AddonsLayerPruningReason,
+					Message: kraanv1alpha1.AddonsLayerPruningMsg},
+				{
+					Status:  corev1.ConditionTrue,
+					Version: versionOne,
+					Type:    kraanv1alpha1.ApplyPendingCondition,
+					Reason:  "waiting for layer: test-layer2, version: 0.1.01 to be applied.",
+					Message: "Layer: test-layer2, current state: Applying."},
+				{
+					Status:  corev1.ConditionTrue,
+					Version: versionOne,
+					Type:    kraanv1alpha1.ApplyingCondition,
+					Reason:  kraanv1alpha1.AddonsLayerApplyingReason,
+					Message: kraanv1alpha1.AddonsLayerApplyingMsg},
+				{
+					Status:  corev1.ConditionTrue,
+					Version: versionOne,
+					Type:    kraanv1alpha1.DeployedCondition,
+					Reason:  kraanv1alpha1.AddonsLayerDeployedReason,
+					Message: ""},
+				{
+					Status:  corev1.ConditionTrue,
+					Version: versionOne,
+					Type:    kraanv1alpha1.PruningCondition,
+					Reason:  kraanv1alpha1.AddonsLayerPruningReason,
+					Message: kraanv1alpha1.AddonsLayerPruningMsg},
+			}}}}
+
+	for _, test := range tests {
+		l, e := getLayer(test.layerName, layersData)
+		if e != nil {
+			t.Fatalf("test: %s, failed to create layer, error: %s", test.name, e.Error())
+		}
+		l.setStatus(test.status, test.reason, test.message)
+		if err := compareStatus(l.GetFullStatus(), test.expected); err != nil {
+			t.Fatalf("test: %s, failed, error: %s", test.name, err.Error())
+		}
+		t.Logf("test: %s, successful", test.name)
 	}
 }

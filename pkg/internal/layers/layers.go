@@ -323,9 +323,8 @@ func (l *KraanLayer) SetHold() {
 
 // GetSourcePath gets the path to the addons layer's top directory in the local filesystem.
 func (l *KraanLayer) GetSourcePath() string {
-	return fmt.Sprintf("%s/%s/%s/%s",
+	return fmt.Sprintf("%s/%s/%s",
 		rootPath,
-		l.addonsLayer.Spec.Source.NameSpace,
 		l.addonsLayer.Spec.Source.Name,
 		l.addonsLayer.Spec.Source.Path)
 }

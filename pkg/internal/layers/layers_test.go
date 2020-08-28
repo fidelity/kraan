@@ -24,7 +24,6 @@ import (
 	"io/ioutil"
 	"testing"
 
-	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
 	"github.com/go-logr/logr"
 	testlogr "github.com/go-logr/logr/testing"
 	"github.com/paulcarlton-ww/go-utils/pkg/goutils"
@@ -33,6 +32,8 @@ import (
 	fakeK8s "k8s.io/client-go/kubernetes/fake"
 	k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
 )
 
 var (

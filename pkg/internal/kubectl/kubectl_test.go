@@ -11,8 +11,8 @@ From the project root directory, you can generate mock definitions for interface
 Or you can allow `go generate` to create all mocks for a project or package in a single command.
 
 Add a go:generate annotation above the package statement in all the code files containing interfaces that you want to mock.  Example:
-//go:generate mockgen -destination=mockExecProvider.go -package=kubectl -source=execProvider.go . ExecProvider
-//go:generate mockgen -destination=../mocks/logr/mockLogger.go -package=mocks github.com/go-logr/logr Logger
+	//go:generate mockgen -destination=mockExecProvider.go -package=kubectl -source=execProvider.go . ExecProvider
+	//go:generate mockgen -destination=../mocks/logr/mockLogger.go -package=mocks github.com/go-logr/logr Logger
 
 From the project root directory, you can then generate mocks for all the interfaces that have a go:generate annotation by running 'go generate ./...'.
 

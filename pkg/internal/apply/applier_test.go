@@ -6,7 +6,8 @@ import (
 	kraanscheme "github.com/fidelity/kraan/pkg/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/internal/kubectl"
 
-	hrscheme "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/scheme"
+	helmopscheme "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
+	//hrscheme "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/scheme"
 
 	"github.com/go-logr/logr"
 	testlogr "github.com/go-logr/logr/testing"
@@ -22,9 +23,9 @@ var (
 )
 
 func init() {
-	_ = k8sscheme.AddToScheme(testScheme)   // nolint:errcheck // ok
-	_ = kraanscheme.AddToScheme(testScheme) // nolint:errcheck // ok
-	_ = hrscheme.AddToScheme(testScheme)    // nolint:errcheck // ok
+	_ = k8sscheme.AddToScheme(testScheme)    // nolint:errcheck // ok
+	_ = kraanscheme.AddToScheme(testScheme)  // nolint:errcheck // ok
+	_ = helmopscheme.AddToScheme(testScheme) // nolint:errcheck // ok
 }
 
 func TestNewApplier(t *testing.T) {

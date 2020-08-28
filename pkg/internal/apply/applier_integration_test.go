@@ -13,13 +13,15 @@ import (
 	kraanscheme "github.com/fidelity/kraan/pkg/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/internal/layers"
 
+	helmopscheme "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
 	//hrclientset "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned"
-	hrscheme "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/scheme"
+	//hrscheme "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/scheme"
 
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	types "k8s.io/apimachinery/pkg/types"
 
 	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,9 +35,9 @@ import (
 
 func combinedScheme() *runtime.Scheme {
 	intScheme := runtime.NewScheme()
-	_ = k8sscheme.AddToScheme(intScheme)   // nolint:errcheck // ok
-	_ = kraanscheme.AddToScheme(intScheme) // nolint:errcheck // ok
-	_ = hrscheme.AddToScheme(intScheme)    // nolint:errcheck // ok
+	_ = k8sscheme.AddToScheme(intScheme)    // nolint:errcheck // ok
+	_ = kraanscheme.AddToScheme(intScheme)  // nolint:errcheck // ok
+	_ = helmopscheme.AddToScheme(intScheme) // nolint:errcheck // ok
 	return intScheme
 }
 
@@ -94,24 +96,24 @@ func kubeCoreClient(t *testing.T) *kubernetes.Clientset {
 	return clientset
 }
 
-func fakeAddonsLayer(sourcePath string) *kraanscheme.AddonsLayer {
+func fakeAddonsLayer(sourcePath, layerName string, layerUID types.UID) *kraanscheme.AddonsLayer {
+	kind := "AddonsLayer"
+	version := "v1alpha1"
 	typeMeta := metav1.TypeMeta{
-		Kind:       "AddonsLayer",
-		APIVersion: "v1alpha1",
+		Kind:       kind,
+		APIVersion: version,
 	}
 	now := metav1.Time{Time: time.Now()}
 	layerMeta := metav1.ObjectMeta{
-		Name: "TestLayer",
-		//Namespace:         "TestNamespace",
-		UID:               "FakeUID",
-		ResourceVersion:   "FakeVersion",
+		Name:              layerName,
+		UID:               layerUID,
+		ResourceVersion:   version,
 		Generation:        1,
 		CreationTimestamp: now,
-		ClusterName:       "testCluster",
+		ClusterName:       "TestingCluster",
 	}
 	sourceSpec := kraanscheme.SourceSpec{
-		Name: "TestSource",
-		// NameSpace: "TestNamespace",
+		Name: "TestingSource",
 		Path: sourcePath,
 	}
 	layerPreReqs := kraanscheme.PreReqs{
@@ -123,7 +125,7 @@ func fakeAddonsLayer(sourcePath string) *kraanscheme.AddonsLayer {
 		Source:  sourceSpec,
 		PreReqs: layerPreReqs,
 		Hold:    false,
-		Version: "v1",
+		Version: "v1alpha1",
 		//Source SourceSpec `json:"source"`
 		//PreReqs PreReqs `json:"prereqs,omitempty"`
 		//Hold bool `json:"hold,omitempty"`
@@ -132,8 +134,8 @@ func fakeAddonsLayer(sourcePath string) *kraanscheme.AddonsLayer {
 		//Version string `json:"version"`
 	}
 	layerStatus := kraanscheme.AddonsLayerStatus{
-		State:   "Happy",
-		Version: "v1",
+		State:   "Testing",
+		Version: "v1alpha1",
 		//Conditions []Condition `json:"conditions,omitempty"`
 		//State string `json:"state,omitempty"`
 		//Version string `json:"version,omitempty"`
@@ -171,7 +173,7 @@ func TestConnectToCluster(t *testing.T) {
 	}
 }
 
-func TestSimpleApply(t *testing.T) {
+func TestSingleApply(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	defer mockCtl.Finish()
 
@@ -186,14 +188,14 @@ func TestSimpleApply(t *testing.T) {
 	t.Logf("NewApplier returned (%T) %#v", applier, applier)
 
 	// This integration test can be forced to pass or fail at different stages by altering the
-	// Values section of the podinfo.yaml HelmRelease in the directory below.
-	sourcePath := "testdata/apply/simpleapply"
-	//baseContext := context.Background()
-
-	addonsLayer := fakeAddonsLayer(sourcePath)
+	// Values section of the microservice.yaml HelmRelease in the directory below.
+	sourcePath := "testdata/apply/single_release"
+	layerName := "single-microservice-layer"
+	layerUID := types.UID("test-layer-UID")
+	addonsLayer := fakeAddonsLayer(sourcePath, layerName, layerUID)
 
 	mockLayer := layers.NewMockLayer(mockCtl)
-	mockLayer.EXPECT().GetName().Return("testLayer").AnyTimes()
+	mockLayer.EXPECT().GetName().Return(layerName).AnyTimes()
 	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
 	mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()
 	mockLayer.EXPECT().GetAddonsLayer().Return(addonsLayer).Times(1)
@@ -219,7 +221,7 @@ func TestApplyContextTimeoutIntegration(t *testing.T) {
 
 	// This integration test can be forced to pass or fail at different stages by altering the
 	// Values section of the podinfo.yaml HelmRelease in the directory below.
-	sourcePath := "testdata/apply/simpleapply"
+	sourcePath := "testdata/apply/single_release"
 	//coreClient, hrClient := kubeClients(t)
 	//baseContext := context.Background()
 	//timeoutContext, _ := context.WithTimeout(baseContext, 15*time.Second)

@@ -6,15 +6,15 @@ metadata:
   annotations:
     fluxcd.io/automated: "false"
 spec:
-  releaseName: microservice
+  releaseName: single-test
   test:
     enable: true
     ignoreFailures: false
     timeout: 300
   chart:
-    git: https://github.com/sbernheim/kraan
+    git: https://github.com/fidelity/kraan
     path: testdata/charts/microservice
-    ref: watcher-wip
+    ref: owner-refs
   values:
     preHookBackoffLimit: 1
     preHookActiveDeadlineSeconds: 60
@@ -33,4 +33,4 @@ spec:
       service:
         type: NodePort
       replicaCount: 2
-      message: Hello Puny Humans!
+      message: Single Microservice Test

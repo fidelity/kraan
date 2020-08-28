@@ -54,7 +54,7 @@ type KubectlLayerApplier struct {
 func NewApplier(client client.Client, logger logr.Logger, scheme *runtime.Scheme) (applier LayerApplier, err error) {
 	kubectl, err := newKubectlFunc(logger)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to create a Kubectl provider for KubectlLayerApplier: %w", err)
 	}
 	applier = KubectlLayerApplier{
 		client:  client,

@@ -129,15 +129,8 @@ type Condition struct {
 }
 
 const (
-	// DeployedCondition represents the fact that the addons are deployed.
-	DeployedCondition string = "Deployed"
-
-	// PrunePendingCondition represents the fact that the addons are pending being pruned.
-	// Used when pruning is pending a prereq being met.
-	PrunePendingCondition string = "PrunePending"
-
-	// PruneCondition represents the fact that a given layer is ready to be pruned.
-	PruneCondition string = "Prune"
+	// K8sVersionCondition represents the fact that the addons layer is waiting for the required k8s Version.
+	K8sVersionCondition string = "K8sVersion"
 
 	// PruningCondition represents the fact that the addons are being pruned.
 	PruningCondition string = "Pruning"
@@ -146,11 +139,11 @@ const (
 	// Used when applying is pending a prereq being met.
 	ApplyPendingCondition string = "ApplyPending"
 
-	// ApplyCondition represents the fact that a given layer is ready to be applied.
-	ApplyCondition string = "Apply"
-
 	// ApplyingCondition represents the fact that the addons are being deployed.
 	ApplyingCondition string = "Applying"
+
+	// DeployedCondition represents the fact that the addons are deployed.
+	DeployedCondition string = "Deployed"
 
 	// FailedCondition represents the fact that the procesing of the addons failed.
 	FailedCondition string = "Failed"
@@ -175,52 +168,33 @@ type AddonsLayerStatus struct {
 }
 
 const (
-	// AddonsLayerDeployedReason represents the fact that the addons has been successfully deployed.
-	AddonsLayerDeployedReason string = "AddonsLayer is Deployed"
+	// AddonsLayerK8sVersionReason represents the addons layer is wating for the required K8s Version.
+	AddonsLayerK8sVersionReason string = "AddonsLayer is waiting for the required K8sVersion"
 
-	// AddonsLayerPrunePendingReason represents the fact that the puruning of addons is pending.
-	AddonsLayerPrunePendingReason string = "AddonsLayer pruning is pending a prerequisite being satisfied"
-
-	// AddonsLayerPrunePendingMsg explains that the addons prune-pending state.
-	AddonsLayerPrunePendingMsg string = ("The prune-pending status means the manager has detected" +
-		" that the AddonsLayer needs to be pruned but a prerequisite is not yet" +
-		" satisified, i.e. a layer that depends on this one has not been pruned yet" +
-		"or another custom prerequisite is not yet met.")
-
-	// AddonsLayerPruneReason represents the fact that the addons is ready to be purned.
-	AddonsLayerPruneReason string = "AddonsLayer ready to be pruned"
-
-	// AddonsLayerPruneMsg explains the prune status.
-	AddonsLayerPruneMsg string = ("The prune status means the manager has detected that" +
-		" the AddonsLayer is ready to be pruned.")
+	// AddonsLayerK8sVersionMsg explains that the addons k8s Version state.
+	AddonsLayerK8sVersionMsg string = ("The k8sVersion status means the manager has detected" +
+		" that the AddonsLayer needs a higher version of the Kubernetes API than the current" +
+		" version running on the cluster.")
 
 	// AddonsLayerPruningReason represents the fact that the addons are being pruned.
-	AddonsLayerPruningReason string = "AddonsLayer is being applied"
+	AddonsLayerPruningReason string = "AddonsLayer is being pruned"
 
 	// AddonsLayerPruningMsg explains that pruning status.
 	AddonsLayerPruningMsg string = "The pruning status means the manager is pruning objects removed from this layer"
 
 	// AddonsLayerApplyPendingReason represents the fact that the applying of addons is pending.
-	AddonsLayerApplyPendingReason string = "AddonsLayer applying is pending a prerequisite being satisfied"
+	AddonsLayerApplyPendingReason string = "Deployment of the AddonsLayer is pending because layers it is depends on are not deployed"
 
-	// AddonsLayerApplyPendingMsg explains that the addons apply-pending state.
-	AddonsLayerApplyPendingMsg string = ("The apply-pending status means the manager has detected that the AddonsLayer" +
-		" needs to be applied but a prerequisite is not yet satisified, i.e. a layer that this layer depends on has " +
-		"not been applied yet or another custom prerequisite is not yet met.")
-
-	// AddonsLayerApplyReason represents the fact that addons are ready to be applied.
-	AddonsLayerApplyReason string = "AddonsLayer is on hold, preventing execution"
-
-	// AddonsLayerApplyMsg explains the apply status.
-	AddonsLayerApplyMsg string = ("The apply status means the manager has detected that the AddonsLayer is ready" +
-		"to be applied")
+	// AddonsLayerApplyPendingMsg explains that the addons ApplyPending state.
+	AddonsLayerApplyPendingMsg string = ("The ApplyPending status means the manager has detected that the AddonsLayer" +
+		" needs to be applied a layer that ome or more layers depends on has not been applied yet")
 
 	// AddonsLayerApplyingReason represents the fact that the addons are being deployed.
 	AddonsLayerApplyingReason string = "AddonsLayer is being applied"
 
 	// AddonsLayerApplyingMsg explains that the addons are being deployed.
 	AddonsLayerApplyingMsg string = ("The applying status means the manager is either applying the yaml files" +
-		"or waiting for the HelmReleases to successfully deploy.")
+		" or waiting for the HelmReleases to successfully deploy.")
 
 	// AddonsLayerFailedReason represents the fact that the deployment of the addons failed.
 	AddonsLayerFailedReason string = "AddonsLayer processsing has failed"
@@ -230,14 +204,18 @@ const (
 
 	// AddonsLayerHoldMsg explains the hold status.
 	AddonsLayerHoldMsg string = ("AddonsLayer custom resource has the 'Hold' element set to ture" +
-		"preventing it from being processed. To clear this state update the custom resource object" +
-		"setting Hold to false")
+		" preventing it from being processed. To clear this state update the custom resource object" +
+		" setting Hold to false")
+
+	// AddonsLayerDeployedReason represents the fact that the addons has been successfully deployed.
+	AddonsLayerDeployedReason string = "AddonsLayer is Deployed"
 )
 
 // AddonsLayer is the Schema for the addons API.
-// +genclient
-// +genclient:Namespaced
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
+// +kubebuilder:resource:scope=Cluster
 // +kubebuilder:subresource:status
 type AddonsLayer struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -247,9 +225,10 @@ type AddonsLayer struct {
 	Status AddonsLayerStatus `json:"status,omitempty"`
 }
 
-// +kubebuilder:object:root=true
-
 // AddonsLayerList contains a list of AddonsLayer.
+// +genclient:nonNamespaced
+// +kubebuilder:object:root=true
+// +kubebuilder:resource:scope=Cluster
 type AddonsLayerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

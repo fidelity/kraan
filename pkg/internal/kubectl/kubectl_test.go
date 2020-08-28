@@ -1,13 +1,14 @@
-package kubectl
+package kubectl // Xnolint:package // unit tests should be in same package as code under test
 
 /*
 
 The mockgen tool generates the MockExecProvider type defined in the kubectl/mockExecProvider.go code file.
 
 From the project root directory, you can generate mock definitions for interfaces in individual code files by calling mockgen.  Example:
-	mockgen -destination=pkg/internal/kubectl/mockExecProvider.go -package=kubectl -source=pkg/internal/kubectl/execProvider.go github.com/fidelity/kraan/pkg/internal/kubectl ExecProvider
+	mockgen -destination=pkg/internal/kubectl/mockExecProvider.go -package=kubectl -source=pkg/internal/kubectl/execProvider.go \
+	github.com/fidelity/kraan/pkg/internal/kubectl ExecProvider
 
-Or you can generate all the
+Or you can allow `go generate` to create all mocks for a project or package in a single command.
 
 Add a go:generate annotation above the package statement in all the code files containing interfaces that you want to mock.  Example:
 //go:generate mockgen -destination=mockExecProvider.go -package=kubectl -source=execProvider.go . ExecProvider
@@ -22,23 +23,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-logr/logr"
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"
 
 	mocklogr "github.com/fidelity/kraan/pkg/internal/mocks/logr"
 )
 
-func fakeLogger() logr.Logger {
-	return testlogr.NullLogger{}
-}
-
-func testLogger(t *testing.T) logr.Logger {
-	return testlogr.TestLogger{T: t}
-}
-
 func TestNewKubectl(t *testing.T) {
-	logger := fakeLogger()
+	logger := testlogr.TestLogger{T: t}
 	k, err := NewKubectl(logger)
 	if err != nil {
 		t.Errorf("The NewKubectl function returned an error! %w", err)
@@ -48,43 +40,6 @@ func TestNewKubectl(t *testing.T) {
 	t.Logf("gotLogger (%T) %#v", gotLogger, gotLogger)
 	if logger != gotLogger {
 		t.Errorf("The passed logger was not stored as the new Kubectl instance's Logger")
-	}
-}
-
-// TestLoggerCompare compares two Logger structs to see if they're the same
-func TestLoggerCompare(t *testing.T) {
-	l1 := testLogger(t)
-	l2 := l1.WithValues("somekey", "somevalue")
-	l2.Error(fmt.Errorf("arbitrary error"), "error message", "errorKey", "errorValue")
-	if l1 == l2 {
-		// t.Errorf("Logger did not change after WithValues! %#v / %#v", l1, l2)
-	} else {
-		t.Logf("Logger changed after WithValues: %#v / %#v", l1, l2)
-	}
-}
-func TestRealKubectlBinaryInstalled(t *testing.T) {
-	k, err := NewKubectl(fakeLogger())
-	//t.Logf("Kubectl (%T) %#v", k, k)
-	if err != nil {
-		t.Errorf("Error from NewKubectl constructor function: %w", err)
-	} else {
-		t.Logf("Found '%s' binary at '%s'", kubectlCmd, k.getPath())
-	}
-}
-
-func TestRealOtherBinaryNotInstalled(t *testing.T) {
-	restoreCmd := kubectlCmd
-	defer func() { kubectlCmd = restoreCmd }()
-
-	kubectlCmd = "not-kubectl-and-not-installed"
-
-	k, err := NewKubectl(fakeLogger())
-	//t.Logf("Kubectl (%T) %#v", k, k)
-	if err == nil {
-		foundCmdMsg := fmt.Sprintf("Found '%s' binary at '%s'", kubectlCmd, k.getPath())
-		t.Errorf("Expected error 'executable file not found' was not returned from NewKubectl constructor: %s", foundCmdMsg)
-	} else {
-		t.Logf("Expected error was returned: %#v", err)
 	}
 }
 
@@ -106,11 +61,13 @@ func (p FakeExecProvider) setFindOnPathFunc(mockFunc func(file string) (string, 
 	return p
 }
 
+/* Not used
 func (p FakeExecProvider) setExecCmdFunc(mockFunc func(name string, arg ...string) ([]byte, error)) FakeExecProvider {
 	p.execCmdFunc = mockFunc
 	return p
 }
-
+*/
+// BaseFakeExecProvider implements a fake exec.
 func BaseFakeExecProvider() FakeExecProvider {
 	return FakeExecProvider{
 		findOnPathFunc: func(file string) (string, error) {
@@ -128,7 +85,8 @@ func TestFakeKubectlCommandFoundInPath(t *testing.T) {
 
 	execProvider = BaseFakeExecProvider()
 
-	k, err := NewKubectl(fakeLogger())
+	logger := testlogr.TestLogger{T: t}
+	k, err := NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
 	if err != nil {
 		t.Errorf("Error returned from the execLookPath function : %w", err)
@@ -146,7 +104,8 @@ func TestFakeKubectlCommandNotFoundInPath(t *testing.T) {
 		},
 	)
 
-	k, err := NewKubectl(fakeLogger())
+	logger := testlogr.TestLogger{T: t}
+	k, err := NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
 	if err == nil {
 		t.Errorf("Expected error 'executable file not found' was not returned from NewKubectl constructor")
@@ -167,7 +126,8 @@ func TestKubectlCommandFoundInPath(t *testing.T) {
 	// Verifies that the "findOnPath" method was called once with the exact expected string input as the parameter
 	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return("/mocked/path/to/kubectl/binary", nil).Times(1)
 
-	k, err := NewKubectl(fakeLogger())
+	logger := testlogr.TestLogger{T: t}
+	k, err := NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
 	if err != nil {
 		t.Errorf("Error returned from the execLookPath function : %w", err)
@@ -189,7 +149,8 @@ func TestKubectlCommandNotFoundInPath(t *testing.T) {
 	// Verifies that the "findOnPath" method was called once with the exact expected string input as the parameter
 	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return("MOCKED", fmt.Errorf("MOCK exec \"%s\": executable file not found in $PATH", kubectlCmd)).Times(1)
 
-	k, err := NewKubectl(fakeLogger())
+	logger := testlogr.TestLogger{T: t}
+	k, err := NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
 	if err == nil {
 		t.Errorf("Expected error 'executable file not found' was not returned from NewKubectl constructor")
@@ -198,7 +159,7 @@ func TestKubectlCommandNotFoundInPath(t *testing.T) {
 	}
 }
 
-func TestKubectlApplyReturnsApplyCommand(t *testing.T) {
+func TestKubectlApplyReturnsApplyCommand(t *testing.T) { // nolint:funlen,gocyclo // allow longer test functions
 	mockCtl := gomock.NewController(t)
 	defer mockCtl.Finish()
 
@@ -212,7 +173,8 @@ func TestKubectlApplyReturnsApplyCommand(t *testing.T) {
 	// Verifies that the "findOnPath" method was called once with the exact expected string input as the parameter
 	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return(fakeCommandPath, nil).Times(1)
 
-	k, err := NewKubectl(fakeLogger())
+	logger := testlogr.TestLogger{T: t}
+	k, err := NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
 	if err != nil {
 		t.Errorf("Error returned from the execLookPath function : %w", err)
@@ -234,7 +196,10 @@ func TestKubectlApplyReturnsApplyCommand(t *testing.T) {
 	default:
 		t.Fatalf("return value from Kubectl.Apply is not an ApplyCommand type: (%T) %#v", c, c)
 	}
-	a := c.(*ApplyCommand)
+	a, ok := c.(*ApplyCommand)
+	if !ok {
+		t.Logf("error casting to ApplyCommand")
+	}
 
 	// verify that the returned ApplyCommand.kubectlSubCmd matches expectations
 	if expectedSubCmd != a.kubectlSubCmd() {
@@ -295,7 +260,8 @@ func TestKubectlApplyRunHandlesExecError(t *testing.T) {
 	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return(fakeCommandPath, nil).Times(1)
 	mockExecProvider.EXPECT().execCmd(fakeCommandPath, expectedArgs).Return([]byte(expectedOutput), nil).Times(1)
 
-	k, err := NewKubectl(fakeLogger())
+	logger := testlogr.TestLogger{T: t}
+	k, err := NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
 	if err != nil {
 		t.Errorf("Error returned from the execLookPath function : %w", err)
@@ -339,7 +305,8 @@ func TestKubectlApplyDryRun(t *testing.T) {
 	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return(fakeCommandPath, nil).Times(1)
 	mockExecProvider.EXPECT().execCmd(fakeCommandPath, expectedArgs).Return([]byte(expectedOutput), nil).Times(1)
 
-	k, err := NewKubectl(fakeLogger())
+	logger := testlogr.TestLogger{T: t}
+	k, err := NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
 	if err != nil {
 		t.Errorf("Error returned from the execLookPath function : %w", err)
@@ -383,7 +350,8 @@ func TestKubectlApplyRun(t *testing.T) {
 	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return(fakeCommandPath, nil).Times(1)
 	mockExecProvider.EXPECT().execCmd(fakeCommandPath, expectedArgs).Return([]byte(expectedOutput), fmt.Errorf("MOCK error executing command")).Times(1)
 
-	k, err := NewKubectl(fakeLogger())
+	logger := testlogr.TestLogger{T: t}
+	k, err := NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
 	if err != nil {
 		t.Errorf("Error returned from the execLookPath function : %w", err)

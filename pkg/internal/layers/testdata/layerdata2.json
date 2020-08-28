@@ -1,0 +1,59 @@
+{
+    "apiVersion": "kraan.io/v1alpha1",
+    "kind": "AddonsLayer",
+    "metadata": {
+        "name": "test-layer1"
+    },
+    "spec": {
+        "prereqs": {
+            "dependsOn": [
+                "base@1.16-fideks-0.0.79",
+                "mgmt@1.16-fideks-0.0.79"
+            ],
+            "k8sVersion": "1.16"
+        },
+        "source": {
+            "name": "global-config",
+            "namespace": "gitops-system",
+            "path": "./addons/apps"
+        },
+        "version": "1.16-fideks-0.0.79"
+    },
+    "status": {
+        "conditions": [
+            {
+                "lastTransitionTime": "2020-08-26T13:10:13Z",
+                "message": "Layer: mgmt, current state: ApplyPending.",
+                "reason": "waiting for layer: mgmt, version: 1.16-fideks-0.0.79 to be applied.",
+                "status": "True",
+                "type": "ApplyPending",
+                "version": "1.16-fideks-0.0.79"
+            },
+            {
+                "lastTransitionTime": "2020-08-26T13:10:13Z",
+                "message": "Layer: mgmt, current state: Applying.",
+                "reason": "waiting for layer: mgmt, version: 1.16-fideks-0.0.79 to be applied.",
+                "status": "True",
+                "type": "ApplyPending",
+                "version": "1.16-fideks-0.0.79"
+            },
+            {
+                "lastTransitionTime": "2020-08-26T13:10:13Z",
+                "message": "The applying status means the manager is either applying the yaml filesor waiting for the HelmReleases to successfully deploy.",
+                "reason": "AddonsLayer is being applied",
+                "status": "True",
+                "type": "Applying",
+                "version": "1.16-fideks-0.0.79"
+            },
+            {
+                "lastTransitionTime": "2020-08-26T13:10:13Z",
+                "reason": "AddonsLayer is Deployed",
+                "status": "True",
+                "type": "Deployed",
+                "version": "1.16-fideks-0.0.79"
+            }
+        ],
+        "state": "Deployed",
+        "version": "1.16-fideks-0.0.79"
+    }
+}

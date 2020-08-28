@@ -19,244 +19,141 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"os"
-	"time"
-
-	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/internal/apply"
 	layers "github.com/fidelity/kraan/pkg/internal/layers"
 	utils "github.com/fidelity/kraan/pkg/internal/utils"
+
+	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
+	"github.com/go-logr/logr"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // AddonsLayerReconciler reconciles a AddonsLayer object.
 type AddonsLayerReconciler struct {
 	client.Client
-	Log     logr.Logger
-	Scheme  *runtime.Scheme
-	Applier apply.LayerApplier
+	Config   *rest.Config
+	k8client kubernetes.Interface
+	Log      logr.Logger
+	Scheme   *runtime.Scheme
+	Context  context.Context
+	Applier  apply.LayerApplier
 }
 
 // NewReconciler returns an AddonsLayerReconciler instance
-func NewReconciler(client client.Client, logger logr.Logger,
+func NewReconciler(config *rest.Config, client client.Client, logger logr.Logger,
 	scheme *runtime.Scheme) (reconciler *AddonsLayerReconciler, err error) {
 	reconciler = &AddonsLayerReconciler{
+		Config: config,
 		Client: client,
 		Log:    logger,
 		Scheme: scheme,
 	}
-	reconciler.Applier, err = apply.NewApplier(logger)
+	reconciler.k8client = reconciler.getK8sClient()
+	reconciler.Context = context.Background()
+	reconciler.Applier, err = apply.NewApplier(client, logger, scheme)
 	return reconciler, err
 }
 
-// GetK8sClient gets the Kubernetes client.
-func GetK8sClient() (*kubernetes.Clientset, error) {
-	kubeConfig := os.Getenv("KUBECONFIG")
-	if len(kubeConfig) > 0 {
-		// use the current context in kubeconfig
-		config, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
-		if err != nil {
-			return nil, err
-		}
-
-		// create the clientset
-		clientset, err := kubernetes.NewForConfig(config)
-		if err != nil {
-			return nil, err
-		}
-
-		return clientset, nil
-	}
-	// creates the in-cluster config
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		panic(err.Error())
-	}
+func (r *AddonsLayerReconciler) getK8sClient() kubernetes.Interface {
 	// creates the clientset
-	clientset, err := kubernetes.NewForConfig(config)
+	clientset, err := kubernetes.NewForConfig(r.Config)
 	if err != nil {
+		//TODO - Adjust error handling?
 		panic(err.Error())
 	}
 
-	return clientset, nil
+	return clientset
 }
 
-func logBadStatusError(log logr.Logger, status string) {
-	utils.Log(log, 3, 1, fmt.Sprintf("invalid AddonLayer status: %s, ignoring", status))
-}
+func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error {
+	utils.Log(r.Log, 1, 1, "processing", "Name", l.GetName(), "Status", l.GetStatus())
 
-func processEmptyStatus(l *layers.Layer) {
-	utils.Log(l.GetLogger(), 2, 1, "processing", "Status", "")
-	l.StatusPrunePending()
-	l.SetRequeue()
-	utils.Log(l.GetLogger(), 2, 1, "processed",
-		"Previous Status", "",
-		"Status", l.GetFullStatus(),
-		"Spec:", l.GetSpec())
-}
-
-func processDeployed(l *layers.Layer) {
-	utils.Log(l.GetLogger(), 2, 1, "processing", "Status", kraanv1alpha1.DeployedCondition)
-	if !l.IsVersionCurrent() {
-		// Version has changed set to prune pending.
-		l.StatusPrunePending()
-		l.SetRequeue()
-	}
-	utils.Log(l.GetLogger(), 2, 1, "processed",
-		"Previous Status", kraanv1alpha1.DeployedCondition,
-		"Status", l.GetFullStatus(),
-		"Spec:", l.GetSpec())
-}
-
-func processPrunePending(l *layers.Layer) {
-	utils.Log(l.GetLogger(), 2, 1, "processing", "Status", kraanv1alpha1.PrunePendingCondition)
-	if !l.CheckK8sVersion() {
-		l.SetRequeue()
-		l.SetDelayed()
-		return
-	}
-	l.StatusPrune()
-	// Thinking about this, implementing a reliable reverse DependsOn is non trivial so suggest
-	// that for now we just transition to Prune state and revist waiting for layers that depend on
-	// this layer later.
-	utils.Log(l.GetLogger(), 2, 1, "processed",
-		"Previous Status", kraanv1alpha1.PrunePendingCondition,
-		"Status", l.GetFullStatus(),
-		"Spec:", l.GetSpec())
-}
-
-func processPrune(l *layers.Layer, r *AddonsLayerReconciler) {
-	utils.Log(l.GetLogger(), 2, 1, "processing", "Status", kraanv1alpha1.PruneCondition)
-	l.StatusPruning()
-	if err := r.update(l.GetContext(), l.GetLogger(), l.GetAddonsLayer()); err != nil {
-		l.SetRequeue()
-		return
-	}
-	// Start prune here in background thread with time limit of spec timeout value
-	// then wait for it to complete or timeout
-	time.Sleep(time.Second * 60)
-}
-
-func processPruning(l *layers.Layer, r *AddonsLayerReconciler) {
-	utils.Log(l.GetLogger(), 2, 1, "processing", "Status", kraanv1alpha1.PruningCondition)
-	// Check if pruning is done, if not restart prune here in background with time limit of spec timeout value
-	// Update status with details of pruning progress
-	// If completed, set status to ApplyPending
-}
-
-func processApplyPending(l *layers.Layer) {
-	utils.Log(l.GetLogger(), 2, 1, "processing", "Status", kraanv1alpha1.ApplyPendingCondition)
-	if !l.CheckK8sVersion() {
-		l.SetRequeue()
-		l.SetDelayed()
-		return
-	}
-	// Wait for DependsOn layers to be Deployed
-}
-
-func processApply(l *layers.Layer, r *AddonsLayerReconciler) {
-	utils.Log(l.GetLogger(), 2, 1, "processing", "Status", kraanv1alpha1.ApplyCondition)
-	// Start apply here in background thread with time limit of spec timeout value
-	l.StatusApplying()
-}
-
-func processApplying(l *layers.Layer, r *AddonsLayerReconciler) {
-	utils.Log(l.GetLogger(), 2, 1, "processing", "Status", kraanv1alpha1.ApplyingCondition)
-	// Check if applying is done, if not restart applyhere in background with time limit of spec timeout value
-	// Update status with details of applying progress
-	// If completed, set status to Deployed
-}
-
-func processHold(l *layers.Layer) {
-	utils.Log(l.GetLogger(), 2, 0, "processing", "Status", kraanv1alpha1.HoldCondition)
 	if l.IsHold() {
 		l.SetHold()
+		return nil
 	}
-	utils.Log(l.GetLogger(), 2, 1, "processed",
-		"Previous Status", kraanv1alpha1.HoldCondition,
-		"Status", l.GetFullStatus(),
-		"Spec:", l.GetSpec())
+
+	if !l.CheckK8sVersion() {
+		l.SetStatusK8sVersion()
+		l.SetDelayedRequeue()
+		return nil
+	}
+
+	if l.IsPruningRequired() {
+		l.SetStatusPruning()
+		if err := l.Prune(); err != nil {
+			return err
+		}
+		l.SetDelayedRequeue()
+		return nil
+	}
+
+	if l.IsApplyRequired() {
+		if !l.DependenciesDeployed() {
+			l.SetDelayedRequeue()
+			return nil
+		}
+
+		l.SetStatusApplying()
+		if err := l.Apply(); err != nil {
+			return err
+		}
+		l.SetDelayedRequeue()
+		return nil
+	}
+
+	if l.SuccessfullyApplied() {
+		l.SetStatusDeployed()
+	}
+	return nil
 }
 
-func processFailed(l *layers.Layer) {
-	utils.Log(l.GetLogger(), 2, 1, "processing", "Status", kraanv1alpha1.FailedCondition)
-	// Perform a retry if failed condition is more than 'interval' duration ago
-	// Use previous condition to detect what to retry
-	// However verify dependencies again in case something has changed in other AddonsLayers
-	// so effectively reset status to PrunePending or ApplyPending depending on what failed.
-	utils.Log(l.GetLogger(), 2, 1, "processed",
-		"Previous Status", kraanv1alpha1.FailedCondition,
-		"Status", l.GetFullStatus(),
-		"Spec:", l.GetSpec())
+func (r *AddonsLayerReconciler) updateRequeue(l layers.Layer, res *ctrl.Result, rerr *error) {
+	if l.IsUpdated() {
+		*rerr = r.update(r.Context, r.Log, l.GetAddonsLayer())
+	}
+	if l.NeedsRequeue() {
+		if l.IsDelayed() {
+			*res = ctrl.Result{Requeue: true, RequeueAfter: l.GetDelay()}
+			return
+		}
+		*res = ctrl.Result{Requeue: true}
+		return
+	}
 }
 
 // Reconcile process AddonsLayers custom resources.
 // +kubebuilder:rbac:groups=kraan.io,resources=addons,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kraan.io,resources=addons/status,verbs=get;update;patch
-func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) { // nolint:gocyclo,funlen // ok
-	ctx := context.Background()
+func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+	ctx := r.Context
 
 	var addonsLayer *kraanv1alpha1.AddonsLayer = &kraanv1alpha1.AddonsLayer{}
 	if err := r.Get(ctx, req.NamespacedName, addonsLayer); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	log := r.Log.WithValues(
-		"requestNamespace", req.NamespacedName.Namespace,
-		"requestName", req.NamespacedName.Name)
+	log := r.Log.WithValues("requestName", req.NamespacedName.Name)
 
-	k8sClient, err := GetK8sClient()
+	l := layers.CreateLayer(ctx, r.Client, r.k8client, log, addonsLayer)
+	var rerr error = nil
+	var res ctrl.Result = ctrl.Result{}
+	//defer r.updateRequeue(l, &res, &rerr)
+	err := r.processAddonLayer(l)
 	if err != nil {
-		log.Error(err, "unable to get kubernetes client")
+		l.StatusUpdate(kraanv1alpha1.FailedCondition, kraanv1alpha1.AddonsLayerFailedReason, err.Error())
 	}
-	l := layers.CreateLayer(ctx, k8sClient, log, addonsLayer)
-
-	s := l.GetStatus()
-	switch s {
-	case "":
-		processEmptyStatus(l)
-	case kraanv1alpha1.DeployedCondition:
-		processDeployed(l)
-	case kraanv1alpha1.PrunePendingCondition:
-		processPrunePending(l)
-
-	case kraanv1alpha1.PruneCondition:
-		processPrune(l, r)
-	case kraanv1alpha1.PruningCondition:
-		processPruning(l, r)
-	case kraanv1alpha1.ApplyPendingCondition:
-		processApplyPending(l)
-	case kraanv1alpha1.ApplyCondition:
-		processApply(l, r)
-	case kraanv1alpha1.ApplyingCondition:
-		processApplying(l, r)
-	case kraanv1alpha1.HoldCondition:
-		processHold(l)
-	case kraanv1alpha1.FailedCondition:
-		processFailed(l)
-	default:
-		logBadStatusError(log, s)
-	}
-
-	if l.IsUpdated() {
-		if err := r.update(ctx, log, addonsLayer); err != nil {
-			return ctrl.Result{Requeue: true}, err
-		}
-	}
-	if l.NeedsRequeue() {
-		if l.IsDelayed() {
-			return ctrl.Result{RequeueAfter: l.GetDelay()}, nil
-		}
-		return ctrl.Result{Requeue: true}, nil
-	}
-	return ctrl.Result{}, nil
+	r.updateRequeue(l, &res, &rerr)
+	return res, rerr
 }
 
 func (r *AddonsLayerReconciler) update(ctx context.Context, log logr.Logger,
@@ -270,32 +167,50 @@ func (r *AddonsLayerReconciler) update(ctx context.Context, log logr.Logger,
 }
 
 /*
-func (r *AddonsLayerReconciler) gitRepositorySource(o handler.MapObject) []ctrl.Request {
+func (r *AddonsLayerReconciler) sourceController(o handler.MapObject) []ctrl.Request {
 	//ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	//defer cancel()
 
 	return []ctrl.Request{
 		{
 			NamespacedName: types.NamespacedName{
-				//Name:      sourcev1.GitRepository.Name,
-				//Namespace: sourcev1.GitRepository.Namespace,
+				Name:      sourcev1.GitRepository.Name,
+				Namespace: sourcev1.GitRepository.Namespace,
 			},
 		},
 	}
 }
 */
 
+func indexHelmReleaseByOwner(o runtime.Object) []string {
+	hr, ok := o.(*helmopv1.HelmRelease)
+	if !ok {
+		return nil
+	}
+	owner := metav1.GetControllerOf(hr)
+	if owner == nil {
+		return nil
+	}
+	if owner.APIVersion != kraanv1alpha1.GroupVersion.String() || owner.Kind != "AddonsLayer" {
+		return nil
+	}
+	return []string{owner.Name}
+}
+
 // SetupWithManager is used to setup the controller
 func (r *AddonsLayerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	addonsLayer := &kraanv1alpha1.AddonsLayer{}
+	hr := &kraanv1alpha1.AddonsLayer{}
 	_, err := ctrl.NewControllerManagedBy(mgr).
 		For(addonsLayer).
-		/*		Watches(
-				&source.Kind{Type: &sourcev1.GitRepository{}},
+		/*
+			Watches(
+				&source.Kind{Type: sourcev1.GitRepository{}},
 				&handler.EnqueueRequestsFromMapFunc{
-					ToRequests: handler.ToRequestsFunc(r.gitRepositorySource),
+					ToRequests: handler.ToRequestsFunc(r.sourceController),
 				},
 			).*/
+		Owns(hr).
 		Build(r)
 
 	if err != nil {
@@ -310,6 +225,10 @@ func (r *AddonsLayerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return fmt.Errorf("failed adding a watch for ready clusters: %w", err)
 		}
 	*/
+	if err := mgr.GetFieldIndexer().IndexField(&helmopv1.HelmRelease{}, ".owner", indexHelmReleaseByOwner); err != nil {
+		return fmt.Errorf("failed setting up FieldIndexer for HelmRelease owner: %w", err)
+	}
 
+	//return ctrl.NewControllerManagedBy(mgr).For(addonsLayer).Owns(hr).Complete(r)
 	return nil
 }

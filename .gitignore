@@ -22,6 +22,7 @@ bin
 *.swp
 *.swo
 *~
+*.code-workspace
 
 .idea/
 build/

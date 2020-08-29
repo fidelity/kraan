@@ -30,7 +30,9 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 func combinedScheme() *runtime.Scheme {
@@ -63,20 +65,124 @@ func kubeConfigFromFile(t *testing.T) (*rest.Config, error) {
 	return config, nil
 }
 
-func kubeConfig(t *testing.T) (*rest.Config, error) {
+func kubeConfig(t *testing.T) *rest.Config {
 	config, err := kubeConfigFromFile(t)
 	if err == nil {
-		return config, nil
+		return config
 	}
-	t.Logf("No KUBECONFIG from file '%s' - using InClusterConfig", err)
-	return rest.InClusterConfig()
-}
-
-func runtimeClient(t *testing.T, scheme *runtime.Scheme) client.Client {
-	config, err := kubeConfig(t)
+	t.Logf("no KUBECONFIG from file - using InClusterConfig: %s", err)
+	config, err = rest.InClusterConfig()
 	if err != nil {
 		t.Fatalf("kubernetes config error: %s", err)
 	}
+	return config
+}
+
+func startManager(t *testing.T, mgr ctrl.Manager) {
+	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+		t.Logf("unable to start manager: %s", err)
+		return
+	}
+}
+
+func createManager(t *testing.T, config *rest.Config, scheme *runtime.Scheme, namespace string) ctrl.Manager {
+	mgr, err := ctrl.NewManager(config, ctrl.Options{
+		Scheme:    scheme,
+		Namespace: namespace,
+	})
+	if err != nil {
+		t.Fatalf("unable to start manager: %s", err)
+	}
+
+	if err := createController(t, mgr); err != nil {
+		t.Fatalf("unable to create controller: %s", err)
+	}
+
+	go startManager(t, mgr)
+
+	return mgr
+}
+
+func createController(t *testing.T, mgr manager.Manager) error {
+	r := createReconciler(t, mgr.GetConfig(), mgr.GetClient(), mgr.GetScheme())
+	err := r.setupWithManager(mgr)
+	// +kubebuilder:scaffold:builder
+	if err != nil {
+		return fmt.Errorf("unable to setup Reconciler with Manager")
+	}
+	return nil
+}
+
+type fakeReconciler struct {
+	client.Client
+	Config *rest.Config
+	//k8client kubernetes.Interface
+	Scheme  *runtime.Scheme
+	Context context.Context
+	T       *testing.T
+}
+
+func createReconciler(t *testing.T, config *rest.Config, client client.Client, scheme *runtime.Scheme) *fakeReconciler {
+	reconciler := &fakeReconciler{
+		Client:  client,
+		Config:  config,
+		Scheme:  scheme,
+		Context: context.Background(),
+		T:       t,
+	}
+	//reconciler.k8client = reconciler.getK8sClient()
+	//reconciler.Applier, err = apply.NewApplier(client, logger, scheme)
+	return reconciler
+}
+
+func (r *fakeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+	ctx := r.Context
+	name := req.NamespacedName
+	addonsLayer := &kraanscheme.AddonsLayer{}
+	if err := r.Get(ctx, name, addonsLayer); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+	r.T.Logf("Reconcile called for AddonsLayer '%s'", addonsLayer.Name)
+	return ctrl.Result{}, nil
+}
+
+func indexHelmReleaseByOwner(o runtime.Object) []string {
+	hr, ok := o.(*helmopscheme.HelmRelease)
+	if !ok {
+		return nil
+	}
+	owner := metav1.GetControllerOf(hr)
+	if owner == nil {
+		return nil
+	}
+	if owner.APIVersion != kraanscheme.GroupVersion.String() || owner.Kind != "AddonsLayer" {
+		return nil
+	}
+	return []string{owner.Name}
+}
+
+func (r *fakeReconciler) setupWithManager(mgr ctrl.Manager) error {
+	addonsLayer := &kraanscheme.AddonsLayer{}
+	hr := &helmopscheme.HelmRelease{}
+	if err := mgr.GetFieldIndexer().IndexField(hr, ".owner", indexHelmReleaseByOwner); err != nil {
+		return fmt.Errorf("failed setting up FieldIndexer for HelmRelease owner: %w", err)
+	}
+	err := ctrl.NewControllerManagedBy(mgr).For(addonsLayer).Owns(hr).Complete(r)
+	// +kubebuilder:scaffold:builder
+	if err != nil {
+		return fmt.Errorf("unable to setup Reconciler with Manager: %w", err)
+	}
+	return nil
+}
+
+func managerClient(t *testing.T, scheme *runtime.Scheme, namespace string) client.Client {
+	config := kubeConfig(t)
+	mgr := createManager(t, config, scheme, namespace)
+	return mgr.GetClient()
+}
+
+func runtimeClient(t *testing.T, scheme *runtime.Scheme) client.Client {
+	config := kubeConfig(t)
 	client, err := client.New(config, client.Options{Scheme: scheme})
 	if err != nil {
 		t.Fatalf("Unable to create controller runtime client: %s", err)
@@ -85,10 +191,7 @@ func runtimeClient(t *testing.T, scheme *runtime.Scheme) client.Client {
 }
 
 func kubeCoreClient(t *testing.T) *kubernetes.Clientset {
-	config, err := kubeConfig(t)
-	if err != nil {
-		t.Fatalf("kubernetes config error: %s", err)
-	}
+	config := kubeConfig(t)
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		t.Fatalf("Unable to create Kubernetes API Clientset: %s", err)
@@ -173,6 +276,15 @@ func TestConnectToCluster(t *testing.T) {
 	}
 }
 
+func getAddonsLayer(t *testing.T, c client.Client, name string) *kraanscheme.AddonsLayer {
+	addonsLayer := &kraanscheme.AddonsLayer{}
+	key := client.ObjectKey{Name: name}
+	if err := c.Get(context.Background(), key, addonsLayer); err != nil {
+		t.Fatalf("unable to retrieve AddonsLayer '%s'", name)
+	}
+	return addonsLayer
+}
+
 func TestSingleApply(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	defer mockCtl.Finish()
@@ -191,7 +303,8 @@ func TestSingleApply(t *testing.T) {
 	// Values section of the microservice.yaml HelmRelease in the directory below.
 	sourcePath := "testdata/apply/single_release"
 	layerName := "test"
-	layerUID := types.UID("test-UID")
+	l := getAddonsLayer(t, client, layerName)
+	layerUID := l.ObjectMeta.UID
 	addonsLayer := fakeAddonsLayer(sourcePath, layerName, layerUID)
 
 	mockLayer := layers.NewMockLayer(mockCtl)
@@ -206,7 +319,7 @@ func TestSingleApply(t *testing.T) {
 	}
 }
 
-func TestPruneIsRequired(t *testing.T) {
+func TestDoubleApply(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	defer mockCtl.Finish()
 
@@ -222,10 +335,43 @@ func TestPruneIsRequired(t *testing.T) {
 
 	// This integration test can be forced to pass or fail at different stages by altering the
 	// Values section of the microservice.yaml HelmRelease in the directory below.
+	sourcePath := "testdata/apply/double_release"
+	layerName := "test"
+	l := getAddonsLayer(t, client, layerName)
+	layerUID := l.ObjectMeta.UID
+	addonsLayer := fakeAddonsLayer(sourcePath, layerName, layerUID)
+
+	mockLayer := layers.NewMockLayer(mockCtl)
+	mockLayer.EXPECT().GetName().Return(layerName).AnyTimes()
+	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
+	mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()
+	mockLayer.EXPECT().GetAddonsLayer().Return(addonsLayer).Times(2)
+
+	err = applier.Apply(mockLayer)
+	if err != nil {
+		t.Fatalf("LayerApplier.Apply returned an error: %s", err)
+	}
+}
+
+func TestPruneIsRequired(t *testing.T) {
+	mockCtl := gomock.NewController(t)
+	defer mockCtl.Finish()
+
+	logger := testlogr.TestLogger{T: t}
+	scheme := combinedScheme()
+	client := managerClient(t, scheme, "simple")
+
+	applier, err := NewApplier(client, logger, scheme)
+	if err != nil {
+		t.Fatalf("The NewApplier constructor returned an error: %s", err)
+	}
+	t.Logf("NewApplier returned (%T) %#v", applier, applier)
+
+	// This integration test can be forced to pass or fail at different stages by altering the
+	// Values section of the microservice.yaml HelmRelease in the directory below.
 	sourcePath := "testdata/apply/single_release"
 	layerName := "test"
-	layerUID := types.UID("test-UID")
-	addonsLayer := fakeAddonsLayer(sourcePath, layerName, layerUID)
+	addonsLayer := getAddonsLayer(t, client, layerName)
 
 	mockLayer := layers.NewMockLayer(mockCtl)
 	mockLayer.EXPECT().GetName().Return(layerName).AnyTimes()
@@ -239,6 +385,9 @@ func TestPruneIsRequired(t *testing.T) {
 	}
 	t.Logf("LayerApplier.PruneIsRequired returned %v", pruneRequired)
 	t.Logf("LayerApplier.PruneIsRequired returned %d hrs to prune", len(pruneHrs))
+	for _, hr := range pruneHrs {
+		t.Logf("LayerApplier.PruneIsRequired - '%s'", getLabel(hr))
+	}
 	if pruneRequired {
 		t.Fatalf("LayerApplier.PruneIsRequired returned %v when false was expected", pruneRequired)
 	}
@@ -263,11 +412,15 @@ func TestApplyContextTimeoutIntegration(t *testing.T) {
 	//coreClient, hrClient := kubeClients(t)
 	//baseContext := context.Background()
 	//timeoutContext, _ := context.WithTimeout(baseContext, 15*time.Second)
+	layerName := "test"
+	layerUID := types.UID("test-UID")
+	addonsLayer := fakeAddonsLayer(sourcePath, layerName, layerUID)
 
 	mockLayer := layers.NewMockLayer(mockCtl)
-	mockLayer.EXPECT().GetName().Return("testLayer").AnyTimes()
+	mockLayer.EXPECT().GetName().Return(layerName).AnyTimes()
 	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
 	mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()
+	mockLayer.EXPECT().GetAddonsLayer().Return(addonsLayer).Times(1)
 
 	err = applier.Apply(mockLayer)
 	if err != nil {

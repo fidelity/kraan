@@ -134,7 +134,7 @@ func createController(mgr manager.Manager) error {
 	err = r.SetupWithManager(mgr)
 	// +kubebuilder:scaffold:builder
 	if err != nil {
-		return fmt.Errorf("unable to setup Reconciler with Manager")
+		return fmt.Errorf("unable to setup Reconciler with Manager: %w", err)
 	}
 	return nil
 }

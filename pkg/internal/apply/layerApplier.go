@@ -171,12 +171,12 @@ func (a KubectlLayerApplier) getHelmReleases(layer layers.Layer) (foundHrs []*he
 func (a KubectlLayerApplier) getHelmRelease(hr *helmopv1.HelmRelease) (*helmopv1.HelmRelease, error) {
 	key, err := client.ObjectKeyFromObject(hr)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get an ObjectKey from HelmRelease '%s'", getLabel(hr))
+		return nil, fmt.Errorf("unable to get an ObjectKey from HelmRelease '%s': %w", getLabel(hr), err)
 	}
 	foundHr := &helmopv1.HelmRelease{}
 	err = a.client.Get(context.Background(), key, foundHr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to Get HelmRelease '%s'", getLabel(hr))
+		return nil, fmt.Errorf("failed to Get HelmRelease '%s': %w", getLabel(hr), err)
 	}
 	return foundHr, nil
 }
@@ -189,13 +189,13 @@ func (a KubectlLayerApplier) applyHelmReleases(layer layers.Layer, hrs []*helmop
 			// HelmRelease does not exist, create resource
 			err = a.client.Create(context.Background(), hr, &client.CreateOptions{})
 			if err != nil {
-				return fmt.Errorf("unable to Create HelmRelease '%s' on the target cluster", getLabel(hr))
+				return fmt.Errorf("unable to Create HelmRelease '%s' on the target cluster: %w", getLabel(hr), err)
 			}
 		} else {
 			// HelmRelease exists, update resource
 			err = a.client.Update(context.Background(), hr, &client.UpdateOptions{})
 			if err != nil {
-				return fmt.Errorf("unable to Update HelmRelease '%s' on the target cluster", getLabel(hr))
+				return fmt.Errorf("unable to Update HelmRelease '%s' on the target cluster: %w", getLabel(hr), err)
 			}
 		}
 	}
@@ -207,12 +207,12 @@ func (a KubectlLayerApplier) checkHelmReleases(layer layers.Layer, hrs []*helmop
 		a.logInfo("Checking HelmRelease for AddonsLayer", layer, "index", i, "helmRelease", hr)
 		key, err := client.ObjectKeyFromObject(hr)
 		if err != nil {
-			return fmt.Errorf("unable to get an ObjectKey from HelmRelease '%s'", getLabel(hr))
+			return fmt.Errorf("unable to get an ObjectKey from HelmRelease '%s': %w", getLabel(hr), err)
 		}
 		foundHr := &helmopv1.HelmRelease{}
 		err = a.client.Get(context.Background(), key, foundHr)
 		if err != nil {
-			return fmt.Errorf("failed to Get HelmRelease '%s'", getLabel(hr))
+			return fmt.Errorf("failed to Get HelmRelease '%s': %w", getLabel(hr), err)
 		}
 		fmt.Printf("Found HelmRelease '%s'\n", getLabel(hr))
 	}
@@ -252,18 +252,18 @@ func (a KubectlLayerApplier) checkSourcePath(layer layers.Layer) (sourceDir stri
 	info, err := os.Stat(sourceDir)
 	if os.IsNotExist(err) {
 		a.logDebug("source directory not found", layer)
-		return sourceDir, fmt.Errorf("source directory (%s) not found for AddonsLayer %s/%s",
-			sourceDir, "", layer.GetName())
+		return sourceDir, fmt.Errorf("source directory (%s) not found for AddonsLayer %s",
+			sourceDir, layer.GetName())
 	}
 	if os.IsPermission(err) {
 		a.logDebug("source directory read permission denied", layer)
-		return sourceDir, fmt.Errorf("read permission denied to source directory (%s) for AddonsLayer %s/%s",
-			sourceDir, "", layer.GetName())
+		return sourceDir, fmt.Errorf("read permission denied to source directory (%s) for AddonsLayer %s",
+			sourceDir, layer.GetName())
 	}
 	if err != nil {
 		a.logError(err, "error while checking source directory", layer)
-		return sourceDir, fmt.Errorf("error while checking source directory (%s) for AddonsLayer %s/%s",
-			sourceDir, "", layer.GetName())
+		return sourceDir, fmt.Errorf("error while checking source directory (%s) for AddonsLayer %s: %w",
+			sourceDir, layer.GetName(), err)
 	}
 	if !info.IsDir() {
 		// I'm not sure if this is an error, but I thought I should detect and log it
@@ -281,8 +281,8 @@ func (a KubectlLayerApplier) getSourceResources(layer layers.Layer) (hrs []*helm
 	//output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).Run()
 	output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).DryRun()
 	if err != nil {
-		return nil, fmt.Errorf("error from kubectl while parsing source directory (%s) for AddonsLayer %s/%s",
-			sourceDir, "", layer.GetName())
+		return nil, fmt.Errorf("error from kubectl while parsing source directory (%s) for AddonsLayer %s: %w",
+			sourceDir, layer.GetName(), err)
 	}
 
 	hrs, errz, err := a.decodeAddons(layer, output)
@@ -330,7 +330,7 @@ func (a KubectlLayerApplier) Prune(layer layers.Layer, pruneHrs []*helmopv1.Helm
 		//err := a.client.Delete(context.Background(), hr)
 		err := a.client.Delete(context.Background(), hr, client.PropagationPolicy(metav1.DeletePropagationBackground))
 		if err != nil {
-			return fmt.Errorf("unable to delete HelmRelease '%s' for AddonsLayer '%s'", getLabel(hr), layer.GetName())
+			return fmt.Errorf("unable to delete HelmRelease '%s' for AddonsLayer '%s': %w", getLabel(hr), layer.GetName(), err)
 		}
 	}
 	return nil

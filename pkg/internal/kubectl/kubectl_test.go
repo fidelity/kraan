@@ -1,4 +1,4 @@
-package kubectl // Xnolint:package // unit tests should be in same package as code under test
+package kubectl // nolint:package // unit tests should be in same package as code under test
 
 /*
 

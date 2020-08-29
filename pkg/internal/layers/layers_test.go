@@ -29,6 +29,8 @@ import (
 	"github.com/paulcarlton-ww/go-utils/pkg/goutils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/version"
+	fakediscovery "k8s.io/client-go/discovery/fake"
 	fakeK8s "k8s.io/client-go/kubernetes/fake"
 	k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -39,12 +41,14 @@ import (
 var (
 	testScheme = runtime.NewScheme()
 	// testCtx    = context.Background()
+	fakeK8sClient *fakeK8s.Clientset
 )
 
 const (
 	holdSet       = "hold-set"
-	oneCondition  = "k8s-pending"
+	k8sPending    = "k8s-pending"
 	emptyStatus   = "empty-status"
+	k8sv16        = "k8s-v16"
 	maxConditions = "max-conditions"
 	layersData    = "testdata/layersdata.json"
 	versionOne    = "0.1.01"
@@ -129,7 +133,7 @@ func getLayer(layerName, testDataFileName string) (Layer, error) { // nolint:unp
 	*/
 	client := fake.NewFakeClientWithScheme(testScheme, layers)
 	// unable to get pass layers and crd definition to fake k8sclient, but not a blocker at this stage
-	fakeK8sClient := fakeK8s.NewSimpleClientset()
+	fakeK8sClient = fakeK8s.NewSimpleClientset()
 	data := getFromList(layerName, layers)
 	if data == nil {
 		return nil, fmt.Errorf("failed to find item: %s in test data", layerName)
@@ -467,7 +471,7 @@ func TestSetStatus(t *testing.T) { // nolint:funlen // ok
 
 	tests := []testsData{{
 		name:      "set status adding a condition when there is an existing condition",
-		layerName: oneCondition,
+		layerName: k8sPending,
 		status:    kraanv1alpha1.PruningCondition,
 		reason:    kraanv1alpha1.AddonsLayerPruningReason,
 		message:   kraanv1alpha1.AddonsLayerPruningMsg,
@@ -505,7 +509,7 @@ func TestSetStatus(t *testing.T) { // nolint:funlen // ok
 			},
 		}}, {
 		name:      "set status when no existing status is same",
-		layerName: oneCondition,
+		layerName: k8sPending,
 		status:    kraanv1alpha1.K8sVersionCondition,
 		reason:    kraanv1alpha1.AddonsLayerK8sVersionReason,
 		message:   kraanv1alpha1.AddonsLayerK8sVersionMsg,
@@ -601,5 +605,48 @@ func TestSetStatus(t *testing.T) { // nolint:funlen // ok
 			t.Fatalf("test: %s, failed, error: %s", test.name, err.Error())
 		}
 		t.Logf("test: %s, successful", test.name)
+	}
+}
+
+func TestCheckK8sVersion(t *testing.T) {
+	type testsData struct {
+		name       string
+		layerName  string
+		k8sVersion string
+		expected   bool
+	}
+
+	tests := []testsData{{
+		name:       "check k8s version v1.18 required, cluster at v1.16",
+		layerName:  k8sPending,
+		k8sVersion: "v1.16",
+		expected:   true,
+	}, {
+		name:       "check k8s version, v1.16 required. cluster at v1.16",
+		layerName:  k8sv16,
+		k8sVersion: "v1.16",
+		expected:   true,
+	}, {
+		name:       "check k8s version, v1.16 required. cluster at v1.15",
+		layerName:  k8sv16,
+		k8sVersion: "v1.18",
+		expected:   false,
+	},
+	}
+
+	for _, test := range tests {
+		l, e := getLayer(test.layerName, layersData)
+		if e != nil {
+			t.Fatalf("test: %s, failed to create layer, error: %s", test.name, e.Error())
+		}
+		fakeD, ok := fakeK8sClient.Discovery().(*fakediscovery.FakeDiscovery)
+		if !ok {
+			t.Fatalf("test: %s, failed, couldn't convert Discovery() to *FakeDiscovery", test.name)
+		}
+		fakeD.FakedServerVersion = &version.Info{GitVersion: test.k8sVersion}
+		result := l.CheckK8sVersion()
+		if result != test.expected {
+			t.Fatalf("test: %s, failed, wrong result, Actual: %t, Expected: %t", test.name, result, test.expected)
+		}
 	}
 }

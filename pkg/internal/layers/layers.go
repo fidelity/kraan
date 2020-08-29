@@ -148,7 +148,7 @@ func (l *KraanLayer) CheckK8sVersion() bool {
 		l.SetDelayedRequeue()
 		return false
 	}
-	return versionInfo.String() > l.GetRequiredK8sVersion()
+	return l.GetRequiredK8sVersion() >= versionInfo.String()
 }
 
 func (l *KraanLayer) trimConditions() {

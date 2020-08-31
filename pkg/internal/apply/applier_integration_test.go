@@ -8,23 +8,19 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
-	kraanscheme "github.com/fidelity/kraan/pkg/api/v1alpha1"
+	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/internal/layers"
 
-	helmopscheme "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
-	//hrclientset "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned"
-	//hrscheme "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/scheme"
+	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
 
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	types "k8s.io/apimachinery/pkg/types"
-
-	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	types "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -37,13 +33,13 @@ import (
 
 func combinedScheme() *runtime.Scheme {
 	intScheme := runtime.NewScheme()
-	_ = k8sscheme.AddToScheme(intScheme)    // nolint:errcheck // ok
-	_ = kraanscheme.AddToScheme(intScheme)  // nolint:errcheck // ok
-	_ = helmopscheme.AddToScheme(intScheme) // nolint:errcheck // ok
+	_ = k8sscheme.AddToScheme(intScheme)     // nolint:errcheck // ok
+	_ = kraanv1alpha1.AddToScheme(intScheme) // nolint:errcheck // ok
+	_ = helmopv1.AddToScheme(intScheme)      // nolint:errcheck // ok
 	return intScheme
 }
 
-func kubeConfigFromFile(t *testing.T) (*rest.Config, error) {
+func kubeConfigFromFile(t *testing.T) (config *rest.Config, ok bool) {
 	kubeconfig := os.Getenv("KUBECONFIG")
 	if len(kubeconfig) == 0 {
 		kubeconfig = filepath.Join(os.Getenv("HOME"), ".kube", "config")
@@ -53,25 +49,28 @@ func kubeConfigFromFile(t *testing.T) (*rest.Config, error) {
 	t.Logf("Checking for KUBECONFIG file '%s'", kubeconfig)
 	info, err := os.Stat(kubeconfig)
 	if err != nil {
-		return nil, err
+		t.Logf("unable to stat KUBECONFIG file '%s': %s", kubeconfig, err)
+		return nil, false
 	}
 	if !info.Mode().IsRegular() {
-		return nil, fmt.Errorf("KUBECONFIG '%s' is not a configuration file", kubeconfig)
+		t.Logf("KUBECONFIG '%s' is not a configuration file", kubeconfig)
+		return nil, false
 	}
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create a Kubernetes Config from KUBECONFIG '%s'", kubeconfig)
+		t.Logf("unable to create a Kubernetes Config from KUBECONFIG '%s'", kubeconfig)
+		return nil, false
 	}
-	return config, nil
+	return config, true
 }
 
 func kubeConfig(t *testing.T) *rest.Config {
-	config, err := kubeConfigFromFile(t)
-	if err == nil {
+	config, ok := kubeConfigFromFile(t)
+	if ok {
 		return config
 	}
-	t.Logf("no KUBECONFIG from file - using InClusterConfig: %s", err)
-	config, err = rest.InClusterConfig()
+	t.Logf("no KUBECONFIG from file - using InClusterConfig")
+	config, err := rest.InClusterConfig()
 	if err != nil {
 		t.Fatalf("kubernetes config error: %s", err)
 	}
@@ -94,23 +93,21 @@ func createManager(t *testing.T, config *rest.Config, scheme *runtime.Scheme, na
 		t.Fatalf("unable to start manager: %s", err)
 	}
 
-	if err := createController(t, mgr); err != nil {
-		t.Fatalf("unable to create controller: %s", err)
-	}
+	createController(t, mgr)
 
 	go startManager(t, mgr)
 
 	return mgr
 }
 
-func createController(t *testing.T, mgr manager.Manager) error {
+func createController(t *testing.T, mgr manager.Manager) {
 	r := createReconciler(t, mgr.GetConfig(), mgr.GetClient(), mgr.GetScheme())
 	err := r.setupWithManager(mgr)
 	// +kubebuilder:scaffold:builder
 	if err != nil {
-		return fmt.Errorf("unable to setup Reconciler with Manager")
+		t.Fatalf("unable to setup Reconciler with Manager")
 	}
-	return nil
+	return
 }
 
 type fakeReconciler struct {
@@ -138,7 +135,7 @@ func createReconciler(t *testing.T, config *rest.Config, client client.Client, s
 func (r *fakeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := r.Context
 	name := req.NamespacedName
-	addonsLayer := &kraanscheme.AddonsLayer{}
+	addonsLayer := &kraanv1alpha1.AddonsLayer{}
 	if err := r.Get(ctx, name, addonsLayer); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -147,7 +144,7 @@ func (r *fakeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 }
 
 func indexHelmReleaseByOwner(o runtime.Object) []string {
-	hr, ok := o.(*helmopscheme.HelmRelease)
+	hr, ok := o.(*helmopv1.HelmRelease)
 	if !ok {
 		return nil
 	}
@@ -155,15 +152,15 @@ func indexHelmReleaseByOwner(o runtime.Object) []string {
 	if owner == nil {
 		return nil
 	}
-	if owner.APIVersion != kraanscheme.GroupVersion.String() || owner.Kind != "AddonsLayer" {
+	if owner.APIVersion != kraanv1alpha1.GroupVersion.String() || owner.Kind != "AddonsLayer" {
 		return nil
 	}
 	return []string{owner.Name}
 }
 
 func (r *fakeReconciler) setupWithManager(mgr ctrl.Manager) error {
-	addonsLayer := &kraanscheme.AddonsLayer{}
-	hr := &helmopscheme.HelmRelease{}
+	addonsLayer := &kraanv1alpha1.AddonsLayer{}
+	hr := &helmopv1.HelmRelease{}
 	if err := mgr.GetFieldIndexer().IndexField(hr, ".owner", indexHelmReleaseByOwner); err != nil {
 		return fmt.Errorf("failed setting up FieldIndexer for HelmRelease owner: %w", err)
 	}
@@ -199,59 +196,6 @@ func kubeCoreClient(t *testing.T) *kubernetes.Clientset {
 	return clientset
 }
 
-func fakeAddonsLayer(sourcePath, layerName string, layerUID types.UID) *kraanscheme.AddonsLayer {
-	kind := "AddonsLayer"
-	version := "v1alpha1"
-	typeMeta := metav1.TypeMeta{
-		Kind:       kind,
-		APIVersion: version,
-	}
-	now := metav1.Time{Time: time.Now()}
-	layerMeta := metav1.ObjectMeta{
-		Name:              layerName,
-		UID:               layerUID,
-		ResourceVersion:   version,
-		Generation:        1,
-		CreationTimestamp: now,
-		ClusterName:       "TestingCluster",
-	}
-	sourceSpec := kraanscheme.SourceSpec{
-		Name: "TestingSource",
-		Path: sourcePath,
-	}
-	layerPreReqs := kraanscheme.PreReqs{
-		K8sVersion: "1.15.3",
-		//K8sVersion string `json:"k8sVersion"`
-		//DependsOn []string `json:"dependsOn,omitempty"`
-	}
-	layerSpec := kraanscheme.AddonsLayerSpec{
-		Source:  sourceSpec,
-		PreReqs: layerPreReqs,
-		Hold:    false,
-		Version: "v1alpha1",
-		//Source SourceSpec `json:"source"`
-		//PreReqs PreReqs `json:"prereqs,omitempty"`
-		//Hold bool `json:"hold,omitempty"`
-		//Interval metav1.Duration `json:"interval"`
-		//Timeout *metav1.Duration `json:"timeout,omitempty"`
-		//Version string `json:"version"`
-	}
-	layerStatus := kraanscheme.AddonsLayerStatus{
-		State:   "Testing",
-		Version: "v1alpha1",
-		//Conditions []Condition `json:"conditions,omitempty"`
-		//State string `json:"state,omitempty"`
-		//Version string `json:"version,omitempty"`
-	}
-	addonsLayer := &kraanscheme.AddonsLayer{
-		TypeMeta:   typeMeta,
-		ObjectMeta: layerMeta,
-		Spec:       layerSpec,
-		Status:     layerStatus,
-	}
-	return addonsLayer
-}
-
 func TestConnectToCluster(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	defer mockCtl.Finish()
@@ -276,8 +220,8 @@ func TestConnectToCluster(t *testing.T) {
 	}
 }
 
-func getAddonsLayer(t *testing.T, c client.Client, name string) *kraanscheme.AddonsLayer {
-	addonsLayer := &kraanscheme.AddonsLayer{}
+func getAddonsLayer(t *testing.T, c client.Client, name string) *kraanv1alpha1.AddonsLayer {
+	addonsLayer := &kraanv1alpha1.AddonsLayer{}
 	key := client.ObjectKey{Name: name}
 	if err := c.Get(context.Background(), key, addonsLayer); err != nil {
 		t.Fatalf("unable to retrieve AddonsLayer '%s'", name)

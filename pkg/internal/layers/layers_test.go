@@ -1,4 +1,4 @@
-package layers // nolint:package // unit tests should be in same package as code under test
+package layers
 
 /*
 
@@ -30,7 +30,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	fakeK8s "k8s.io/client-go/kubernetes/fake"
-	k8sscheme "k8s.io/client-go/kubernetes/scheme"
+
+	//k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
@@ -53,7 +54,8 @@ const (
 )
 
 func init() {
-	_ = k8sscheme.AddToScheme(testScheme)     // nolint:errcheck // ok
+	_ = corev1.AddToScheme(testScheme) // nolint:errcheck // ok
+	//_ = k8sscheme.AddToScheme(testScheme)     // nolint:errcheck // ok
 	_ = kraanv1alpha1.AddToScheme(testScheme) // nolint:errcheck // ok
 }
 

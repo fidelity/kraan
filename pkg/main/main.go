@@ -21,19 +21,21 @@ import (
 	"net/http"
 	"os"
 
+	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
+	"github.com/fidelity/kraan/pkg/controllers"
+
+	// +kubebuilder:scaffold:imports
+
+	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
+
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+
 	ctrl "sigs.k8s.io/controller-runtime"
 	_ "sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-
-	hrscheme "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/scheme"
-
-	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
-	"github.com/fidelity/kraan/pkg/controllers"
-	// +kubebuilder:scaffold:imports
 )
 
 var (
@@ -42,9 +44,10 @@ var (
 )
 
 func init() {
-	_ = clientgoscheme.AddToScheme(scheme) // nolint:errcheck // ok
-	_ = kraanv1alpha1.AddToScheme(scheme)  // nolint:errcheck // ok
-	_ = hrscheme.AddToScheme(scheme)       // nolint:errcheck // ok
+	_ = corev1.AddToScheme(scheme) // nolint:errcheck // ok
+	//_ = clientgoscheme.AddToScheme(scheme) // nolint:errcheck // ok
+	_ = helmopv1.AddToScheme(scheme)      // nolint:errcheck // ok
+	_ = kraanv1alpha1.AddToScheme(scheme) // nolint:errcheck // ok
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -134,7 +137,7 @@ func createController(mgr manager.Manager) error {
 	err = r.SetupWithManager(mgr)
 	// +kubebuilder:scaffold:builder
 	if err != nil {
-		return fmt.Errorf("unable to setup Reconciler with Manager")
+		return fmt.Errorf("unable to setup Reconciler with Manager: %w", err)
 	}
 	return nil
 }

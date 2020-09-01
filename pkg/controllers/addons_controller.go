@@ -200,7 +200,7 @@ func indexHelmReleaseByOwner(o runtime.Object) []string {
 // SetupWithManager is used to setup the controller
 func (r *AddonsLayerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	addonsLayer := &kraanv1alpha1.AddonsLayer{}
-	hr := &kraanv1alpha1.AddonsLayer{}
+	hr := &helmopv1.HelmRelease{}
 	_, err := ctrl.NewControllerManagedBy(mgr).
 		For(addonsLayer).
 		/*

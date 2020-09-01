@@ -187,6 +187,7 @@ linters:
     - funlen
     - gocognit
     - gocyclo
+    - goerr113
     - goheader
     - goimports
     - golint
@@ -216,14 +217,13 @@ linters:
     - unparam
     - whitespace
   disable:
-    - gci
     - gochecknoglobals
     - gochecknoinits
+    - gci
     - goconst
     - gocritic
     - godot
     - godox
-    - goerr113
     - gofmt
     - gofumpt
     - gomnd
@@ -240,19 +240,18 @@ issues:
   # excluded by default patterns execute `golangci-lint run --help`
   exclude:
     - ^Top level comment should end in a period
+    - ^do not define dynamic errors, use wrapped static errors instead
 
   # Excluding configuration per-path, per-linter, per-text and per-source
   exclude-rules:
     - path: pkg/
       linters:
         - dupl
-        - gci
         - gochecknoglobals
         - gochecknoinits
         - goconst
         - gocritic
         - godot
-        - goerr113
         - gofumpt
         - gomnd
         - gosec

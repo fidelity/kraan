@@ -1,20 +1,22 @@
-package apply // nolint:package // unittest code should be in same package
+package apply
 
 import (
 	"testing"
+	"time"
 
-	kraanscheme "github.com/fidelity/kraan/pkg/api/v1alpha1"
+	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/internal/kubectl"
 
-	helmopscheme "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
-	//hrscheme "github.com/fluxcd/helm-operator/pkg/client/clientset/versioned/scheme"
+	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
 
 	"github.com/go-logr/logr"
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	k8sscheme "k8s.io/client-go/kubernetes/scheme"
+	types "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -23,9 +25,62 @@ var (
 )
 
 func init() {
-	_ = k8sscheme.AddToScheme(testScheme)    // nolint:errcheck // ok
-	_ = kraanscheme.AddToScheme(testScheme)  // nolint:errcheck // ok
-	_ = helmopscheme.AddToScheme(testScheme) // nolint:errcheck // ok
+	_ = corev1.AddToScheme(testScheme)        // nolint:errcheck // ok
+	_ = kraanv1alpha1.AddToScheme(testScheme) // nolint:errcheck // ok
+	_ = helmopv1.AddToScheme(testScheme)      // nolint:errcheck // ok
+}
+
+func fakeAddonsLayer(sourcePath, layerName string, layerUID types.UID) *kraanv1alpha1.AddonsLayer {
+	kind := "AddonsLayer"
+	version := "v1alpha1"
+	typeMeta := metav1.TypeMeta{
+		Kind:       kind,
+		APIVersion: version,
+	}
+	now := metav1.Time{Time: time.Now()}
+	layerMeta := metav1.ObjectMeta{
+		Name:              layerName,
+		UID:               layerUID,
+		ResourceVersion:   version,
+		Generation:        1,
+		CreationTimestamp: now,
+		ClusterName:       "TestingCluster",
+	}
+	sourceSpec := kraanv1alpha1.SourceSpec{
+		Name: "TestingSource",
+		Path: sourcePath,
+	}
+	layerPreReqs := kraanv1alpha1.PreReqs{
+		K8sVersion: "1.15.3",
+		//K8sVersion string `json:"k8sVersion"`
+		//DependsOn []string `json:"dependsOn,omitempty"`
+	}
+	layerSpec := kraanv1alpha1.AddonsLayerSpec{
+		Source:  sourceSpec,
+		PreReqs: layerPreReqs,
+		Hold:    false,
+		Version: "v1alpha1",
+		//Source SourceSpec `json:"source"`
+		//PreReqs PreReqs `json:"prereqs,omitempty"`
+		//Hold bool `json:"hold,omitempty"`
+		//Interval metav1.Duration `json:"interval"`
+		//Timeout *metav1.Duration `json:"timeout,omitempty"`
+		//Version string `json:"version"`
+	}
+	layerStatus := kraanv1alpha1.AddonsLayerStatus{
+		State:   "Testing",
+		Version: "v1alpha1",
+		//Conditions []Condition `json:"conditions,omitempty"`
+		//State string `json:"state,omitempty"`
+		//Version string `json:"version,omitempty"`
+	}
+	addonsLayer := &kraanv1alpha1.AddonsLayer{
+		TypeMeta:   typeMeta,
+		ObjectMeta: layerMeta,
+		Spec:       layerSpec,
+		Status:     layerStatus,
+	}
+	return addonsLayer
 }
 
 func TestNewApplier(t *testing.T) {

@@ -1,4 +1,4 @@
-package kubectl // Xnolint:package // unit tests should be in same package as code under test
+package kubectl
 
 /*
 
@@ -23,10 +23,15 @@ import (
 	"strings"
 	"testing"
 
+	mocklogr "github.com/fidelity/kraan/pkg/internal/mocks/logr"
+
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"
+)
 
-	mocklogr "github.com/fidelity/kraan/pkg/internal/mocks/logr"
+var (
+	errFromExec         = fmt.Errorf("error from executable")
+	errExecFileNotFound = fmt.Errorf("executable file not found in $PATH")
 )
 
 func TestNewKubectl(t *testing.T) {
@@ -100,7 +105,7 @@ func TestFakeKubectlCommandNotFoundInPath(t *testing.T) {
 
 	execProvider = BaseFakeExecProvider().setFindOnPathFunc(
 		func(file string) (string, error) {
-			return "", fmt.Errorf("exec \"%s\": executable file not found in $PATH", file)
+			return "", errExecFileNotFound
 		},
 	)
 
@@ -147,7 +152,7 @@ func TestKubectlCommandNotFoundInPath(t *testing.T) {
 	execProvider = mockExecProvider
 
 	// Verifies that the "findOnPath" method was called once with the exact expected string input as the parameter
-	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return("MOCKED", fmt.Errorf("MOCK exec \"%s\": executable file not found in $PATH", kubectlCmd)).Times(1)
+	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return("MOCKED", errExecFileNotFound).Times(1)
 
 	logger := testlogr.TestLogger{T: t}
 	k, err := NewKubectl(logger)
@@ -348,7 +353,7 @@ func TestKubectlApplyRun(t *testing.T) {
 	expectedOutput := ""
 	// Verifies that the "findOnPath" method was called once with the exact expected string input as the parameter
 	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return(fakeCommandPath, nil).Times(1)
-	mockExecProvider.EXPECT().execCmd(fakeCommandPath, expectedArgs).Return([]byte(expectedOutput), fmt.Errorf("MOCK error executing command")).Times(1)
+	mockExecProvider.EXPECT().execCmd(fakeCommandPath, expectedArgs).Return([]byte(expectedOutput), errFromExec).Times(1)
 
 	logger := testlogr.TestLogger{T: t}
 	k, err := NewKubectl(logger)

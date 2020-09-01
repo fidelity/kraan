@@ -1,12 +1,12 @@
 apiVersion: helm.fluxcd.io/v1
 kind: HelmRelease
 metadata:
-  name: microservice
+  name: microservice-two
   namespace: simple
   annotations:
     fluxcd.io/automated: "false"
 spec:
-  releaseName: single-test
+  releaseName: double-test
   test:
     enable: true
     ignoreFailures: false
@@ -19,12 +19,12 @@ spec:
     preHookBackoffLimit: 1
     preHookActiveDeadlineSeconds: 60
     preHookRestartPolicy: Never
-    preHookDelaySeconds: 10
+    preHookDelaySeconds: 5
     preHookSucceed: "true"
     testHookBackoffLimit: 1
     testHookActiveDeadlineSeconds: 60
     testHookRestartPolicy: Never
-    testHookDelaySeconds: 10
+    testHookDelaySeconds: 5
     testHookSucceed: "true"
     podinfo:
       image:
@@ -33,4 +33,4 @@ spec:
       service:
         type: NodePort
       replicaCount: 1
-      message: Single Microservice Test
+      message: Double Microservice Test

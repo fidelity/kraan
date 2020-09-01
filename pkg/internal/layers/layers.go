@@ -33,12 +33,7 @@ type Layer interface {
 
 	IsHold() bool
 	SetHold()
-	IsPruningRequired() bool
-	Prune() error
 	DependenciesDeployed() bool
-	IsApplyRequired() bool
-	SuccessfullyApplied() bool
-	Apply() error
 
 	GetStatus() string
 	GetName() string
@@ -218,11 +213,6 @@ func (l *KraanLayer) IsHold() bool {
 	return l.addonsLayer.Spec.Hold
 }
 
-// IsPruningRequired checks if there are any objects owned by the addons layer on the cluster that need to be pruned.
-func (l *KraanLayer) IsPruningRequired() bool {
-	return false
-}
-
 func getNameVersion(nameVersion string) (string, string) {
 	parts := strings.Split(nameVersion, "@")
 	if len(parts) < 2 {
@@ -262,29 +252,6 @@ func (l *KraanLayer) DependenciesDeployed() bool {
 		}
 	}
 	return true
-}
-
-// IsApplyRequired checks if an apply is required.
-func (l *KraanLayer) IsApplyRequired() bool {
-	// Not yet implemented, for now return true if it is not in applying status otherrwise true
-	// This forces the processing to set applying status wait for dependencies and the apply
-	// at which point the applying condition is set so we can progress
-	return l.GetStatus() != kraanv1alpha1.ApplyingCondition && l.GetStatus() != kraanv1alpha1.DeployedCondition
-}
-
-// SuccessfullyApplied checks if all Helm Releases in a layer have beem successfully applied.
-func (l *KraanLayer) SuccessfullyApplied() bool {
-	return true
-}
-
-// Apply addons layer objects to cluster.
-func (l *KraanLayer) Apply() error {
-	return nil
-}
-
-// Prune deletes any objects owned by the addon layer on the cluster that are not defined in the addon layer anymore.
-func (l *KraanLayer) Prune() error {
-	return nil
 }
 
 // IsUpdated returns true if an update to the AddonsLayer data has occurred.

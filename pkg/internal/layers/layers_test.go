@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/version"
 	fakediscovery "k8s.io/client-go/discovery/fake"
 	fakeK8s "k8s.io/client-go/kubernetes/fake"
+	fakeTest "k8s.io/client-go/testing"
 
 	//k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -71,34 +72,6 @@ func TestCreateLayer(t *testing.T) {
 
 }
 
-/*
-func getCrdFromFile(fileName string) (*apiextypes.CustomResourceDefinition, error) {
-	buffer, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		return nil, err
-	}
-	crd := &apiextypes.CustomResourceDefinition{}
-	err = yaml.Unmarshal(buffer, crd)
-	if err != nil {
-		return nil, err
-	}
-	return crd, nil
-}
-*/
-/*
-func getLayerFromFile(fileName string) (*kraanv1alpha1.AddonsLayer, error) {
-	buffer, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		return nil, err
-	}
-	addonsLayer := &kraanv1alpha1.AddonsLayer{}
-	err = json.Unmarshal(buffer, addonsLayer)
-	if err != nil {
-		return nil, err
-	}
-	return addonsLayer, nil
-}
-*/
 func getLayersFromFile(fileName string) (*kraanv1alpha1.AddonsLayerList, error) {
 	buffer, err := ioutil.ReadFile(fileName)
 	if err != nil {
@@ -127,14 +100,7 @@ func getLayer(layerName, testDataFileName string) (Layer, error) { // nolint:unp
 	if err != nil {
 		return nil, err
 	}
-	/*
-		crd, err := getCrdFromFile("../../../config/crd/bases/kraan.io_addonslayers.yaml") // nolint:
-		if err != nil {
-			return nil, err
-		}
-	*/
 	client := fake.NewFakeClientWithScheme(testScheme, layers)
-	// unable to get pass layers and crd definition to fake k8sclient, but not a blocker at this stage
 	fakeK8sClient = fakeK8s.NewSimpleClientset()
 	data := getFromList(layerName, layers)
 	if data == nil {
@@ -616,6 +582,7 @@ func TestCheckK8sVersion(t *testing.T) {
 		layerName  string
 		k8sVersion string
 		expected   bool
+		errorFunc  fakeTest.ReactionFunc
 	}
 
 	tests := []testsData{{
@@ -633,6 +600,16 @@ func TestCheckK8sVersion(t *testing.T) {
 		layerName:  k8sv16,
 		k8sVersion: "v1.18",
 		expected:   false,
+	}, {
+		name:       "check error getting server version",
+		layerName:  k8sv16,
+		k8sVersion: "v1.18",
+		expected:   true, // This test should return false and an error
+		//but there seems to be a bug in the fake testing impementation,
+		// see https://github.com/kubernetes/client-go/issues/858
+		errorFunc: func(action fakeTest.Action) (handled bool, ret runtime.Object, err error) {
+			return true, nil, fmt.Errorf("error")
+		},
 	},
 	}
 
@@ -645,10 +622,16 @@ func TestCheckK8sVersion(t *testing.T) {
 		if !ok {
 			t.Fatalf("test: %s, failed, couldn't convert Discovery() to *FakeDiscovery", test.name)
 		}
-		fakeD.FakedServerVersion = &version.Info{GitVersion: test.k8sVersion}
+		if test.errorFunc != nil {
+			fakeD.FakedServerVersion = nil
+			fakeD.Fake.AddReactor("get", "version", test.errorFunc)
+		} else {
+			fakeD.FakedServerVersion = &version.Info{GitVersion: test.k8sVersion}
+		}
 		result := l.CheckK8sVersion()
 		if result != test.expected {
 			t.Fatalf("test: %s, failed, wrong result, Actual: %t, Expected: %t", test.name, result, test.expected)
 		}
+		t.Logf("test: %s, successful", test.name)
 	}
 }

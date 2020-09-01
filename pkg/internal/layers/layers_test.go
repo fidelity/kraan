@@ -50,12 +50,15 @@ const (
 	holdSet       = "hold-set"
 	k8sPending    = "k8s-pending"
 	emptyStatus   = "empty-status"
+	noDepends     = "no-depends"
+	oneDepends    = "one-depends"
+	twoDepends    = "two-depends"
 	k8sv16        = "k8s-v16"
 	maxConditions = "max-conditions"
 	layersData    = "testdata/layersdata.json"
 	versionOne    = "0.1.01"
-	//layersData1 = "testdata/layersdata1.json"
-	//layersData2 = "testdata/layersdata2.json"
+	layersData1   = "testdata/layersdata1.json"
+	layersData2   = "testdata/layersdata2.json"
 )
 
 func init() {
@@ -94,7 +97,7 @@ func getFromList(name string, layerList *kraanv1alpha1.AddonsLayerList) *kraanv1
 	return nil
 }
 
-func getLayer(layerName, testDataFileName string) (Layer, error) { // nolint:unparam // ok
+func getLayer(layerName, testDataFileName string) (Layer, error) {
 	logger := fakeLogger()
 	layers, err := getLayersFromFile(testDataFileName)
 	if err != nil {
@@ -629,6 +632,55 @@ func TestCheckK8sVersion(t *testing.T) {
 			fakeD.FakedServerVersion = &version.Info{GitVersion: test.k8sVersion}
 		}
 		result := l.CheckK8sVersion()
+		if result != test.expected {
+			t.Fatalf("test: %s, failed, wrong result, Actual: %t, Expected: %t", test.name, result, test.expected)
+		}
+		t.Logf("test: %s, successful", test.name)
+	}
+}
+
+func TestDependenciesDeployed(t *testing.T) {
+	type testsData struct {
+		name       string
+		layerName  string
+		layersData string
+		expected   bool
+	}
+
+	tests := []testsData{{
+		name:       "check dependencies with no dependsOn",
+		layerName:  noDepends,
+		layersData: layersData1,
+		expected:   true,
+	}, {
+		name:       "check dependencies with single dependsOn that is deployed",
+		layerName:  oneDepends,
+		layersData: layersData1,
+		expected:   true,
+	}, {
+		name:       "check dependencies with two dependsOn, both deployed",
+		layerName:  twoDepends,
+		layersData: layersData1,
+		expected:   true,
+	}, {
+		name:       "check dependencies with single dependsOn that is not deployed",
+		layerName:  oneDepends,
+		layersData: layersData2,
+		expected:   false,
+	}, {
+		name:       "check dependencies with two dependsOn, second not deployed",
+		layerName:  twoDepends,
+		layersData: layersData2,
+		expected:   false,
+	},
+	}
+
+	for _, test := range tests {
+		l, e := getLayer(test.layerName, test.layersData)
+		if e != nil {
+			t.Fatalf("test: %s, failed to create layer, error: %s", test.name, e.Error())
+		}
+		result := l.DependenciesDeployed()
 		if result != test.expected {
 			t.Fatalf("test: %s, failed, wrong result, Actual: %t, Expected: %t", test.name, result, test.expected)
 		}

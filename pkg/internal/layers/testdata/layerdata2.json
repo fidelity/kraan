@@ -23,30 +23,6 @@
         "conditions": [
             {
                 "lastTransitionTime": "2020-08-26T13:10:13Z",
-                "message": "Layer: mgmt, current state: ApplyPending.",
-                "reason": "waiting for layer: mgmt, version: 1.16-fideks-0.0.79 to be applied.",
-                "status": "True",
-                "type": "ApplyPending",
-                "version": "1.16-fideks-0.0.79"
-            },
-            {
-                "lastTransitionTime": "2020-08-26T13:10:13Z",
-                "message": "Layer: mgmt, current state: Applying.",
-                "reason": "waiting for layer: mgmt, version: 1.16-fideks-0.0.79 to be applied.",
-                "status": "True",
-                "type": "ApplyPending",
-                "version": "1.16-fideks-0.0.79"
-            },
-            {
-                "lastTransitionTime": "2020-08-26T13:10:13Z",
-                "message": "The applying status means the manager is either applying the yaml filesor waiting for the HelmReleases to successfully deploy.",
-                "reason": "AddonsLayer is being applied",
-                "status": "True",
-                "type": "Applying",
-                "version": "1.16-fideks-0.0.79"
-            },
-            {
-                "lastTransitionTime": "2020-08-26T13:10:13Z",
                 "reason": "AddonsLayer is Deployed",
                 "status": "True",
                 "type": "Deployed",

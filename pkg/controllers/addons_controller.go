@@ -77,6 +77,9 @@ func (r *AddonsLayerReconciler) getK8sClient() kubernetes.Interface {
 func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error {
 	utils.Log(r.Log, 1, 1, "processing", "Name", l.GetName(), "Status", l.GetStatus())
 
+	ctx := r.Context
+	applier := r.Applier
+
 	if l.IsHold() {
 		l.SetHold()
 		return nil
@@ -88,30 +91,42 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error {
 		return nil
 	}
 
-	if l.IsPruningRequired() {
+	pruneIsRequired, hrs, err := applier.PruneIsRequired(ctx, l)
+	if err != nil {
+		// TODO - we might want to add some sort of error handling here
+		return err
+	} else if pruneIsRequired {
 		l.SetStatusPruning()
-		if err := l.Prune(); err != nil {
-			return err
+		if pruneErr := applier.Prune(ctx, l, hrs); err != nil {
+			return pruneErr
 		}
 		l.SetDelayedRequeue()
 		return nil
 	}
 
-	if l.IsApplyRequired() {
+	applyIsRequired, err := applier.ApplyIsRequired(ctx, l)
+	if err != nil {
+		// TODO - we might want to add some sort of error handling here
+		return err
+	} else if applyIsRequired {
 		if !l.DependenciesDeployed() {
 			l.SetDelayedRequeue()
 			return nil
 		}
 
 		l.SetStatusApplying()
-		if err := l.Apply(); err != nil {
-			return err
+		if applyErr := applier.Apply(ctx, l); err != nil {
+			return applyErr
 		}
 		l.SetDelayedRequeue()
 		return nil
 	}
 
-	if l.SuccessfullyApplied() {
+	applyWasSuccessful, err := applier.ApplyWasSuccessful(ctx, l)
+	if err != nil {
+		// TODO - we might want to add some sort of error handling here
+		return err
+	} else if applyWasSuccessful {
 		l.SetStatusDeployed()
 	}
 	return nil

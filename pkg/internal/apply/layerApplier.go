@@ -35,11 +35,11 @@ var (
 
 // LayerApplier defines methods for managing the Addons within an AddonLayer in a cluster.
 type LayerApplier interface {
-	Apply(layer layers.Layer) (err error)
-	Prune(layer layers.Layer, pruneHrs []*helmopv1.HelmRelease) (err error)
-	PruneIsRequired(layer layers.Layer) (pruneRequired bool, pruneHrs []*helmopv1.HelmRelease, err error)
-	ApplyIsRequired(layer layers.Layer) (applyIsRequired bool, err error)
-	ApplyWasSuccessful(layer layers.Layer) (applyIsRequired bool, err error)
+	Apply(ctx context.Context, layer layers.Layer) (err error)
+	Prune(ctx context.Context, layer layers.Layer, pruneHrs []*helmopv1.HelmRelease) (err error)
+	PruneIsRequired(ctx context.Context, layer layers.Layer) (pruneRequired bool, pruneHrs []*helmopv1.HelmRelease, err error)
+	ApplyIsRequired(ctx context.Context, layer layers.Layer) (applyIsRequired bool, err error)
+	ApplyWasSuccessful(ctx context.Context, layer layers.Layer) (applyIsRequired bool, err error)
 }
 
 // KubectlLayerApplier applies an AddonsLayer to a Kubernetes cluster using the kubectl command.
@@ -156,9 +156,9 @@ func (a KubectlLayerApplier) addOwnerRefs(layer layers.Layer, hrs []*helmopv1.He
 	return nil
 }
 
-func (a KubectlLayerApplier) getHelmReleases(layer layers.Layer) (foundHrs []*helmopv1.HelmRelease, err error) {
+func (a KubectlLayerApplier) getHelmReleases(ctx context.Context, layer layers.Layer) (foundHrs []*helmopv1.HelmRelease, err error) {
 	hrList := &helmopv1.HelmReleaseList{}
-	err = a.client.List(context.Background(), hrList, client.MatchingFields{".owner": layer.GetName()})
+	err = a.client.List(ctx, hrList, client.MatchingFields{".owner": layer.GetName()})
 	if err != nil {
 		return nil, fmt.Errorf("unable to list HelmRelease resources owned by '%s': %w", layer.GetName(), err)
 	}
@@ -168,32 +168,32 @@ func (a KubectlLayerApplier) getHelmReleases(layer layers.Layer) (foundHrs []*he
 	return foundHrs, nil
 }
 
-func (a KubectlLayerApplier) getHelmRelease(hr *helmopv1.HelmRelease) (*helmopv1.HelmRelease, error) {
+func (a KubectlLayerApplier) getHelmRelease(ctx context.Context, hr *helmopv1.HelmRelease) (*helmopv1.HelmRelease, error) {
 	key, err := client.ObjectKeyFromObject(hr)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get an ObjectKey from HelmRelease '%s': %w", getLabel(hr), err)
 	}
 	foundHr := &helmopv1.HelmRelease{}
-	err = a.client.Get(context.Background(), key, foundHr)
+	err = a.client.Get(ctx, key, foundHr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to Get HelmRelease '%s': %w", getLabel(hr), err)
 	}
 	return foundHr, nil
 }
 
-func (a KubectlLayerApplier) applyHelmReleases(layer layers.Layer, hrs []*helmopv1.HelmRelease) error {
+func (a KubectlLayerApplier) applyHelmReleases(ctx context.Context, layer layers.Layer, hrs []*helmopv1.HelmRelease) error {
 	for i, hr := range hrs {
 		a.logDebug("Applying HelmRelease for AddonsLayer", layer, "index", i, "helmRelease", hr)
-		foundHr, err := a.getHelmRelease(hr)
+		foundHr, err := a.getHelmRelease(ctx, hr)
 		if err != nil || foundHr == nil {
 			// HelmRelease does not exist, create resource
-			err = a.client.Create(context.Background(), hr, &client.CreateOptions{})
+			err = a.client.Create(ctx, hr, &client.CreateOptions{})
 			if err != nil {
 				return fmt.Errorf("unable to Create HelmRelease '%s' on the target cluster: %w", getLabel(hr), err)
 			}
 		} else {
 			// HelmRelease exists, update resource
-			err = a.client.Update(context.Background(), hr, &client.UpdateOptions{})
+			err = a.client.Update(ctx, hr, &client.UpdateOptions{})
 			if err != nil {
 				return fmt.Errorf("unable to Update HelmRelease '%s' on the target cluster: %w", getLabel(hr), err)
 			}
@@ -202,7 +202,7 @@ func (a KubectlLayerApplier) applyHelmReleases(layer layers.Layer, hrs []*helmop
 	return nil
 }
 
-func (a KubectlLayerApplier) checkHelmReleases(layer layers.Layer, hrs []*helmopv1.HelmRelease) error {
+func (a KubectlLayerApplier) checkHelmReleases(ctx context.Context, layer layers.Layer, hrs []*helmopv1.HelmRelease) error {
 	for i, hr := range hrs {
 		a.logInfo("Checking HelmRelease for AddonsLayer", layer, "index", i, "helmRelease", hr)
 		key, err := client.ObjectKeyFromObject(hr)
@@ -210,7 +210,7 @@ func (a KubectlLayerApplier) checkHelmReleases(layer layers.Layer, hrs []*helmop
 			return fmt.Errorf("unable to get an ObjectKey from HelmRelease '%s': %w", getLabel(hr), err)
 		}
 		foundHr := &helmopv1.HelmRelease{}
-		err = a.client.Get(context.Background(), key, foundHr)
+		err = a.client.Get(ctx, key, foundHr)
 		if err != nil {
 			return fmt.Errorf("failed to Get HelmRelease '%s': %w", getLabel(hr), err)
 		}
@@ -303,7 +303,7 @@ func (a KubectlLayerApplier) getSourceResources(layer layers.Layer) (hrs []*helm
 }
 
 // Apply an AddonLayer to the cluster.
-func (a KubectlLayerApplier) Apply(layer layers.Layer) (err error) {
+func (a KubectlLayerApplier) Apply(ctx context.Context, layer layers.Layer) (err error) {
 	a.logInfo("Applying AddonsLayer", layer)
 
 	hrs, err := a.getSourceResources(layer)
@@ -311,12 +311,12 @@ func (a KubectlLayerApplier) Apply(layer layers.Layer) (err error) {
 		return err
 	}
 
-	err = a.applyHelmReleases(layer, hrs)
+	err = a.applyHelmReleases(ctx, layer, hrs)
 	if err != nil {
 		return err
 	}
 
-	err = a.checkHelmReleases(layer, hrs)
+	err = a.checkHelmReleases(ctx, layer, hrs)
 	if err != nil {
 		return err
 	}
@@ -325,10 +325,9 @@ func (a KubectlLayerApplier) Apply(layer layers.Layer) (err error) {
 }
 
 // Prune the AddonsLayer by removing the Addons found in the cluster that have since been removed from the Layer.
-func (a KubectlLayerApplier) Prune(layer layers.Layer, pruneHrs []*helmopv1.HelmRelease) (err error) {
+func (a KubectlLayerApplier) Prune(ctx context.Context, layer layers.Layer, pruneHrs []*helmopv1.HelmRelease) (err error) {
 	for _, hr := range pruneHrs {
-		//err := a.client.Delete(context.Background(), hr)
-		err := a.client.Delete(context.Background(), hr, client.PropagationPolicy(metav1.DeletePropagationBackground))
+		err := a.client.Delete(ctx, hr, client.PropagationPolicy(metav1.DeletePropagationBackground))
 		if err != nil {
 			return fmt.Errorf("unable to delete HelmRelease '%s' for AddonsLayer '%s': %w", getLabel(hr), layer.GetName(), err)
 		}
@@ -337,7 +336,7 @@ func (a KubectlLayerApplier) Prune(layer layers.Layer, pruneHrs []*helmopv1.Helm
 }
 
 // PruneIsRequired returns true if any resources need to be pruned for this AddonsLayer
-func (a KubectlLayerApplier) PruneIsRequired(layer layers.Layer) (pruneRequired bool, pruneHrs []*helmopv1.HelmRelease, err error) {
+func (a KubectlLayerApplier) PruneIsRequired(ctx context.Context, layer layers.Layer) (pruneRequired bool, pruneHrs []*helmopv1.HelmRelease, err error) {
 	sourceHrs, err := a.getSourceResources(layer)
 	if err != nil {
 		return false, nil, err
@@ -348,7 +347,7 @@ func (a KubectlLayerApplier) PruneIsRequired(layer layers.Layer) (pruneRequired 
 		hrs[getLabel(hr)] = hr
 	}
 
-	clusterHrs, err := a.getHelmReleases(layer)
+	clusterHrs, err := a.getHelmReleases(ctx, layer)
 	if err != nil {
 		return false, nil, err
 	}
@@ -370,13 +369,13 @@ func (a KubectlLayerApplier) PruneIsRequired(layer layers.Layer) (pruneRequired 
 }
 
 // ApplyIsRequired returns true if any resources need to be applied for this AddonsLayer
-func (a KubectlLayerApplier) ApplyIsRequired(layer layers.Layer) (applyIsRequired bool, err error) {
+func (a KubectlLayerApplier) ApplyIsRequired(ctx context.Context, layer layers.Layer) (applyIsRequired bool, err error) {
 	sourceHrs, err := a.getSourceResources(layer)
 	if err != nil {
 		return false, err
 	}
 
-	clusterHrs, err := a.getHelmReleases(layer)
+	clusterHrs, err := a.getHelmReleases(ctx, layer)
 	if err != nil {
 		return false, err
 	}
@@ -424,8 +423,8 @@ func (a KubectlLayerApplier) sourceHasChanged(layer layers.Layer, source, found 
 }
 
 // ApplyWasSuccessful returns true if all of the resources in this AddonsLayer are in the Success phase
-func (a KubectlLayerApplier) ApplyWasSuccessful(layer layers.Layer) (applyIsRequired bool, err error) {
-	clusterHrs, err := a.getHelmReleases(layer)
+func (a KubectlLayerApplier) ApplyWasSuccessful(ctx context.Context, layer layers.Layer) (applyIsRequired bool, err error) {
+	clusterHrs, err := a.getHelmReleases(ctx, layer)
 	if err != nil {
 		return false, err
 	}

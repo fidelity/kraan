@@ -37,19 +37,6 @@
                     "path": "./addons/bootstrap"
                 },
                 "version": "0.1.01"
-            },
-            "status": {
-                "conditions": [
-                    {
-                        "lastTransitionTime": "2020-08-26T13:10:13Z",
-                        "reason": "AddonsLayer is Deployed",
-                        "status": "True",
-                        "type": "Deployed",
-                        "version": "1.16-fideks-0.0.79"
-                    }
-                ],
-                "state": "Deployed",
-                "version": "1.16-fideks-0.0.79"
             }
         },
         {

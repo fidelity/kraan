@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/version"
 	fakediscovery "k8s.io/client-go/discovery/fake"
 	fakeK8s "k8s.io/client-go/kubernetes/fake"
+	fakeTest "k8s.io/client-go/testing"
 
 	//k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -49,12 +50,15 @@ const (
 	holdSet       = "hold-set"
 	k8sPending    = "k8s-pending"
 	emptyStatus   = "empty-status"
+	noDepends     = "no-depends"
+	oneDepends    = "one-depends"
+	twoDepends    = "two-depends"
 	k8sv16        = "k8s-v16"
 	maxConditions = "max-conditions"
 	layersData    = "testdata/layersdata.json"
 	versionOne    = "0.1.01"
-	//layersData1 = "testdata/layersdata1.json"
-	//layersData2 = "testdata/layersdata2.json"
+	layersData1   = "testdata/layersdata1.json"
+	layersData2   = "testdata/layersdata2.json"
 )
 
 func init() {
@@ -71,34 +75,6 @@ func TestCreateLayer(t *testing.T) {
 
 }
 
-/*
-func getCrdFromFile(fileName string) (*apiextypes.CustomResourceDefinition, error) {
-	buffer, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		return nil, err
-	}
-	crd := &apiextypes.CustomResourceDefinition{}
-	err = yaml.Unmarshal(buffer, crd)
-	if err != nil {
-		return nil, err
-	}
-	return crd, nil
-}
-*/
-/*
-func getLayerFromFile(fileName string) (*kraanv1alpha1.AddonsLayer, error) {
-	buffer, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		return nil, err
-	}
-	addonsLayer := &kraanv1alpha1.AddonsLayer{}
-	err = json.Unmarshal(buffer, addonsLayer)
-	if err != nil {
-		return nil, err
-	}
-	return addonsLayer, nil
-}
-*/
 func getLayersFromFile(fileName string) (*kraanv1alpha1.AddonsLayerList, error) {
 	buffer, err := ioutil.ReadFile(fileName)
 	if err != nil {
@@ -121,20 +97,13 @@ func getFromList(name string, layerList *kraanv1alpha1.AddonsLayerList) *kraanv1
 	return nil
 }
 
-func getLayer(layerName, testDataFileName string) (Layer, error) { // nolint:unparam // ok
+func getLayer(layerName, testDataFileName string) (Layer, error) {
 	logger := fakeLogger()
 	layers, err := getLayersFromFile(testDataFileName)
 	if err != nil {
 		return nil, err
 	}
-	/*
-		crd, err := getCrdFromFile("../../../config/crd/bases/kraan.io_addonslayers.yaml") // nolint:
-		if err != nil {
-			return nil, err
-		}
-	*/
 	client := fake.NewFakeClientWithScheme(testScheme, layers)
-	// unable to get pass layers and crd definition to fake k8sclient, but not a blocker at this stage
 	fakeK8sClient = fakeK8s.NewSimpleClientset()
 	data := getFromList(layerName, layers)
 	if data == nil {
@@ -616,6 +585,7 @@ func TestCheckK8sVersion(t *testing.T) {
 		layerName  string
 		k8sVersion string
 		expected   bool
+		errorFunc  fakeTest.ReactionFunc
 	}
 
 	tests := []testsData{{
@@ -633,6 +603,16 @@ func TestCheckK8sVersion(t *testing.T) {
 		layerName:  k8sv16,
 		k8sVersion: "v1.18",
 		expected:   false,
+	}, {
+		name:       "check error getting server version",
+		layerName:  k8sv16,
+		k8sVersion: "v1.18",
+		expected:   true, // This test should return false and an error
+		//but there seems to be a bug in the fake testing impementation,
+		// see https://github.com/kubernetes/client-go/issues/858
+		errorFunc: func(action fakeTest.Action) (handled bool, ret runtime.Object, err error) {
+			return true, nil, fmt.Errorf("error")
+		},
 	},
 	}
 
@@ -645,10 +625,65 @@ func TestCheckK8sVersion(t *testing.T) {
 		if !ok {
 			t.Fatalf("test: %s, failed, couldn't convert Discovery() to *FakeDiscovery", test.name)
 		}
-		fakeD.FakedServerVersion = &version.Info{GitVersion: test.k8sVersion}
+		if test.errorFunc != nil {
+			fakeD.FakedServerVersion = nil
+			fakeD.Fake.AddReactor("get", "version", test.errorFunc)
+		} else {
+			fakeD.FakedServerVersion = &version.Info{GitVersion: test.k8sVersion}
+		}
 		result := l.CheckK8sVersion()
 		if result != test.expected {
 			t.Fatalf("test: %s, failed, wrong result, Actual: %t, Expected: %t", test.name, result, test.expected)
 		}
+		t.Logf("test: %s, successful", test.name)
+	}
+}
+
+func TestDependenciesDeployed(t *testing.T) {
+	type testsData struct {
+		name       string
+		layerName  string
+		layersData string
+		expected   bool
+	}
+
+	tests := []testsData{{
+		name:       "check dependencies with no dependsOn",
+		layerName:  noDepends,
+		layersData: layersData1,
+		expected:   true,
+	}, {
+		name:       "check dependencies with single dependsOn that is deployed",
+		layerName:  oneDepends,
+		layersData: layersData1,
+		expected:   true,
+	}, {
+		name:       "check dependencies with two dependsOn, both deployed",
+		layerName:  twoDepends,
+		layersData: layersData1,
+		expected:   true,
+	}, {
+		name:       "check dependencies with single dependsOn that is not deployed",
+		layerName:  oneDepends,
+		layersData: layersData2,
+		expected:   false,
+	}, {
+		name:       "check dependencies with two dependsOn, second not deployed",
+		layerName:  twoDepends,
+		layersData: layersData2,
+		expected:   false,
+	},
+	}
+
+	for _, test := range tests {
+		l, e := getLayer(test.layerName, test.layersData)
+		if e != nil {
+			t.Fatalf("test: %s, failed to create layer, error: %s", test.name, e.Error())
+		}
+		result := l.DependenciesDeployed()
+		if result != test.expected {
+			t.Fatalf("test: %s, failed, wrong result, Actual: %t, Expected: %t", test.name, result, test.expected)
+		}
+		t.Logf("test: %s, successful", test.name)
 	}
 }

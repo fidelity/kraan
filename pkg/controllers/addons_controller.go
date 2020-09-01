@@ -74,7 +74,7 @@ func (r *AddonsLayerReconciler) getK8sClient() kubernetes.Interface {
 	return clientset
 }
 
-func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error {
+func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error { // nolint:gocyclo // ok
 	utils.Log(r.Log, 1, 1, "processing", "Name", l.GetName(), "Status", l.GetStatus())
 
 	ctx := r.Context

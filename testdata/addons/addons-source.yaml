@@ -1,7 +1,7 @@
-apiVersion: source.fluxcd.io/v1alpha1
+apiVersion: source.toolkit.fluxcd.io/v1alpha1
 kind: GitRepository
 metadata:
-  name: kraan-config
+  name: addons-config
   namespace: gitops-system
 spec:
   interval: 1m0s

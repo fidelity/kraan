@@ -2,10 +2,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   labels:
-    app.kubernetes.io/instance: addons-config
+    app.kubernetes.io/instance: kraan
     app.kubernetes.io/version: latest
   name: manager-role-binding
-  namespace: addons-config
+  namespace: kraan
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -13,7 +13,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: addons-config
+  namespace: kraan
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -26,7 +26,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: addons-config
+  namespace: kraan
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -39,7 +39,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: addons-config
+  namespace: kraan
   
 # Needed to install things in other namespaces
 ---
@@ -47,12 +47,12 @@ subjects:
   kind: ServiceAccount
   metadata:
     name: deployer
-    namespace: addons-config
+    namespace: kraan
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: addons-config-admin-rolebinding
+  name: kraan-admin-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -60,4 +60,4 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: addons-config
+  namespace: kraan

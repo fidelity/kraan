@@ -105,13 +105,13 @@ function create_regcred() {
       return
     fi
     jq -r '{auths: .auths}' ~/.docker/config.json > "${work_dir}"/image_pull_secret.json
-    kubectl -n ${namespace} delete  --ignore-not-found=true secret regcred 
-    kubectl -n ${namespace} create secret generic regcred \
+    kubectl -n "${namespace}" delete  --ignore-not-found=true secret regcred 
+    kubectl -n "${namespace}" create secret generic regcred \
       --from-file=.dockerconfigjson="${work_dir}"/image_pull_secret.json \
       --type=kubernetes.io/dockerconfigjson
   else
     if [ -f "${auto_file}" ] ; then
-      kubectl apply "${dry_run}" -f "${auto_file} --namespace ${namespace}"
+      kubectl apply ${dry_run} -f "${auto_file} --namespace ${namespace}"
     else
       echo "File: '${auto_file}' not found"
       exit 1
@@ -132,7 +132,7 @@ function deploy_kraan_mgr() {
     cp "${work_dir}"/manager/deployment.yaml "${work_dir}"/deployment-orignal.yaml
     awk '/containers:/{ print "      imagePullSecrets:\n      - name: ${secret_name}"}1'  "${work_dir}"/deployment-orignal.yaml > "${work_dir}"/manager/deployment.yaml
   fi
-  kubectl apply "${dry_run}" -f "${work_dir}"/manager
+  kubectl apply ${dry_run} -f "${work_dir}"/manager
 }
 
 function install_helm() {
@@ -147,8 +147,8 @@ function install_helm() {
   set -e
   echo "helm-operator not installed, installing"
   helm repo add fluxcd https://charts.fluxcd.io
-  kubectl apply "${dry_run}" -f https://raw.githubusercontent.com/fluxcd/helm-operator/1.1.0/deploy/crds.yaml
-  helm upgrade "${dry_run}" -i helm-operator fluxcd/helm-operator --namespace kraan --set helm.versions=v3
+  kubectl apply ${dry_run} -f https://raw.githubusercontent.com/fluxcd/helm-operator/1.1.0/deploy/crds.yaml
+  helm upgrade ${dry_run} -i helm-operator fluxcd/helm-operator --namespace kraan --set helm.versions=v3
 }
 
 args "$@"
@@ -157,6 +157,7 @@ base_dir="$(git rev-parse --show-toplevel)"
 work_dir="$(mktemp -d -t kraan-XXXXXX)"
 
 if [ -n "${deploy_kind}" ] ; then
+  KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-k8s}"
   "${base_dir}"/scripts/kind-with-registry.sh
   export KUBECONFIG=$HOME/kind-${KIND_CLUSTER_NAME}.config
 fi
@@ -173,15 +174,15 @@ if [ -n "${dry_run}" ] ; then
   echo "yaml for gitops toolkit is in ${work_dir}/gitops/gitops.yaml"
 fi
 
-kubectl apply "${dry_run}" -f "${work_dir}"/gitops/gitops.yaml
+kubectl apply ${dry_run} -f "${work_dir}"/gitops/gitops.yaml
 
 if [ -n "${gitops_regcred}" ] ; then
   create_regcred gitops-system "${gitops_regcred}"
 fi
 
-kubectl apply "${dry_run}" -f "${base_dir}"/testdata/addons/addons-source.yaml
+kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/addons-source.yaml
 
-kubectl apply "${dry_run}" -f "${base_dir}"/testdata/addons/kraan/namespace.yaml
+kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/kraan/namespace.yaml
 
 if [ -n "${kraan_regcred}" ] ; then
   create_regcred kraan "${kraan_regcred}"
@@ -189,10 +190,10 @@ fi
 
 install_helm
 
-kubectl apply "${dry_run}" -k "${base_dir}"/config/crd
-kubectl apply "${dry_run}" -f "${base_dir}"/testdata/addons/kraan/rbac
+kubectl apply ${dry_run} -k "${base_dir}"/config/crd
+kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/kraan/rbac
 
 deploy_kraan_mgr
 
-kubectl apply "${dry_run}" -f "${base_dir}"/testdata/addons/addons.yaml
+kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/addons.yaml
 rm -rf "${work_dir}"

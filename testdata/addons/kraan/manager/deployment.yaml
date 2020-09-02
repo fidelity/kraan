@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kraan-controller
-  namespace: addons-config
+  namespace: kraan
   labels:
     control-plane: controller
 spec:

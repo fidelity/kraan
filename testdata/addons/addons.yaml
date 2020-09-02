@@ -7,7 +7,7 @@ spec:
   hold: false
   interval: 1m
   source:
-    name: global-config
+    name: addons-config
     namespace: gitops-system
     path: ./testdata/addons/bootstrap
   prereqs:
@@ -21,7 +21,7 @@ spec:
   version: 0.1.01
   interval: 1m
   source: 
-    name: global-config
+    name: addons-config
     namespace: gitops-system
     path: ./testdata/addons/base
   prereqs:
@@ -37,7 +37,7 @@ spec:
   interval: 1m
   version: 0.1.01
   source: 
-    name: global-config
+    name: addons-config
     namespace: gitops-system
     path: ./testdata/addons/mgmt
   prereqs:
@@ -52,7 +52,7 @@ metadata:
 spec:
   version: 0.1.01
   source: 
-    name: global-config
+    name: addons-config
     namespace: gitops-system
     path: ./testdata/addons/apps
   prereqs:

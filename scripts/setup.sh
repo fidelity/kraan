@@ -149,8 +149,9 @@ args "$@"
 base_dir="$(git rev-parse --show-toplevel)"
 work_dir="$(mktemp -d -t kraan-XXXXXX)"
 
-if [ -n "$deploy_kind" ] ; then
-  
+if [ -n "${deploy_kind}" ] ; then
+  "${base_dir}"/scripts/kind-with-registry.sh
+  export KUBECONFIG=$HOME/kind-${KIND_CLUSTER_NAME}.config
 fi
 
 create_secrets

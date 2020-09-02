@@ -28,8 +28,9 @@ PROJECT_SOURCES:=$(shell find ./pkg -regex '.*.\.\(go\|json\)$$')
 
 BUILD_DIR:=build/
 GOMOD_VENDOR_DIR:=vendor/
+GITHUB_USER?=$(shell git config --local  user.name)
 export VERSION?=latest
-export REPO ?="
+export REPO ?=docker.pkg.github.com/${GITHUB_USER}/
 # Image URL to use all building/pushing image targets
 IMG ?= ${REPO}${ORG}/${PROJECT}:${VERSION}
 
@@ -147,17 +148,17 @@ clean-build:
 
 build: DOCKER_SOURCES=Dockerfile ${MAKE_SOURCES} ${PROJECT_SOURCES}
 build: DOCKER_BUILD_OPTIONS=--build-arg VERSION
-build: TAG=${REPO}${ORG}/${PROJECT}:${VERSION}
+build: IMG=${REPO}${ORG}/${PROJECT}:${VERSION}
 build: ${BUILD_DIR} ${BUILD_ARTIFACT}
 
 %-docker.tar: $${DOCKER_SOURCES}
 	docker build --rm --pull=true \
 		${DOCKER_BUILD_OPTIONS} \
 		${DOCKER_BUILD_PROXYS} \
-		--tag ${TAG} \
+		--tag ${IMG} \
 		--file $< \
 		. && \
-	docker save --output $@ ${TAG}
+	docker save --output $@ ${IMG}
 
 lint-build: 
 $(GOLANGCI_LINT): $(TOOLS_DIR)/go.mod # Build golangci-lint from tools folder

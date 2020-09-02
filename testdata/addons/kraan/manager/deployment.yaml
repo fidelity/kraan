@@ -21,7 +21,7 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
       - name: manager
-        image: kraan-controller:v0.0.2
+        image: docker.pkg.github.com/addons-mgmt/kraan-controller:v0.0.2
         imagePullPolicy: Always
         securityContext:
           allowPrivilegeEscalation: false

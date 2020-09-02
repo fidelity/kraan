@@ -31,6 +31,10 @@ function args() {
   toolkit=""
   dry_run=""
   deploy_kind=""
+  gitops_repo=""
+  kraan_repo=""
+  kraan_regcred=""
+  gitops_regcred=""
 
   arg_list=( "$@" )
   arg_count=${#arg_list[@]}
@@ -39,10 +43,10 @@ function args() {
     case "${arg_list[${arg_index}]}" in
           "--toolkit") toolkit=1;;
           "--deploy-kind") deploy_kind=1;;
-          "--kraan-image-pull-secret") (( arg_index+=1 )); kraan_regcred="${arg_list[${arg_index}]}"
-          "--gitops-image-pull-secret") (( arg_index+=1 )); gitops_regcred="${arg_list[${arg_index}]}";toolkit=1
-          "--kraan-image-repo") (( arg_index+=1 )); kraan_repo="${arg_list[${arg_index}]}"
-          "--gitops-image-repo") (( arg_index+=1 )); gitops_repo="${arg_list[${arg_index}]}";toolkit=1
+          "--kraan-image-pull-secret") (( arg_index+=1 )); kraan_regcred="${arg_list[${arg_index}]}";;
+          "--gitops-image-pull-secret") (( arg_index+=1 )); gitops_regcred="${arg_list[${arg_index}]}";toolkit=1;;
+          "--kraan-image-repo") (( arg_index+=1 )); kraan_repo="${arg_list[${arg_index}]}";;
+          "--gitops-image-repo") (( arg_index+=1 )); gitops_repo="${arg_list[${arg_index}]}";toolkit=1;;
           "--dry-run") dry_run="--dry-run";;
           "--debug") debug=1;set -x;;
                "-h") usage; exit;;
@@ -69,22 +73,25 @@ function args() {
 function create_secrets {
   local base64_user="$(echo -n "${GIT_USER}" | base64 -w 0)"
   local base64_creds="$(echo -n "${GIT_CREDENTIALS}" | base64 -w 0)"
-  sed s/GIT_USER/${base64_user}/ "${base_dir}"testdata/templates/template-http.yaml | \
+  sed s/GIT_USER/${base64_user}/ "${base_dir}/"testdata/templates/template-http.yaml | \
   sed s/GIT_CREDENTIALS/${base64_creds}/ > "${work_dir}"/kraan-http.yaml
 }
 
 function toolkit_refresh() {
+  local gitops_repo_arg=""
+  local gitops_regcred_arg=""
+  local secret_name=""
   if [ -n "${gitops_repo}" ] ; then
-    local gitops_repo_arg="--registry ${gitops_repo}"
+    gitops_repo_arg="--registry ${gitops_repo}"
   fi
   if [ -n "${gitops_regcred}" ] ; then
-    local secret_name="regcred"
+    secret_name="regcred"
     if [ "${gitops_regcred}" != "auto" ] ; then
       secret_name=$(basename "${gitops_regcred}" | cut -f1 -d.)
     fi
-    local gitops_regcred_arg="--image-pull-secret ${secret_name}"
+    gitops_regcred_arg="--image-pull-secret ${secret_name}"
   fi
-  tk install --export --components=source-controller ${gitops_repo_arg} ${gitops_regcred_arg} > "${work_dir}"/gitops/gitops.yaml
+  tk install --export --components=source-controller "${gitops_repo_arg}" "${gitops_regcred_arg}" > "${work_dir}"/gitops/gitops.yaml
   if [ -n "${dry_run}" ] ; then
     echo "yaml for gitops toolkit is in ${work_dir}/gitops/gitops.yaml"
   fi
@@ -115,7 +122,7 @@ function create_regcred() {
 function deploy_kraan_mgr() {
   cp -rf "${base_dir}"/testdata/addons/kraan/manager "${work_dir}"
   if [ -n "${kraan_repo}" ] ; then
-    sed -s 's#image\:\ docker.pkg.github.com/addons-mgmt#image\:\ ${kraan_repo}#' "${work_dir}"/manager/deployment.yaml
+    sed -s "s#image\:\ docker.pkg.github.com/addons-mgmt#image\:\ ${kraan_repo}#" "${work_dir}"/manager/deployment.yaml
   fi
   if [ -n "${kraan_regcred}" ] ; then
     local secret_name="regcred"
@@ -141,7 +148,7 @@ function install_helm() {
   echo "helm-operator not installed, installing"
   helm repo add fluxcd https://charts.fluxcd.io
   kubectl apply "${dry_run}" -f https://raw.githubusercontent.com/fluxcd/helm-operator/1.1.0/deploy/crds.yaml
-  helm upgrade "${dry_run}" -i helm-operator fluxcd/helm-operator --namespace cluster-addons --set helm.versions=v3
+  helm upgrade "${dry_run}" -i helm-operator fluxcd/helm-operator --namespace kraan --set helm.versions=v3
 }
 
 args "$@"

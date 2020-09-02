@@ -1,0 +1,12 @@
+apiVersion: source.toolkit.fluxcd.io/v1alpha1
+kind: GitRepository
+metadata:
+  name: addons-config
+  namespace: gitops-system
+spec:
+  interval: 1m0s
+  ref:
+    tag: 0.1.01
+  secretRef:
+    name: kraan-http
+  url: https://github.com/fidelity/kraan.git

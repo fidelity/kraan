@@ -1,0 +1,62 @@
+apiVersion: kraan.io/v1alpha1
+kind: AddonsLayer
+metadata:
+  name: bootstrap
+spec:
+  version: 0.1.01
+  hold: false
+  interval: 1m
+  source:
+    name: addons-config
+    namespace: gitops-system
+    path: ./testdata/addons/bootstrap
+  prereqs:
+      k8sVersion: "v1.16"
+---
+apiVersion: kraan.io/v1alpha1
+kind: AddonsLayer
+metadata:
+  name: base
+spec:
+  version: 0.1.01
+  interval: 1m
+  source: 
+    name: addons-config
+    namespace: gitops-system
+    path: ./testdata/addons/base
+  prereqs:
+      k8sVersion: "v1.16"
+      dependsOn:
+        - bootstrap@0.1.01
+---
+apiVersion: kraan.io/v1alpha1
+kind: AddonsLayer
+metadata:
+  name: mgmt
+spec:
+  interval: 1m
+  version: 0.1.01
+  source: 
+    name: addons-config
+    namespace: gitops-system
+    path: ./testdata/addons/mgmt
+  prereqs:
+      k8sVersion: "v1.16"
+      dependsOn:
+      - base@0.1.01
+---
+apiVersion: kraan.io/v1alpha1
+kind: AddonsLayer
+metadata:
+  name: apps
+spec:
+  version: 0.1.01
+  source: 
+    name: addons-config
+    namespace: gitops-system
+    path: ./testdata/addons/apps
+  prereqs:
+      k8sVersion: "v1.16"
+      dependsOn:
+      - base@0.1.01
+      - mgmt@0.1.01

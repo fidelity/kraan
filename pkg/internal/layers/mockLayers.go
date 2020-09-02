@@ -6,14 +6,12 @@ package layers
 
 import (
 	context "context"
-	reflect "reflect"
-	time "time"
-
+	v1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
 	logr "github.com/go-logr/logr"
 	gomock "github.com/golang/mock/gomock"
 	kubernetes "k8s.io/client-go/kubernetes"
-
-	v1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
+	reflect "reflect"
+	time "time"
 )
 
 // MockLayer is a mock of Layer interface
@@ -61,6 +59,18 @@ func (m *MockLayer) SetStatusApplying() {
 func (mr *MockLayerMockRecorder) SetStatusApplying() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusApplying", reflect.TypeOf((*MockLayer)(nil).SetStatusApplying))
+}
+
+// SetStatusPending mocks base method
+func (m *MockLayer) SetStatusPending() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetStatusPending")
+}
+
+// SetStatusPending indicates an expected call of SetStatusPending
+func (mr *MockLayerMockRecorder) SetStatusPending() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusPending", reflect.TypeOf((*MockLayer)(nil).SetStatusPending))
 }
 
 // SetStatusPruning mocks base method
@@ -125,34 +135,6 @@ func (mr *MockLayerMockRecorder) SetHold() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetHold", reflect.TypeOf((*MockLayer)(nil).SetHold))
 }
 
-// IsPruningRequired mocks base method
-func (m *MockLayer) IsPruningRequired() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsPruningRequired")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// IsPruningRequired indicates an expected call of IsPruningRequired
-func (mr *MockLayerMockRecorder) IsPruningRequired() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsPruningRequired", reflect.TypeOf((*MockLayer)(nil).IsPruningRequired))
-}
-
-// Prune mocks base method
-func (m *MockLayer) Prune() error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Prune")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Prune indicates an expected call of Prune
-func (mr *MockLayerMockRecorder) Prune() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Prune", reflect.TypeOf((*MockLayer)(nil).Prune))
-}
-
 // DependenciesDeployed mocks base method
 func (m *MockLayer) DependenciesDeployed() bool {
 	m.ctrl.T.Helper()
@@ -165,48 +147,6 @@ func (m *MockLayer) DependenciesDeployed() bool {
 func (mr *MockLayerMockRecorder) DependenciesDeployed() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DependenciesDeployed", reflect.TypeOf((*MockLayer)(nil).DependenciesDeployed))
-}
-
-// IsApplyRequired mocks base method
-func (m *MockLayer) IsApplyRequired() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsApplyRequired")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// IsApplyRequired indicates an expected call of IsApplyRequired
-func (mr *MockLayerMockRecorder) IsApplyRequired() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsApplyRequired", reflect.TypeOf((*MockLayer)(nil).IsApplyRequired))
-}
-
-// SuccessfullyApplied mocks base method
-func (m *MockLayer) SuccessfullyApplied() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SuccessfullyApplied")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// SuccessfullyApplied indicates an expected call of SuccessfullyApplied
-func (mr *MockLayerMockRecorder) SuccessfullyApplied() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SuccessfullyApplied", reflect.TypeOf((*MockLayer)(nil).SuccessfullyApplied))
-}
-
-// Apply mocks base method
-func (m *MockLayer) Apply() error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Apply")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Apply indicates an expected call of Apply
-func (mr *MockLayerMockRecorder) Apply() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Apply", reflect.TypeOf((*MockLayer)(nil).Apply))
 }
 
 // GetStatus mocks base method

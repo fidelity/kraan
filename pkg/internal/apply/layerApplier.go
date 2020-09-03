@@ -275,8 +275,8 @@ func (a KubectlLayerApplier) getSourceResources(layer layers.Layer) (hrs []*helm
 		return nil, err
 	}
 
-	output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).Run()
-	//output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).DryRun()
+	//output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).Run()
+	output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).DryRun()
 	if err != nil {
 		return nil, fmt.Errorf("error from kubectl while parsing source directory (%s) for AddonsLayer %s: %w",
 			sourceDir, layer.GetName(), err)

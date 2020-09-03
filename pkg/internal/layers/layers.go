@@ -8,15 +8,16 @@ import (
 	"strings"
 	"time"
 
-	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
-	"github.com/fidelity/kraan/pkg/internal/utils"
-
 	"github.com/go-logr/logr"
+	"golang.org/x/mod/semver"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
+	"github.com/fidelity/kraan/pkg/internal/utils"
 )
 
 // MaxConditions is the maximum number of condtions to retain.
@@ -143,7 +144,7 @@ func (l *KraanLayer) CheckK8sVersion() bool {
 		l.SetDelayedRequeue()
 		return false
 	}
-	return l.GetRequiredK8sVersion() >= versionInfo.String()
+	return semver.Compare(versionInfo.String(), l.GetRequiredK8sVersion()) >= 0
 }
 
 func (l *KraanLayer) trimConditions() {

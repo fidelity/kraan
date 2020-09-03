@@ -37,6 +37,7 @@ const (
 	oneDepends    = "one-depends"
 	twoDepends    = "two-depends"
 	k8sv16        = "k8s-v16"
+	k8sv16_2      = "k8s-v16-2"
 	maxConditions = "max-conditions"
 	layersData    = "testdata/layersdata.json"
 	versionOne    = "0.1.01"
@@ -562,7 +563,7 @@ func TestSetStatus(t *testing.T) { // nolint:funlen // ok
 	}
 }
 
-func TestCheckK8sVersion(t *testing.T) {
+func TestCheckK8sVersion(t *testing.T) { // nolint:funlen // ok
 	type testsData struct {
 		name       string
 		layerName  string
@@ -574,29 +575,36 @@ func TestCheckK8sVersion(t *testing.T) {
 	tests := []testsData{{
 		name:       "check k8s version v1.18 required, cluster at v1.16",
 		layerName:  k8sPending,
-		k8sVersion: "v1.16",
-		expected:   true,
+		k8sVersion: "v1.16.2",
+		expected:   false,
 	}, {
-		name:       "check k8s version, v1.16 required. cluster at v1.16",
+		name:       "check k8s version, v1.16 required. cluster at v1.16.9",
 		layerName:  k8sv16,
-		k8sVersion: "v1.16",
+		k8sVersion: "v1.16.9",
 		expected:   true,
 	}, {
 		name:       "check k8s version, v1.16 required. cluster at v1.15",
 		layerName:  k8sv16,
-		k8sVersion: "v1.18",
+		k8sVersion: "v1.15.0",
 		expected:   false,
 	}, {
+		name:       "check k8s version, v1.16.2 required. cluster at v1.16.1",
+		layerName:  k8sv16_2,
+		k8sVersion: "v1.15.0",
+		expected:   false,
+	},
+	/*
+		This test should return false and an error but there seems to be a bug in the fake testing impementation,
+		see https://github.com/kubernetes/client-go/issues/858
+		{
 		name:       "check error getting server version",
 		layerName:  k8sv16,
-		k8sVersion: "v1.18",
-		expected:   true, // This test should return false and an error
-		//but there seems to be a bug in the fake testing impementation,
-		// see https://github.com/kubernetes/client-go/issues/858
+		k8sVersion: "v1.18.0",
+		expected:   true,
 		errorFunc: func(action fakeTest.Action) (handled bool, ret runtime.Object, err error) {
 			return true, nil, fmt.Errorf("error")
 		},
-	},
+	*/
 	}
 
 	for _, test := range tests {

@@ -91,7 +91,7 @@ function toolkit_refresh() {
     fi
     gitops_regcred_arg="--image-pull-secret ${secret_name}"
   fi
-  tk install --export --components=source-controller ${gitops_repo_arg} ${gitops_regcred_arg} > "${work_dir}"/gitops/gitops.yaml
+  gotk install --export --components=source-controller ${gitops_repo_arg} ${gitops_regcred_arg} > "${work_dir}"/gitops/gitops.yaml
   if [ -n "${dry_run}" ] ; then
     echo "yaml for gitops toolkit is in ${work_dir}/gitops/gitops.yaml"
   fi

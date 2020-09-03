@@ -14,7 +14,7 @@ spec:
   chart:
     git: https://github.com/fidelity/kraan
     path: testdata/charts/microservice
-    ref: functional-testing-fixes
+    ref: master
   values:
     preHookBackoffLimit: 1
     preHookActiveDeadlineSeconds: 60

@@ -55,7 +55,7 @@ NC:=\033[0m
 # Targets that do not represent filenames need to be registered as phony or
 # Make won't always rebuild them.
 .PHONY: all clean ci-check ci-gate clean-godocs \
-	_godocs-build godocs clean-gomod gomod gomod-update \
+	godocs clean-gomod gomod gomod-update \
 	clean-${PROJECT}-check ${PROJECT}-check clean-${PROJECT}-build \
 	${PROJECT}-build ${GO_CHECK_PACKAGES} clean-check check \
 	clean-build build generate manifests deploy docker-push controller-gen \
@@ -66,7 +66,7 @@ NC:=\033[0m
 # Allow secondary expansion of explicit rules.
 .SECONDEXPANSION: %.md %-docker.tar
 
-all: ${PROJECT}-check godocs ${PROJECT}-build
+all: ${PROJECT}-check ${PROJECT}-build
 build: gomod ${PROJECT}-check godocs ${PROJECT}-build
 clean: clean-gomod clean-godocs clean-${PROJECT}-check \
 	clean-${PROJECT}-build clean-check clean-build \
@@ -88,8 +88,8 @@ ${BUILD_DIR}:
 clean-godocs:
 	rm -f ${GO_DOCS_ARTIFACTS}
 
-_godocs-build: ${GO_DOCS_ARTIFACTS}
-%.md: $$(wildcard $$(dir $$@)*.go)
+godocs: ${GO_DOCS_ARTIFACTS}
+%.md: $$(wildcard $$(dir $$@)*.go | grep -v suite_test)
 	echo "${YELLOW}Running godocdown: $@${NC}" && \
 	godocdown -output $@ $(shell dirname $@)
 
@@ -166,7 +166,7 @@ $(GOLANGCI_LINT): $(TOOLS_DIR)/go.mod # Build golangci-lint from tools folder
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: ${PROJECT}-build
-	${GO_BIN_ARTIFACT}
+	scripts/run-controller.sh
 
 # Install CRDs into a cluster
 install: manifests

@@ -5,6 +5,7 @@ package layers
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -23,6 +24,13 @@ import (
 // MaxConditions is the maximum number of condtions to retain.
 var MaxConditions = 10
 var rootPath = "/repos"
+
+func init() {
+	path, set := os.LookupEnv("REPOS_PATH")
+	if set {
+		rootPath = path
+	}
+}
 
 // Layer defines the interface for managing the layer.
 type Layer interface {

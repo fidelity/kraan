@@ -48,7 +48,7 @@ function args() {
           "--kraan-image-repo") (( arg_index+=1 )); kraan_repo="${arg_list[${arg_index}]}";;
           "--gitops-image-repo") (( arg_index+=1 )); gitops_repo="${arg_list[${arg_index}]}";toolkit=1;;
           "--dry-run") dry_run="--dry-run";;
-          "--debug") debug=1;set -x;;
+          "--debug") set -x;;
                "-h") usage; exit;;
            "--help") usage; exit;;
                "-?") usage; exit;;
@@ -194,6 +194,9 @@ kubectl apply ${dry_run} -k "${base_dir}"/config/crd
 kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/kraan/rbac
 
 deploy_kraan_mgr
+
+# Create namespaces for each addon layer
+kubectl apply ${dry_run} -f "${base_dir}"/testdata/namespaces.yaml
 
 kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/addons.yaml
 rm -rf "${work_dir}"

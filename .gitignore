@@ -28,7 +28,7 @@ bin
 build/
 pkg/**/._gometalinter
 **/pkg/**/coverage/
-**/pkg/**/*.md
+#**/pkg/**/*.md
 vendor/
 .vscode/
 

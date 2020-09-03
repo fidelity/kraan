@@ -12,20 +12,17 @@ import (
 	"os"
 	"reflect"
 
-	"github.com/fidelity/kraan/pkg/internal/kubectl"
-	"github.com/fidelity/kraan/pkg/internal/layers"
-
 	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
-
 	"github.com/go-logr/logr"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	"github.com/fidelity/kraan/pkg/internal/kubectl"
+	"github.com/fidelity/kraan/pkg/internal/layers"
 )
 
 var (
@@ -278,8 +275,8 @@ func (a KubectlLayerApplier) getSourceResources(layer layers.Layer) (hrs []*helm
 		return nil, err
 	}
 
-	//output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).Run()
-	output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).DryRun()
+	output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).Run()
+	//output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).DryRun()
 	if err != nil {
 		return nil, fmt.Errorf("error from kubectl while parsing source directory (%s) for AddonsLayer %s: %w",
 			sourceDir, layer.GetName(), err)

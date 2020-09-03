@@ -116,7 +116,7 @@ func TestMockKubectl(t *testing.T) {
 	t.Logf("NewApplier returned (%T) %#v", applier, applier)
 }
 
-func TODOTestBasicApply(t *testing.T) {
+func TODOTestBasicApply(t *testing.T) { //nolint
 	mockCtl := gomock.NewController(t)
 	defer mockCtl.Finish()
 

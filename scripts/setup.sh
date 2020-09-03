@@ -48,7 +48,7 @@ function args() {
           "--kraan-image-repo") (( arg_index+=1 )); kraan_repo="${arg_list[${arg_index}]}";;
           "--gitops-image-repo") (( arg_index+=1 )); gitops_repo="${arg_list[${arg_index}]}";toolkit=1;;
           "--dry-run") dry_run="--dry-run";;
-          "--debug") debug=1;set -x;;
+          "--debug") set -x;;
                "-h") usage; exit;;
            "--help") usage; exit;;
                "-?") usage; exit;;
@@ -91,7 +91,7 @@ function toolkit_refresh() {
     fi
     gitops_regcred_arg="--image-pull-secret ${secret_name}"
   fi
-  tk install --export --components=source-controller "${gitops_repo_arg}" "${gitops_regcred_arg}" > "${work_dir}"/gitops/gitops.yaml
+  gotk install --export --components=source-controller ${gitops_repo_arg} ${gitops_regcred_arg} > "${work_dir}"/gitops/gitops.yaml
   if [ -n "${dry_run}" ] ; then
     echo "yaml for gitops toolkit is in ${work_dir}/gitops/gitops.yaml"
   fi
@@ -122,7 +122,7 @@ function create_regcred() {
 function deploy_kraan_mgr() {
   cp -rf "${base_dir}"/testdata/addons/kraan/manager "${work_dir}"
   if [ -n "${kraan_repo}" ] ; then
-    sed -s "s#image\:\ docker.pkg.github.com/addons-mgmt#image\:\ ${kraan_repo}#" "${work_dir}"/manager/deployment.yaml
+    sed -i "s#image\:\ docker.pkg.github.com/addons-mgmt#image\:\ ${kraan_repo}#" "${work_dir}"/manager/deployment.yaml
   fi
   if [ -n "${kraan_regcred}" ] ; then
     local secret_name="regcred"
@@ -175,6 +175,7 @@ if [ -n "${dry_run}" ] ; then
 fi
 
 kubectl apply ${dry_run} -f "${work_dir}"/gitops/gitops.yaml
+kubectl apply ${dry_run} -f "${work_dir}"/kraan-http.yaml
 
 if [ -n "${gitops_regcred}" ] ; then
   create_regcred gitops-system "${gitops_regcred}"
@@ -195,5 +196,10 @@ kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/kraan/rbac
 
 deploy_kraan_mgr
 
+# Create namespaces for each addon layer
+kubectl apply ${dry_run} -f "${base_dir}"/testdata/namespaces.yaml
+
 kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/addons.yaml
-rm -rf "${work_dir}"
+if [ -z "${dry_run}" ] ; then
+  rm -rf "${work_dir}"
+fi

@@ -18,6 +18,7 @@ require (
 	github.com/prometheus/procfs v0.0.11 // indirect
 	go.uber.org/atomic v1.4.0 // indirect
 	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975 // indirect
+	golang.org/x/mod v0.1.1-0.20191105210325-c90efee705ee
 	golang.org/x/text v0.3.3 // indirect
 	k8s.io/api v0.17.2
 	k8s.io/apimachinery v0.17.2

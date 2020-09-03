@@ -5,7 +5,6 @@
 *.dll
 *.so
 *.dylib
-bin
 
 # Test binary, build with `go test -c`
 *.test
@@ -28,8 +27,8 @@ bin
 build/
 pkg/**/._gometalinter
 **/pkg/**/coverage/
-**/pkg/**/*.md
+#**/pkg/**/*.md
 vendor/
 .vscode/
-
+**/._spellcheck
 pkg/main/__debug_bin

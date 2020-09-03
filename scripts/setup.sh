@@ -200,4 +200,6 @@ deploy_kraan_mgr
 kubectl apply ${dry_run} -f "${base_dir}"/testdata/namespaces.yaml
 
 kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/addons.yaml
-rm -rf "${work_dir}"
+if [ -z "${dry_run}" ] ; then
+  rm -rf "${work_dir}"
+fi

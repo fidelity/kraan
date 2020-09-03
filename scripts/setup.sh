@@ -175,6 +175,7 @@ if [ -n "${dry_run}" ] ; then
 fi
 
 kubectl apply ${dry_run} -f "${work_dir}"/gitops/gitops.yaml
+kubectl apply ${dry_run} -f "${work_dir}"/kraan-http.yaml
 
 if [ -n "${gitops_regcred}" ] ; then
   create_regcred gitops-system "${gitops_regcred}"

@@ -199,23 +199,6 @@ func (a KubectlLayerApplier) applyHelmReleases(ctx context.Context, layer layers
 	return nil
 }
 
-func (a KubectlLayerApplier) checkHelmReleases(ctx context.Context, layer layers.Layer, hrs []*helmopv1.HelmRelease) error {
-	for i, hr := range hrs {
-		a.logInfo("Checking HelmRelease for AddonsLayer", layer, "index", i, "helmRelease", hr)
-		key, err := client.ObjectKeyFromObject(hr)
-		if err != nil {
-			return fmt.Errorf("unable to get an ObjectKey from HelmRelease '%s': %w", getLabel(hr), err)
-		}
-		foundHr := &helmopv1.HelmRelease{}
-		err = a.client.Get(ctx, key, foundHr)
-		if err != nil {
-			return fmt.Errorf("failed to Get HelmRelease '%s': %w", getLabel(hr), err)
-		}
-		fmt.Printf("Found HelmRelease '%s'\n", getLabel(hr))
-	}
-	return nil
-}
-
 func (a KubectlLayerApplier) decodeList(layer layers.Layer,
 	raws *corev1.List, dez *runtime.Decoder) (hrs []*helmopv1.HelmRelease, errz []error, err error) {
 	dec := *dez
@@ -275,7 +258,6 @@ func (a KubectlLayerApplier) getSourceResources(layer layers.Layer) (hrs []*helm
 		return nil, err
 	}
 
-	//output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).Run()
 	output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).DryRun()
 	if err != nil {
 		return nil, fmt.Errorf("error from kubectl while parsing source directory (%s) for AddonsLayer %s: %w",
@@ -290,7 +272,6 @@ func (a KubectlLayerApplier) getSourceResources(layer layers.Layer) (hrs []*helm
 		return nil, err
 	}
 
-	// TODO: Add an ownerRef to each deployed HelmRelease the points back to this AddonsLayer (needed for Prune)
 	err = a.addOwnerRefs(layer, hrs)
 	if err != nil {
 		return nil, err
@@ -309,11 +290,6 @@ func (a KubectlLayerApplier) Apply(ctx context.Context, layer layers.Layer) (err
 	}
 
 	err = a.applyHelmReleases(ctx, layer, hrs)
-	if err != nil {
-		return err
-	}
-
-	err = a.checkHelmReleases(ctx, layer, hrs)
 	if err != nil {
 		return err
 	}
@@ -394,7 +370,7 @@ func (a KubectlLayerApplier) ApplyIsRequired(ctx context.Context, layer layers.L
 
 	// Compare each HelmRelease source spec to the spec of the found HelmRelease on the cluster
 	for _, source := range sourceHrs {
-		found, _ := hrs[getLabel(source)]
+		found := hrs[getLabel(source)]
 		if a.sourceHasChanged(layer, source, found) {
 			return true, nil
 		}

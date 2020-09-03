@@ -74,22 +74,9 @@ func (r *AddonsLayerReconciler) getK8sClient() kubernetes.Interface {
 	return clientset
 }
 
-func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error { // nolint:gocyclo // ok
-	utils.Log(r.Log, 1, 1, "processing", "Name", l.GetName(), "Status", l.GetStatus())
-
+func (r *AddonsLayerReconciler) processPrune(l layers.Layer) error {
 	ctx := r.Context
 	applier := r.Applier
-
-	if l.IsHold() {
-		l.SetHold()
-		return nil
-	}
-
-	if !l.CheckK8sVersion() {
-		l.SetStatusK8sVersion()
-		l.SetDelayedRequeue()
-		return nil
-	}
 
 	pruneIsRequired, hrs, err := applier.PruneIsRequired(ctx, l)
 	if err != nil {
@@ -103,6 +90,16 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error { // nol
 		l.SetDelayedRequeue()
 		return nil
 	}
+	return nil
+}
+
+func (r *AddonsLayerReconciler) processApply(l layers.Layer) error {
+	if l.IsUpdated() {
+		return nil
+	}
+
+	ctx := r.Context
+	applier := r.Applier
 
 	applyIsRequired, err := applier.ApplyIsRequired(ctx, l)
 	if err != nil {
@@ -121,6 +118,16 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error { // nol
 		l.SetDelayedRequeue()
 		return nil
 	}
+	return nil
+}
+
+func (r *AddonsLayerReconciler) checkSuccess(l layers.Layer) error {
+	if l.IsUpdated() {
+		return nil
+	}
+
+	ctx := r.Context
+	applier := r.Applier
 
 	applyWasSuccessful, err := applier.ApplyWasSuccessful(ctx, l)
 	if err != nil {
@@ -130,6 +137,33 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error { // nol
 		l.SetStatusDeployed()
 	}
 	return nil
+}
+
+func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error {
+	utils.Log(r.Log, 1, 1, "processing", "Name", l.GetName(), "Status", l.GetStatus())
+
+	if l.IsHold() {
+		l.SetHold()
+		return nil
+	}
+
+	if !l.CheckK8sVersion() {
+		l.SetStatusK8sVersion()
+		l.SetDelayedRequeue()
+		return nil
+	}
+
+	err := r.processPrune(l)
+	if err != nil {
+		return err
+	}
+
+	err = r.processApply(l)
+	if err != nil {
+		return err
+	}
+
+	return r.checkSuccess(l)
 }
 
 func (r *AddonsLayerReconciler) updateRequeue(l layers.Layer, res *ctrl.Result, rerr *error) {

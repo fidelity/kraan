@@ -1,11 +1,16 @@
 package apply
 
+//go:generate mockgen -destination=../mocks/client/mockClient.go -package=mocks sigs.k8s.io/controller-runtime/pkg/client Client
+
 import (
+	"context"
 	"testing"
 	"time"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/internal/kubectl"
+	"github.com/fidelity/kraan/pkg/internal/layers"
+	mocks "github.com/fidelity/kraan/pkg/internal/mocks/client"
 
 	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
 
@@ -30,7 +35,7 @@ func init() {
 	_ = helmopv1.AddToScheme(testScheme)      // nolint:errcheck // ok
 }
 
-func fakeAddonsLayer(sourcePath, layerName string, layerUID types.UID) *kraanv1alpha1.AddonsLayer {
+func fakeAddonsLayer(sourcePath, layerName string, layerUID types.UID) *kraanv1alpha1.AddonsLayer { //nolint
 	kind := "AddonsLayer"
 	version := "v1alpha1"
 	typeMeta := metav1.TypeMeta{
@@ -109,4 +114,52 @@ func TestMockKubectl(t *testing.T) {
 		t.Fatalf("The NewApplier constructor returned an error: %s", err)
 	}
 	t.Logf("NewApplier returned (%T) %#v", applier, applier)
+}
+
+func TODOTestBasicApply(t *testing.T) { //nolint
+	mockCtl := gomock.NewController(t)
+	defer mockCtl.Finish()
+
+	mockCommand := kubectl.NewMockCommand(mockCtl)
+	mockKubectl := kubectl.NewMockKubectl(mockCtl)
+	newKubectlFunc = func(logger logr.Logger) (kubectl.Kubectl, error) {
+		return mockKubectl, nil
+	}
+
+	ctx := context.Background()
+	logger := testlogr.TestLogger{T: t}
+	client := mocks.NewMockClient(mockCtl)
+
+	applier, err := NewApplier(client, logger, testScheme)
+	if err != nil {
+		t.Fatalf("The NewApplier constructor returned an error: %s", err)
+	}
+	t.Logf("NewApplier returned (%T) %#v", applier, applier)
+
+	// This integration test can be forced to pass or fail at different stages by altering the
+	// Values section of the microservice.yaml HelmRelease in the directory below.
+	sourcePath := "testdata/apply/single_release"
+	layerName := "test"
+	var layerUID types.UID = "01234567-89ab-cdef-0123-456789abcdef"
+	addonsLayer := fakeAddonsLayer(sourcePath, layerName, layerUID)
+
+	//fakeHr := &helmopv1.HelmRelease{}
+	// TODO - serailize a fake HelmRelease
+	//sez := serializer.NewCodecFactory(testScheme).Co
+	fakeHrJSON := "fakeHrJson"
+
+	mockKubectl.EXPECT().Apply(sourcePath).Return(mockCommand).Times(1)
+	mockCommand.EXPECT().WithLogger(logger).Return(mockCommand).Times(1)
+	mockCommand.EXPECT().DryRun().Return(fakeHrJSON, nil).Times(1)
+
+	mockLayer := layers.NewMockLayer(mockCtl)
+	mockLayer.EXPECT().GetName().Return(layerName).AnyTimes()
+	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
+	mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()
+	mockLayer.EXPECT().GetAddonsLayer().Return(addonsLayer).Times(1)
+
+	err = applier.Apply(ctx, mockLayer)
+	if err != nil {
+		t.Fatalf("LayerApplier.Apply returned an error: %s", err)
+	}
 }

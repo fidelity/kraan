@@ -91,7 +91,7 @@ function toolkit_refresh() {
     fi
     gitops_regcred_arg="--image-pull-secret ${secret_name}"
   fi
-  tk install --export --components=source-controller "${gitops_repo_arg}" "${gitops_regcred_arg}" > "${work_dir}"/gitops/gitops.yaml
+  tk install --export --components=source-controller ${gitops_repo_arg} ${gitops_regcred_arg} > "${work_dir}"/gitops/gitops.yaml
   if [ -n "${dry_run}" ] ; then
     echo "yaml for gitops toolkit is in ${work_dir}/gitops/gitops.yaml"
   fi
@@ -122,7 +122,7 @@ function create_regcred() {
 function deploy_kraan_mgr() {
   cp -rf "${base_dir}"/testdata/addons/kraan/manager "${work_dir}"
   if [ -n "${kraan_repo}" ] ; then
-    sed -s "s#image\:\ docker.pkg.github.com/addons-mgmt#image\:\ ${kraan_repo}#" "${work_dir}"/manager/deployment.yaml
+    sed -i "s#image\:\ docker.pkg.github.com/addons-mgmt#image\:\ ${kraan_repo}#" "${work_dir}"/manager/deployment.yaml
   fi
   if [ -n "${kraan_regcred}" ] ; then
     local secret_name="regcred"

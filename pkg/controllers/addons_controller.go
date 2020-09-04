@@ -20,21 +20,28 @@ import (
 	"context"
 	"fmt"
 
+	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
+	"github.com/go-logr/logr"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
+
 	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/internal/apply"
 	layers "github.com/fidelity/kraan/pkg/internal/layers"
 	utils "github.com/fidelity/kraan/pkg/internal/utils"
+)
 
-	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
-	"github.com/go-logr/logr"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+var (
+	hrOwnerKey = ".owner"
 )
 
 // AddonsLayerReconciler reconciles a AddonsLayer object.
@@ -215,21 +222,34 @@ func (r *AddonsLayerReconciler) update(ctx context.Context, log logr.Logger,
 	return nil
 }
 
-/*
-func (r *AddonsLayerReconciler) sourceController(o handler.MapObject) []ctrl.Request {
-	//ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	//defer cancel()
-
-	return []ctrl.Request{
-		{
-			NamespacedName: types.NamespacedName{
-				Name:      sourcev1.GitRepository.Name,
-				Namespace: sourcev1.GitRepository.Namespace,
-			},
-		},
+func repoMapperFunc(a handler.MapObject) []reconcile.Request {
+	kind := a.Object.GetObjectKind().GroupVersionKind().Kind
+	repoKind := sourcev1.GitRepositoryKind
+	if kind != repoKind {
+		// If this isn't a GitRepository object, return an empty list of requests
+		// TODO - not sure if this is the correct way to handle this error
+		return []reconcile.Request{}
+	}
+	repo, ok := a.Object.(*sourcev1.GitRepository)
+	if !ok {
+		return nil
+	}
+	namespace := repo.GetNamespace()
+	name := repo.GetName()
+	// TODO - here is where we need to map the GitRepository to the AddonsLayer(s)
+	firstLayerName := name + "first-layer"
+	secondLayerName := name + "second-layer"
+	return []reconcile.Request{
+		{NamespacedName: types.NamespacedName{
+			Name:      firstLayerName,
+			Namespace: namespace,
+		}},
+		{NamespacedName: types.NamespacedName{
+			Name:      secondLayerName,
+			Namespace: namespace,
+		}},
 	}
 }
-*/
 
 func indexHelmReleaseByOwner(o runtime.Object) []string {
 	hr, ok := o.(*helmopv1.HelmRelease)
@@ -250,34 +270,17 @@ func indexHelmReleaseByOwner(o runtime.Object) []string {
 func (r *AddonsLayerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	addonsLayer := &kraanv1alpha1.AddonsLayer{}
 	hr := &helmopv1.HelmRelease{}
-	_, err := ctrl.NewControllerManagedBy(mgr).
-		For(addonsLayer).
-		/*
-			Watches(
-				&source.Kind{Type: sourcev1.GitRepository{}},
-				&handler.EnqueueRequestsFromMapFunc{
-					ToRequests: handler.ToRequestsFunc(r.sourceController),
-				},
-			).*/
-		Owns(hr).
-		Build(r)
 
-	if err != nil {
-		return fmt.Errorf("failed setting up the AddonsLayer controller manager: %w", err)
-	}
-	/*
-		if err = c.Watch(
-			&source.Kind{Type: &*sourcev1.GitRepository{}},
-			&handler.EnqueueRequestsFromMapFunc{
-				ToRequests: controllers.ClusterToInfrastructureMapFunc(awsManagedControlPlane.GroupVersionKind()),
-			}); err != nil {
-			return fmt.Errorf("failed adding a watch for ready clusters: %w", err)
-		}
-	*/
-	if err := mgr.GetFieldIndexer().IndexField(&helmopv1.HelmRelease{}, ".owner", indexHelmReleaseByOwner); err != nil {
+	if err := mgr.GetFieldIndexer().IndexField(r.Context, &helmopv1.HelmRelease{}, hrOwnerKey, indexHelmReleaseByOwner); err != nil {
 		return fmt.Errorf("failed setting up FieldIndexer for HelmRelease owner: %w", err)
 	}
 
-	//return ctrl.NewControllerManagedBy(mgr).For(addonsLayer).Owns(hr).Complete(r)
-	return nil
+	repoKind := &source.Kind{Type: &sourcev1.GitRepository{}}
+	repoHandler := &handler.EnqueueRequestsFromMapFunc{ToRequests: handler.ToRequestsFunc(repoMapperFunc)}
+
+	return ctrl.NewControllerManagedBy(mgr).
+		For(addonsLayer).
+		Owns(hr).
+		Watches(repoKind, repoHandler).
+		Complete(r)
 }

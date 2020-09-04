@@ -8,6 +8,7 @@ function usage()
     echo "USAGE: ${0##*/} [--debug] [--dry-run] [--toolkit] [--deploy-kind]"
     echo "       [--kraan-image-pull-secret auto | <filename>] [--kraan-image-repo <repo-name>]"
     echo "       [--gitops-image-pull-secret auto | <filename>] [--gitops-image-repo <repo-name>]"
+    echo "       [--gitops-proxy auto | <proxy-url>]"
     echo "Install the Kraan Addon Manager and gitops source controller to a Kubernetes cluster"
     echo "options:"
     echo "'--kraan-image-pull-secret' set to 'auto' to generate image pull secrets from ~/.docker/config.json or"
@@ -17,6 +18,8 @@ function usage()
     echo "'--gitops-image-pull-secret' as above for gitops components"
     echo "'--kraan-image-repo' provide image repository to use for Kraan, docker.pkg.github.com/"
     echo "'--gitops-image-repo' provide image repository to use for gitops components, defaults to docker.io/fluxcd"
+    echo "'--gitops-proxy' set to 'auto' to generate proxy setting for source controller using value of HTTPS_PROXY environmental variable"
+    echo "                 or supply the proxy url to use."
     echo "'--deploy-kind' to create a kind cluster and use that to deploy to. Otherwise it will deploy to an existing cluster."
     echo "                The KUBECONFIG environmental variable or ~/.kube/config should be set to a cluster admin user for the"
     echo "                cluster you want to use. This cluster must be running API version 16 or greater."
@@ -35,6 +38,7 @@ function args() {
   kraan_repo=""
   kraan_regcred=""
   gitops_regcred=""
+  gitops_proxy=""
 
   arg_list=( "$@" )
   arg_count=${#arg_list[@]}
@@ -45,6 +49,7 @@ function args() {
           "--deploy-kind") deploy_kind=1;;
           "--kraan-image-pull-secret") (( arg_index+=1 )); kraan_regcred="${arg_list[${arg_index}]}";;
           "--gitops-image-pull-secret") (( arg_index+=1 )); gitops_regcred="${arg_list[${arg_index}]}";toolkit=1;;
+          "--gitops-proxy") (( arg_index+=1 )); gitops_proxy="${arg_list[${arg_index}]}";toolkit=1;;
           "--kraan-image-repo") (( arg_index+=1 )); kraan_repo="${arg_list[${arg_index}]}";;
           "--gitops-image-repo") (( arg_index+=1 )); gitops_repo="${arg_list[${arg_index}]}";toolkit=1;;
           "--dry-run") dry_run="--dry-run";;
@@ -94,6 +99,15 @@ function toolkit_refresh() {
   gotk install --export --components=source-controller ${gitops_repo_arg} ${gitops_regcred_arg} > "${work_dir}"/gitops/gitops.yaml
   if [ -n "${dry_run}" ] ; then
     echo "yaml for gitops toolkit is in ${work_dir}/gitops/gitops.yaml"
+  fi
+  if [-n "${gitops_proxy}" ] ; then
+    local gitops_proxy_url="${gitops_proxy}"
+    if [ "${gitops_proxy}" == "auto" ] ; then
+      gitops_proxy_url="${HTTPS_PROXY}"
+    fi
+    cp "${work_dir}"/gitops/gitops.yaml "${work_dir}"/gitops/gitops-orignal.yaml
+    awk '/metadata.namespace:/{ print "        - name: HTTPS_PROXY\n          value: ${gitops_proxy_url}\n        - name: NO_PROXY\n         value: 10.0.0.0/8"}1' \
+        "${work_dir}"/gitops/gitops-orignal.yaml > "${work_dir}"/gitops/gitops.yaml
   fi
 }
 

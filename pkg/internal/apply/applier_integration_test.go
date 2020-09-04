@@ -10,14 +10,9 @@ import (
 	"testing"
 	"time"
 
-	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
-	"github.com/fidelity/kraan/pkg/internal/layers"
-
 	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
-
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -26,10 +21,12 @@ import (
 	k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
+	"github.com/fidelity/kraan/pkg/internal/layers"
 )
 
 func combinedScheme() *runtime.Scheme {
@@ -162,7 +159,7 @@ func indexHelmReleaseByOwner(o runtime.Object) []string {
 func (r *fakeReconciler) setupWithManager(mgr ctrl.Manager) error {
 	addonsLayer := &kraanv1alpha1.AddonsLayer{}
 	hr := &helmopv1.HelmRelease{}
-	if err := mgr.GetFieldIndexer().IndexField(hr, ".owner", indexHelmReleaseByOwner); err != nil {
+	if err := mgr.GetFieldIndexer().IndexField(r.Context, hr, ".owner", indexHelmReleaseByOwner); err != nil {
 		return fmt.Errorf("failed setting up FieldIndexer for HelmRelease owner: %w", err)
 	}
 	err := ctrl.NewControllerManagedBy(mgr).For(addonsLayer).Owns(hr).Complete(r)

@@ -20,26 +20,24 @@ import (
 	"context"
 	"fmt"
 
-	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
-	"github.com/fidelity/kraan/pkg/internal/apply"
-	layers "github.com/fidelity/kraan/pkg/internal/layers"
-	utils "github.com/fidelity/kraan/pkg/internal/utils"
-
 	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
 	"github.com/go-logr/logr"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
+	"github.com/fidelity/kraan/pkg/internal/apply"
+	layers "github.com/fidelity/kraan/pkg/internal/layers"
+	utils "github.com/fidelity/kraan/pkg/internal/utils"
 )
 
 var (
@@ -232,7 +230,10 @@ func repoMapperFunc(a handler.MapObject) []reconcile.Request {
 		// TODO - not sure if this is the correct way to handle this error
 		return []reconcile.Request{}
 	}
-	repo := a.Object.(*sourcev1.GitRepository)
+	repo, ok := a.Object.(*sourcev1.GitRepository)
+	if !ok {
+		return nil
+	}
 	namespace := repo.GetNamespace()
 	name := repo.GetName()
 	// TODO - here is where we need to map the GitRepository to the AddonsLayer(s)

@@ -34,7 +34,7 @@ replace (
 	github.com/fluxcd/flux/pkg/install => github.com/fluxcd/flux/pkg/install v0.0.0-20200206191601-8b676b003ab0
 	github.com/fluxcd/helm-operator => github.com/fluxcd/helm-operator v1.2.0
 	github.com/fluxcd/helm-operator/pkg/install => github.com/fluxcd/helm-operator/pkg/install v0.0.0-20200407140510-8d71b0072a3e
-	k8s.io/api => k8s.io/api v0.17.2
-	k8s.io/apimachinery => k8s.io/apimachinery v0.17.3-beta.0
-	k8s.io/client-go => k8s.io/client-go v0.17.2
+	k8s.io/api => k8s.io/api v0.18.8
+	k8s.io/apimachinery => k8s.io/apimachinery v0.18.8
+	k8s.io/client-go => k8s.io/client-go v0.18.8
 )

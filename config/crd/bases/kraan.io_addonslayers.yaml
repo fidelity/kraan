@@ -13,6 +13,10 @@ spec:
     kind: AddonsLayer
     listKind: AddonsLayerList
     plural: addonslayers
+    shortNames:
+    - al
+    - layer
+    - addonlayer
     singular: addonslayer
   scope: Cluster
   subresources:

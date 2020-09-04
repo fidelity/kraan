@@ -6,7 +6,7 @@ metadata:
 spec:
   interval: 1m0s
   ref:
-    tag: 0.1.01
+    branch: master
   secretRef:
     name: kraan-http
   url: https://github.com/fidelity/kraan.git

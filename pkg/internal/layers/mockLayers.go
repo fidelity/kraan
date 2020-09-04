@@ -61,18 +61,6 @@ func (mr *MockLayerMockRecorder) SetStatusApplying() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusApplying", reflect.TypeOf((*MockLayer)(nil).SetStatusApplying))
 }
 
-// SetStatusPending mocks base method
-func (m *MockLayer) SetStatusPending() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetStatusPending")
-}
-
-// SetStatusPending indicates an expected call of SetStatusPending
-func (mr *MockLayerMockRecorder) SetStatusPending() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusPending", reflect.TypeOf((*MockLayer)(nil).SetStatusPending))
-}
-
 // SetStatusPruning mocks base method
 func (m *MockLayer) SetStatusPruning() {
 	m.ctrl.T.Helper()

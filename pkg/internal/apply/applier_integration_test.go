@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/internal/layers"
@@ -231,6 +232,15 @@ func getAddonsLayer(ctx context.Context, t *testing.T, c client.Client, name str
 	return addonsLayer
 }
 
+func getHR(ctx context.Context, t *testing.T, c client.Client, namespace string, name string) *helmopv1.HelmRelease {
+	hr := &helmopv1.HelmRelease{}
+	key := client.ObjectKey{Namespace: namespace, Name: name}
+	if err := c.Get(ctx, key, hr); err != nil {
+		t.Fatalf("unable to retrieve HelmRelease '%s/%s'", namespace, name)
+	}
+	return hr
+}
+
 func TestSingleApply(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	defer mockCtl.Finish()
@@ -265,6 +275,8 @@ func TestSingleApply(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LayerApplier.Apply returned an error: %s", err)
 	}
+	hr := getHR(ctx, t, client, "simple", "microservice")
+	t.Logf("Found HelmRelease '%s/%s'", hr.GetNamespace(), hr.GetName())
 }
 
 func TestDoubleApply(t *testing.T) {
@@ -275,7 +287,7 @@ func TestDoubleApply(t *testing.T) {
 
 	logger := testlogr.TestLogger{T: t}
 	scheme := combinedScheme()
-	client := runtimeClient(t, scheme)
+	client := managerClient(ctx, t, scheme, "simple")
 
 	applier, err := NewApplier(client, logger, scheme)
 	if err != nil {
@@ -301,6 +313,11 @@ func TestDoubleApply(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LayerApplier.Apply returned an error: %s", err)
 	}
+	time.Sleep(5 * time.Second)
+	hr1 := getHR(ctx, t, client, "simple", "microservice")
+	t.Logf("Found HelmRelease '%s/%s'", hr1.GetNamespace(), hr1.GetName())
+	hr2 := getHR(ctx, t, client, "simple", "microservice-two")
+	t.Logf("Found HelmRelease '%s/%s'", hr2.GetNamespace(), hr2.GetName())
 }
 
 func TestPruneIsRequired(t *testing.T) {

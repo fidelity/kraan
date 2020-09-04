@@ -14,7 +14,7 @@ spec:
   chart:
     git: https://github.com/fidelity/kraan
     path: testdata/charts/microservice
-    ref: owner-refs
+    ref: master
   values:
     preHookBackoffLimit: 1
     preHookActiveDeadlineSeconds: 60
@@ -32,5 +32,6 @@ spec:
         tag: 3.1.5
       service:
         type: NodePort
+        nodePort: 31198
       replicaCount: 1
       message: Single Microservice Test

@@ -5,7 +5,6 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.2.5
-  creationTimestamp: null
   name: addonslayers.kraan.io
 spec:
   group: kraan.io
@@ -14,6 +13,10 @@ spec:
     listKind: AddonsLayerList
     plural: addonslayers
     singular: addonslayer
+    shortNames:
+    - addonlayer
+    - layer
+    - al
   scope: Cluster
   subresources:
     status: {}

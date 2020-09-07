@@ -8,7 +8,7 @@ metadata:
 spec:
   releaseName: microservice-test-1
   test:
-    enable: false
+    enable: true
     ignoreFailures: false
     timeout: 300
   chart:
@@ -27,7 +27,6 @@ spec:
     testHookDelaySeconds: 10
     testHookSucceed: "true"
     podinfo:
-      image: {}
       service:
         enabled: true
         type: ClusterIP

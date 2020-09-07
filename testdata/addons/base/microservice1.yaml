@@ -8,13 +8,13 @@ metadata:
 spec:
   releaseName: microservice-test-1
   test:
-    enable: false
-    ignoreFailures: true
+    enable: true
+    ignoreFailures: false
     timeout: 300
   chart:
     git: https://github.com/fidelity/kraan
     path: testdata/charts/microservice
-    ref: master
+    ref: testdata-fix
   values:
     preHookBackoffLimit: 1
     preHookActiveDeadlineSeconds: 60
@@ -27,9 +27,6 @@ spec:
     testHookDelaySeconds: 10
     testHookSucceed: "true"
     podinfo:
-      image:
-        repository: stefanprodan/podinfo
-        tag: 3.1.5
       service:
         enabled: true
         type: ClusterIP

@@ -8,6 +8,19 @@ metadata:
   creationTimestamp: null
   name: addonslayers.kraan.io
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .spec.source.name
+    name: Source
+    type: string
+  - JSONPath: .spec.source.path
+    name: Path
+    type: string
+  - JSONPath: .status.state
+    name: Status
+    type: string
+  - JSONPath: .status.conditions[?(@.status=="True")].reason
+    name: Reason
+    type: string
   group: kraan.io
   names:
     kind: AddonsLayer

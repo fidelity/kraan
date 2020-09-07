@@ -167,10 +167,11 @@ func (l *KraanLayer) trimConditions() {
 func (l *KraanLayer) setStatus(status, reason, message string) {
 	length := len(l.addonsLayer.Status.Conditions)
 	if length > 0 {
-		last := l.addonsLayer.Status.Conditions[length-1]
+		last := &l.addonsLayer.Status.Conditions[length-1]
 		if last.Reason == reason && last.Message == message && last.Type == status {
 			return
 		}
+		last.Status = corev1.ConditionFalse
 	}
 
 	l.addonsLayer.Status.Conditions = append(l.addonsLayer.Status.Conditions, kraanv1alpha1.Condition{

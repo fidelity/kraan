@@ -8,8 +8,8 @@ metadata:
 spec:
   releaseName: microservice-test-1
   test:
-    enable: true
-    ignoreFailures: true
+    enable: false
+    ignoreFailures: false
     timeout: 300
   chart:
     git: https://github.com/fidelity/kraan

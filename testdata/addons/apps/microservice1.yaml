@@ -9,12 +9,12 @@ spec:
   releaseName: microservice-test-1
   test:
     enable: true
-    ignoreFailures: false
+    ignoreFailures: true
     timeout: 300
   chart:
     git: https://github.com/fidelity/kraan
-    path: testdata/charts/microservice
-    ref: master
+    path: testdata/charts/podinfo
+    ref: testdata-fix
   values:
     preHookBackoffLimit: 1
     preHookActiveDeadlineSeconds: 60
@@ -27,11 +27,9 @@ spec:
     testHookDelaySeconds: 10
     testHookSucceed: "true"
     podinfo:
-      image:
-        repository: stefanprodan/podinfo
-        tag: 3.1.5
+      image: {}
       service:
-        type: NodePort
-        nodePort: 31160
+        enabled: true
+        type: ClusterIP
       replicaCount: 1
       message: -Microservice Test 1

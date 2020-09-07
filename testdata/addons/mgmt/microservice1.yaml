@@ -13,7 +13,7 @@ spec:
     timeout: 300
   chart:
     git: https://github.com/fidelity/kraan
-    path: testdata/charts/microservice
+    path: testdata/charts/podinfo
     ref: master
   values:
     preHookBackoffLimit: 1

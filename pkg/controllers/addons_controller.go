@@ -66,7 +66,7 @@ func NewReconciler(config *rest.Config, client client.Client, logger logr.Logger
 	}
 	reconciler.k8client = reconciler.getK8sClient()
 	reconciler.Context = context.Background()
-	reconciler.Applier, err = apply.NewApplier(client, logger, scheme)
+	reconciler.Applier, err = apply.NewApplier(client, logger, scheme, config)
 	return reconciler, err
 }
 

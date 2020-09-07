@@ -17,7 +17,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -45,10 +48,29 @@ type KubectlLayerApplier struct {
 	kubectl kubectl.Kubectl
 	scheme  *runtime.Scheme
 	logger  logr.Logger
+	config  *rest.Config
+}
+
+func getHelmReleaseClient(config *rest.Config) (*rest.RESTClient, error) {
+	err := helmopv1.AddToScheme(scheme.Scheme)
+	if err != nil {
+		return nil, fmt.Errorf("unable to add scheme: %w", err)
+	}
+	crdConfig := *config
+	crdConfig.ContentConfig.GroupVersion = &schema.GroupVersion{Group: helmopv1.SchemeGroupVersion.Group, Version: helmopv1.Version}
+	crdConfig.APIPath = "/apis"
+	crdConfig.NegotiatedSerializer = serializer.NewCodecFactory(scheme.Scheme)
+	crdConfig.UserAgent = rest.DefaultKubernetesUserAgent()
+
+	hrClient, err := rest.UnversionedRESTClientFor(&crdConfig)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create Helm Release client: %w", err)
+	}
+	return hrClient, nil
 }
 
 // NewApplier returns a LayerApplier instance.
-func NewApplier(client client.Client, logger logr.Logger, scheme *runtime.Scheme) (applier LayerApplier, err error) {
+func NewApplier(client client.Client, logger logr.Logger, scheme *runtime.Scheme, config *rest.Config) (applier LayerApplier, err error) {
 	kubectl, err := newKubectlFunc(logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create a Kubectl provider for KubectlLayerApplier: %w", err)
@@ -58,6 +80,7 @@ func NewApplier(client client.Client, logger logr.Logger, scheme *runtime.Scheme
 		kubectl: kubectl,
 		scheme:  scheme,
 		logger:  logger,
+		config:  config,
 	}
 	return applier, nil
 }
@@ -155,7 +178,21 @@ func (a KubectlLayerApplier) addOwnerRefs(layer layers.Layer, hrs []*helmopv1.He
 
 func (a KubectlLayerApplier) getHelmReleases(ctx context.Context, layer layers.Layer) (foundHrs []*helmopv1.HelmRelease, err error) {
 	hrList := &helmopv1.HelmReleaseList{}
-	err = a.client.List(ctx, hrList, client.MatchingFields{".owner": layer.GetName()})
+	/*
+		requirement, err := labels.NewRequirement("kraan/owner", selection.Operator("=="), []string{layer.GetName()})
+		if err != nil {
+			return nil, fmt.Errorf("unable to create requirement kraan/owner == '%s': %w", layer.GetName(), err)
+		}
+
+		listOptions := client.ListOptions{LabelSelector: labels.NewSelector().Add(*requirement)}
+		err = a.client.List(ctx, hrList, &listOptions) // client.MatchingFields{".owner": layer.GetName()})
+	*/
+	//helmlist.NewHelmReleaseLister
+	hrClient, err := getHelmReleaseClient(a.config)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create helm release client: %w", err)
+	}
+	err = hrClient.Get().Resource("helmreleases").Do(ctx).Into(hrList)
 	if err != nil {
 		return nil, fmt.Errorf("unable to list HelmRelease resources owned by '%s': %w", layer.GetName(), err)
 	}

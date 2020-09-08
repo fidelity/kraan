@@ -101,10 +101,6 @@ func (r *AddonsLayerReconciler) processPrune(l layers.Layer) error {
 }
 
 func (r *AddonsLayerReconciler) processApply(l layers.Layer) error {
-	if l.IsUpdated() {
-		return nil
-	}
-
 	ctx := r.Context
 	applier := r.Applier
 
@@ -129,10 +125,6 @@ func (r *AddonsLayerReconciler) processApply(l layers.Layer) error {
 }
 
 func (r *AddonsLayerReconciler) checkSuccess(l layers.Layer) error {
-	if l.IsUpdated() {
-		return nil
-	}
-
 	ctx := r.Context
 	applier := r.Applier
 
@@ -161,12 +153,12 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error {
 	}
 
 	err := r.processPrune(l)
-	if err != nil {
+	if err != nil || l.IsDelayed() {
 		return err
 	}
 
 	err = r.processApply(l)
-	if err != nil {
+	if err != nil || l.IsDelayed() {
 		return err
 	}
 

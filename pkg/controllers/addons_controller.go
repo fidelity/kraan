@@ -81,58 +81,48 @@ func (r *AddonsLayerReconciler) getK8sClient() kubernetes.Interface {
 	return clientset
 }
 
-func (r *AddonsLayerReconciler) processPrune(l layers.Layer) error {
+func (r *AddonsLayerReconciler) processPrune(l layers.Layer) (statusReconciled bool, err error) {
 	ctx := r.Context
 	applier := r.Applier
 
 	pruneIsRequired, hrs, err := applier.PruneIsRequired(ctx, l)
 	if err != nil {
-		// TODO - we might want to add some sort of error handling here
-		return err
+		return false, err
 	} else if pruneIsRequired {
 		l.SetStatusPruning()
 		if pruneErr := applier.Prune(ctx, l, hrs); err != nil {
-			return pruneErr
+			return true, pruneErr
 		}
 		l.SetDelayedRequeue()
-		return nil
+		return true, nil
 	}
-	return nil
+	return false, nil
 }
 
-func (r *AddonsLayerReconciler) processApply(l layers.Layer) error {
-	if l.IsUpdated() {
-		return nil
-	}
-
+func (r *AddonsLayerReconciler) processApply(l layers.Layer) (statusReconciled bool, err error) {
 	ctx := r.Context
 	applier := r.Applier
 
 	applyIsRequired, err := applier.ApplyIsRequired(ctx, l)
 	if err != nil {
-		// TODO - we might want to add some sort of error handling here
-		return err
+		return false, err
 	} else if applyIsRequired {
 		if !l.DependenciesDeployed() {
 			l.SetDelayedRequeue()
-			return nil
+			return true, nil
 		}
 
 		l.SetStatusApplying()
 		if applyErr := applier.Apply(ctx, l); err != nil {
-			return applyErr
+			return true, applyErr
 		}
 		l.SetDelayedRequeue()
-		return nil
+		return true, nil
 	}
-	return nil
+	return false, nil
 }
 
 func (r *AddonsLayerReconciler) checkSuccess(l layers.Layer) error {
-	if l.IsUpdated() {
-		return nil
-	}
-
 	ctx := r.Context
 	applier := r.Applier
 
@@ -142,6 +132,7 @@ func (r *AddonsLayerReconciler) checkSuccess(l layers.Layer) error {
 		return err
 	} else if applyWasSuccessful {
 		l.SetStatusDeployed()
+		return nil
 	}
 	return nil
 }
@@ -160,14 +151,20 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error {
 		return nil
 	}
 
-	err := r.processPrune(l)
+	layerStatusUpdated, err := r.processPrune(l)
 	if err != nil {
 		return err
 	}
+	if layerStatusUpdated {
+		return nil
+	}
 
-	err = r.processApply(l)
+	layerStatusUpdated, err = r.processApply(l)
 	if err != nil {
 		return err
+	}
+	if layerStatusUpdated {
+		return nil
 	}
 
 	return r.checkSuccess(l)

@@ -36,6 +36,61 @@ function args() {
     esac
     (( arg_index+=1 ))
   done
+  if [ -n "${add_secret}" ] ; then
+    if [ -z "${GIT_USER:-}" ] ; then 
+      echo "GIT_USER must be set to the git user name"
+      usage; exit 1
+    fi
+    if [ -z "${GIT_CREDENTIALS:-}" ] ; then
+        echo "GIT_CREDENTIALS must be set to the git user's password or token"
+        usage; exit 1
+    fi
+  fi
+}
+
+
+function create_secrets {
+  local base64_user="$(echo -n "${GIT_USER}" | base64 -w 0)"
+  local base64_creds="$(echo -n "${GIT_CREDENTIALS}" | base64 -w 0)"
+  sed s/GIT_USER/${base64_user}/ "${base_dir}/"testdata/templates/template-http.yaml | \
+  sed s/GIT_CREDENTIALS/${base64_creds}/ > "${work_dir}"/hr-http.yaml
+  kubectl apply -f "${work_dir}"/hr-http.yaml -n kraan
+}
+
+function updateHRs() {
+  if [ -n "${add_secret}" ] ; then
+    echo "adding secretRef to helm releases access git repo containing test charts"
+    create_secrets
+    for hr_file in `find $REPOS_PATH -name microservice*.yaml`
+    do
+      save_file="${work_dir}"/`basename ${hr_file}`
+      cp "${hr_file}" "${save_file}"
+          awk '/ref: master/{ print "    secretRef:\n      name: kraan-http"}1' \
+              "${save_file}" > "${hr_file}"
+      rm "${save_file}"
+    done
+  fi
+  if [ -n "${ignore_test_errors}" ] ; then
+    echo "setting ignore failed tests due to issue with podinfo tests"
+    for hr_file in `find $REPOS_PATH -name microservice*.yaml`
+    do
+      sed -i s/ignoreFailures\:\ false/ignoreFailures\:\ true/ "${hr_file}"
+    done
+  fi
+  if [ -n "${set_git_ref}" ] ; then
+    echo "setting git repo branch to obtain test charts from to: ${set_git_ref}"
+    for hr_file in `find $REPOS_PATH -name microservice*.yaml`
+    do
+      sed -i s/ref\:\ master/ref\:\ ${set_git_ref}/ "${hr_file}"
+    done
+  fi
+  if [ -n "${set_git_repo}" ] ; then
+    echo "setting git repo to obtain test charts from to: ${set_git_repo}"
+    for hr_file in `find $REPOS_PATH -name microservice*.yaml`
+    do
+      sed -i s!git\:\ https\://github.com/fidelity/kraan!git\:\ ${set_git_repo}! "${hr_file}"
+    done
+  fi
 }
 
 args "$@"
@@ -44,6 +99,7 @@ work_dir="$(mktemp -d -t kraan-XXXXXX)"
 mkdir -p "${work_dir}"/addons-config/testdata
 cp -rf "${base_dir}"/testdata/addons "${work_dir}"/addons-config/testdata
 export REPOS_PATH="${work_dir}"
+updateHRs
 echo "Running kraan-controller with REPOS_PATH set to ${REPOS_PATH}"
 echo "You may change files in this directory to test kraan-controller"
 echo "Edit and then kubectl apply ${work_dir}/addons-config/testdata/addons/addons.yaml to cause kraan-controller to reprocess layers."
@@ -51,4 +107,6 @@ echo "if you want change and rerun the kraan-controller you should type..."
 echo "export REPOS_PATH=${work_dir}"
 echo "kraan-controller"
 echo "The temporary directory will not be deleted to allow for this sceanrio so you are responsible for deleting this directory"
+echo ""
+read -p "Press enter to continue"
 kraan-controller

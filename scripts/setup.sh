@@ -100,7 +100,7 @@ function toolkit_refresh() {
   if [ -n "${dry_run}" ] ; then
     echo "yaml for gitops toolkit is in ${work_dir}/gitops/gitops.yaml"
   fi
-  if [-n "${gitops_proxy}" ] ; then
+  if [ -n "${gitops_proxy}" ] ; then
     local gitops_proxy_url="${gitops_proxy}"
     if [ "${gitops_proxy}" == "auto" ] ; then
       gitops_proxy_url="${HTTPS_PROXY}"

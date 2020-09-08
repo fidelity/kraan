@@ -7,22 +7,20 @@ import (
 	"testing"
 	"time"
 
-	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
-	"github.com/fidelity/kraan/pkg/internal/kubectl"
-	"github.com/fidelity/kraan/pkg/internal/layers"
-	mocks "github.com/fidelity/kraan/pkg/internal/mocks/client"
-
 	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
-
 	"github.com/go-logr/logr"
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	types "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
+	"github.com/fidelity/kraan/pkg/internal/kubectl"
+	"github.com/fidelity/kraan/pkg/internal/layers"
+	mocks "github.com/fidelity/kraan/pkg/internal/mocks/client"
 )
 
 var (
@@ -91,7 +89,7 @@ func fakeAddonsLayer(sourcePath, layerName string, layerUID types.UID) *kraanv1a
 func TestNewApplier(t *testing.T) {
 	logger := testlogr.TestLogger{T: t}
 	client := fake.NewFakeClientWithScheme(testScheme)
-	applier, err := NewApplier(client, logger, testScheme)
+	applier, err := NewApplier(client, logger, testScheme, nil)
 	if err != nil {
 		t.Fatalf("The NewApplier constructor returned an error: %s", err)
 	}
@@ -109,7 +107,7 @@ func TestMockKubectl(t *testing.T) {
 
 	logger := testlogr.TestLogger{T: t}
 	client := fake.NewFakeClientWithScheme(testScheme)
-	applier, err := NewApplier(client, logger, testScheme)
+	applier, err := NewApplier(client, logger, testScheme, nil)
 	if err != nil {
 		t.Fatalf("The NewApplier constructor returned an error: %s", err)
 	}
@@ -130,7 +128,7 @@ func TODOTestBasicApply(t *testing.T) { //nolint
 	logger := testlogr.TestLogger{T: t}
 	client := mocks.NewMockClient(mockCtl)
 
-	applier, err := NewApplier(client, logger, testScheme)
+	applier, err := NewApplier(client, logger, testScheme, nil)
 	if err != nil {
 		t.Fatalf("The NewApplier constructor returned an error: %s", err)
 	}

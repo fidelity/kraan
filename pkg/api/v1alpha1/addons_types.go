@@ -217,6 +217,10 @@ const (
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster,shortName=al;layer;addonlayer
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Source",type=string,JSONPath=`.spec.source.name`
+// +kubebuilder:printcolumn:name="Path",type=string,JSONPath=`.spec.source.path`
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.state",description=""
+// +kubebuilder:printcolumn:name="Reason",type="string",JSONPath=".status.conditions[?(@.status==\"True\")].reason",description=""
 type AddonsLayer struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

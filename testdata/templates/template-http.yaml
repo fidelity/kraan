@@ -5,5 +5,4 @@ data:
 kind: Secret
 metadata:
   name: kraan-http
-  namespace: gitops-system
 type: Opaque

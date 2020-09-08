@@ -197,7 +197,11 @@ func (a KubectlLayerApplier) getHelmReleases(ctx context.Context, layer layers.L
 		return nil, fmt.Errorf("unable to list HelmRelease resources owned by '%s': %w", layer.GetName(), err)
 	}
 	for _, hr := range hrList.Items {
-		foundHrs = append(foundHrs, hr.DeepCopy())
+		for _, owner := range hr.ObjectMeta.OwnerReferences {
+			if owner.Name == layer.GetName() {
+				foundHrs = append(foundHrs, hr.DeepCopy())
+			}
+		}
 	}
 	return foundHrs, nil
 }
@@ -440,7 +444,7 @@ func (a KubectlLayerApplier) ApplyWasSuccessful(ctx context.Context, layer layer
 	}
 
 	for _, hr := range clusterHrs {
-		if hr.Status.Phase == helmopv1.HelmReleasePhaseSucceeded {
+		if hr.Status.Phase != helmopv1.HelmReleasePhaseSucceeded {
 			a.logDebug("unsuccessful HelmRelease for AddonsLayer", layer, "resource", hr)
 			return false, nil
 		}

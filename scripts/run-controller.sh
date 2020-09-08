@@ -63,25 +63,28 @@ function args() {
 
 
 function create_secrets {
+  local name_space="${1}"
   local base64_user="$(echo -n "${GIT_USER}" | base64 -w 0)"
   local base64_creds="$(echo -n "${GIT_CREDENTIALS}" | base64 -w 0)"
   sed s/GIT_USER/${base64_user}/ "${base_dir}/"testdata/templates/template-http.yaml | \
   sed s/GIT_CREDENTIALS/${base64_creds}/ > "${work_dir}"/hr-http.yaml
-  kubectl apply -f "${work_dir}"/hr-http.yaml -n kraan
+  kubectl apply -f "${work_dir}"/hr-http.yaml -n ${name_space}
 }
 
 function updateHRs() {
   if [ -n "${add_secret}" ] ; then
     echo "adding secretRef to helm releases access git repo containing test charts"
-    create_secrets
     for hr_file in `find $REPOS_PATH -name microservice*.yaml`
     do
       save_file="${work_dir}"/`basename ${hr_file}`
       cp "${hr_file}" "${save_file}"
           awk '/ref: master/{ print "    secretRef:\n      name: kraan-http"}1' \
               "${save_file}" > "${hr_file}"
+      name_space=`grep "namespace:" ${hr_file} | awk -F: '{print $2}'`
+      create_secrets $name_space
       rm "${save_file}"
     done
+    create_secrets kraan
   fi
   if [ -n "${ignore_test_errors}" ] ; then
     echo "setting ignore failed tests due to issue with podinfo tests"

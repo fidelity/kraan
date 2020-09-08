@@ -69,11 +69,15 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
 To test kraan-controller
 
     scripts/run-controller.sh --help
-
-    USAGE: run-controller.sh [--debug]
+    USAGE: run-controller.sh [--debug] [--add-secret] [--ignore-test-errors] [--set-git-repo <repo url>] [--set-git-ref <branch name>]
     Run the Kraan Addon Manager on local machine
     options:
     '--debug' for verbose output
+    '--ignore-test-errors' update helm releases in testdata to ignore test failures
+    '--add-secret' create a secret in kraan namespace for use by helm-operator when accessing git repository containing charts
+                the environmental variable GIT_USER and GIT_CREDENTIALS must be set to the git user and credentials respectively
+    '--set-git-repo' set the url of the git repo in the testdata helm releases, defaults to 'https://github.com/fidelity/kraan'
+    '--set-git-ref' set the git repo branch in the testdata helm releases, defaults to 'master'
     This script will create a temporary directory and copy the testdata/addons directory to addons-config/testdata subdirectory in
     the temporary directory. It will then set the environmental variable REPOS_PATH to the temporary directory. This will cause the
     kraan-controller to process the addons layers using the temporary directory as its root directory when locating the yaml files

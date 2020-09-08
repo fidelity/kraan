@@ -100,7 +100,7 @@ function toolkit_refresh() {
   if [ -n "${dry_run}" ] ; then
     echo "yaml for gitops toolkit is in ${work_dir}/gitops/gitops.yaml"
   fi
-  if [-n "${gitops_proxy}" ] ; then
+  if [ -n "${gitops_proxy}" ] ; then
     local gitops_proxy_url="${gitops_proxy}"
     if [ "${gitops_proxy}" == "auto" ] ; then
       gitops_proxy_url="${HTTPS_PROXY}"
@@ -189,7 +189,7 @@ if [ -n "${dry_run}" ] ; then
 fi
 
 kubectl apply ${dry_run} -f "${work_dir}"/gitops/gitops.yaml
-kubectl apply ${dry_run} -f "${work_dir}"/kraan-http.yaml
+kubectl apply ${dry_run} -f "${work_dir}"/kraan-http.yaml -n gitops-system
 
 if [ -n "${gitops_regcred}" ] ; then
   create_regcred gitops-system "${gitops_regcred}"

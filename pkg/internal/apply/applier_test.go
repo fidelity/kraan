@@ -89,7 +89,7 @@ func fakeAddonsLayer(sourcePath, layerName string, layerUID types.UID) *kraanv1a
 func TestNewApplier(t *testing.T) {
 	logger := testlogr.TestLogger{T: t}
 	client := fake.NewFakeClientWithScheme(testScheme)
-	applier, err := NewApplier(client, logger, testScheme, nil)
+	applier, err := NewApplier(client, logger, testScheme)
 	if err != nil {
 		t.Fatalf("The NewApplier constructor returned an error: %s", err)
 	}
@@ -107,7 +107,7 @@ func TestMockKubectl(t *testing.T) {
 
 	logger := testlogr.TestLogger{T: t}
 	client := fake.NewFakeClientWithScheme(testScheme)
-	applier, err := NewApplier(client, logger, testScheme, nil)
+	applier, err := NewApplier(client, logger, testScheme)
 	if err != nil {
 		t.Fatalf("The NewApplier constructor returned an error: %s", err)
 	}
@@ -128,7 +128,7 @@ func TODOTestBasicApply(t *testing.T) { //nolint
 	logger := testlogr.TestLogger{T: t}
 	client := mocks.NewMockClient(mockCtl)
 
-	applier, err := NewApplier(client, logger, testScheme, nil)
+	applier, err := NewApplier(client, logger, testScheme)
 	if err != nil {
 		t.Fatalf("The NewApplier constructor returned an error: %s", err)
 	}

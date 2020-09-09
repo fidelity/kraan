@@ -66,7 +66,7 @@ func NewReconciler(config *rest.Config, client client.Client, logger logr.Logger
 	}
 	reconciler.k8client = reconciler.getK8sClient()
 	reconciler.Context = context.Background()
-	reconciler.Applier, err = apply.NewApplier(client, logger, scheme, config)
+	reconciler.Applier, err = apply.NewApplier(client, logger, scheme)
 	return reconciler, err
 }
 
@@ -107,6 +107,7 @@ func (r *AddonsLayerReconciler) processApply(l layers.Layer) (statusReconciled b
 	if err != nil {
 		return false, err
 	} else if applyIsRequired {
+		utils.Log(r.Log, 1, 1, "apply required", "Name", l.GetName(), "Spec", l.GetSpec(), "Status", l.GetFullStatus())
 		if !l.DependenciesDeployed() {
 			l.SetDelayedRequeue()
 			return true, nil
@@ -130,10 +131,12 @@ func (r *AddonsLayerReconciler) checkSuccess(l layers.Layer) error {
 	if err != nil {
 		// TODO - we might want to add some sort of error handling here
 		return err
-	} else if applyWasSuccessful {
-		l.SetStatusDeployed()
+	}
+	if !applyWasSuccessful {
+		l.SetDelayedRequeue()
 		return nil
 	}
+	l.SetStatusDeployed()
 	return nil
 }
 
@@ -260,6 +263,9 @@ func indexHelmReleaseByOwner(o runtime.Object) []string {
 	if owner.APIVersion != kraanv1alpha1.GroupVersion.String() || owner.Kind != "AddonsLayer" {
 		return nil
 	}
+	log := ctrl.Log.WithName("hr sync")
+	utils.Log(log, 1, 5, "HR associated with layer", "Layer Name", owner.Name, "HR", fmt.Sprintf("%s/%s", hr.GetNamespace(), hr.GetName()))
+
 	return []string{owner.Name}
 }
 

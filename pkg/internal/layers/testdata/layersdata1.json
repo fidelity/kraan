@@ -45,11 +45,11 @@
                         "reason": "AddonsLayer is Deployed",
                         "status": "True",
                         "type": "Deployed",
-                        "version": "1.16-fideks-0.0.79"
+                        "version": "0.1.01"
                     }
                 ],
                 "state": "Deployed",
-                "version": "1.16-fideks-0.0.79"
+                "version": "0.1.01"
             }
         },
         {
@@ -79,11 +79,75 @@
                         "reason": "AddonsLayer is Deployed",
                         "status": "True",
                         "type": "Deployed",
-                        "version": "1.16-fideks-0.0.79"
+                        "version": "0.1.01"
                     }
                 ],
                 "state": "Deployed",
-                "version": "1.16-fideks-0.0.79"
+                "version": "0.1.01"
+            }
+        },  
+        {
+            "apiVersion": "kraan.io/v1alpha1",
+            "kind": "AddonsLayer",
+            "metadata": {
+                "name": "no-depends-v2"
+            },
+            "spec": {
+                "hold": false,
+                "interval": "1m",
+                "source": {
+                    "name": "global-config",
+                    "namespace": "gitops-system",
+                    "path": "./addons/bootstrap"
+                },
+                "version": "0.1.02"
+            },
+            "status": {
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2020-08-26T13:10:13Z",
+                        "reason": "AddonsLayer is Deployed",
+                        "status": "True",
+                        "type": "Deployed",
+                        "version": "0.1.01"
+                    }
+                ],
+                "state": "Deployed",
+                "version": "0.1.01"
+            }
+        },
+        {
+            "apiVersion": "kraan.io/v1alpha1",
+            "kind": "AddonsLayer",
+            "metadata": {
+                "name": "one-depends-v2"
+            },
+            "spec": {
+                "interval": "1m",
+                "prereqs": {
+                    "dependsOn": [
+                        "no-depends-v2@0.1.02"
+                    ]
+                },
+                "source": {
+                    "name": "global-config",
+                    "namespace": "gitops-system",
+                    "path": "./addons/mgmt"
+                },
+                "version": "0.1.02"
+            },
+            "status": {
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2020-08-26T13:10:13Z",
+                        "reason": "AddonsLayer is Deployed",
+                        "status": "True",
+                        "type": "Deployed",
+                        "version": "0.1.01"
+                    }
+                ],
+                "state": "Deployed",
+                "version": "0.1.01"
             }
         }
     ],

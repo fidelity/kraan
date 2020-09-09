@@ -198,7 +198,7 @@ func (l *KraanLayer) SetStatusK8sVersion() {
 // SetStatusDeployed sets the addon layer's status to deployed.
 func (l *KraanLayer) SetStatusDeployed() {
 	l.setStatus(kraanv1alpha1.DeployedCondition,
-		kraanv1alpha1.AddonsLayerDeployedReason, "")
+		fmt.Sprintf("AddonsLayer version %s is Deployed", l.GetSpec().Version), "")
 }
 
 // SetStatusApplying sets the addon layer's status to apply in progress.
@@ -232,10 +232,10 @@ func getNameVersion(nameVersion string) (string, string) {
 }
 
 func (l *KraanLayer) isOtherDeployed(otherVersion string, otherLayer *kraanv1alpha1.AddonsLayer) bool {
-	if otherLayer.Spec.Version != otherVersion {
+	if otherLayer.Status.Version != otherVersion {
 		reason := fmt.Sprintf("waiting for layer: %s, version: %s to be applied.", otherLayer.ObjectMeta.Name, otherVersion)
 		message := fmt.Sprintf("Layer: %s, current version is: %s, require version: %s.",
-			otherLayer.ObjectMeta.Name, otherLayer.Spec.Version, otherVersion)
+			otherLayer.ObjectMeta.Name, otherLayer.Status.Version, otherVersion)
 		l.setStatus(kraanv1alpha1.ApplyPendingCondition, reason, message)
 		return false
 	}

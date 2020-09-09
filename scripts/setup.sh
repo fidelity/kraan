@@ -8,7 +8,7 @@ set -euo pipefail
 
 function usage() {
     set +x
-    echo <<EOF
+    cat <<EOF
 USAGE: ${0##*/} [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--no-kraan]
        [--helm-operator-namespace <namespace>]
        [--kraan-image-pull-secret auto | <filename>] [--kraan-image-repo <repo-name>]

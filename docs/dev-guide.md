@@ -44,25 +44,37 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
 
     scripts/setup.sh --help
 
-    USAGE: setup.sh [--debug] [--dry-run] [--toolkit] [--deploy-kind]
+    USAGE: setup.sh [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--no-kraan]
+       [--helm-operator-namespace <namespace>]
        [--kraan-image-pull-secret auto | <filename>] [--kraan-image-repo <repo-name>]
        [--gitops-image-pull-secret auto | <filename>] [--gitops-image-repo <repo-name>]
+       [--gitops-proxy auto | <proxy-url>] [--git-url <git-repo-url>]
+       [--git-user <git_username>] [--git-token <git_token_or_password>]
+
     Install the Kraan Addon Manager and gitops source controller to a Kubernetes cluster
-    options:
-    '--kraan-image-pull-secret' set to 'auto' to generate image pull secrets from ~/.docker/config.json or
+
+    Options:
+    '--kraan-image-pull-secret' set to 'auto' to generate image pull secrets from ~/.docker/config.json
                                 or supply name of file containing image pull secret defintion to apply.
                                 the last element of the filename should also be the secret name, e.g.
                                 filename /tmp/regcred.yaml should define a secret called 'regcred'
     '--gitops-image-pull-secret' as above for gitops components
+    '--helm-operator-namespace' deploy the Helm Operator to this namespace if it's not already running.
     '--kraan-image-repo' provide image repository to use for Kraan, docker.pkg.github.com/
     '--gitops-image-repo' provide image repository to use for gitops components, defaults to docker.io/fluxcd
-    '--deploy-kind' to create a kind cluster and use that to deploy to. Otherwise it will deploy to an existing cluster.
-                    The KUBECONFIG environmental variable or ~/.kube/config should be set to a cluster admin user for the
-                    cluster you want to use. This cluster must be running API version 16 or greater.
-    '--toolkit' to generate GitOps toolkit components
-    '--debug' for verbose output
-    '--dry-run' to generate yaml but not deploy to cluster. This option will retain temporary work directory
-    The environmental variable GIT_USER and GIT_CREDENTIALS must be set to the git user and credentials respectively
+    '--gitops-proxy' set to 'auto' to generate proxy setting for source controller using value of HTTPS_PROXY
+                    environment variable or supply the proxy url to use.
+    '--deploy-kind' create a new kind cluster and deploy to it. Otherwise the script will deploy to an existing
+                    cluster. The KUBECONFIG environmental variable or ~/.kube/config should be set to a cluster
+                    admin user for the cluster you want to use. This cluster must be running API version 16 or
+                    greater.
+    '--no-kraan' do not deploy the Kraan runtime container to the target cluster.
+    '--git-user' set (or override) the GIT_USER environment variables.
+    '--git-token' set (or override) the GIT_CREDENTIALS environment variables.
+    '--git-url' set the URL for the git repository from which Kraan should pull AddonsLayer configs.
+    '--toolkit' to generate GitOps toolkit components.
+    '--debug' for verbose output.
+    '--dry-run' to generate yaml but not deploy to cluster. This option will retain temporary work directory.
 
 ## Testing
 

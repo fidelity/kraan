@@ -67,7 +67,7 @@ NC:=\033[0m
 .SECONDEXPANSION: %.md %-docker.tar
 
 all: ${PROJECT}-check ${PROJECT}-build
-build: gomod ${PROJECT}-check godocs ${PROJECT}-build
+build: gomod ${PROJECT}-check ${PROJECT}-build
 clean: clean-gomod clean-godocs clean-${PROJECT}-check \
 	clean-${PROJECT}-build clean-check clean-build \
 	clean-${BUILD_DIR}

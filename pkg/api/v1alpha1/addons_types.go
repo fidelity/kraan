@@ -217,6 +217,7 @@ const (
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster,shortName=al;layer;addonlayer
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Version",type=string,JSONPath=`.spec.version`
 // +kubebuilder:printcolumn:name="Source",type=string,JSONPath=`.spec.source.name`
 // +kubebuilder:printcolumn:name="Path",type=string,JSONPath=`.spec.source.path`
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.state",description=""

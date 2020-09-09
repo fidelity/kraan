@@ -9,6 +9,9 @@ metadata:
   name: addonslayers.kraan.io
 spec:
   additionalPrinterColumns:
+  - JSONPath: .spec.version
+    name: Version
+    type: string
   - JSONPath: .spec.source.name
     name: Source
     type: string

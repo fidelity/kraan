@@ -35,6 +35,7 @@ const (
 	emptyStatus   = "empty-status"
 	noDepends     = "no-depends"
 	oneDepends    = "one-depends"
+	oneDependsV2  = "one-depends-v2"
 	twoDepends    = "two-depends"
 	k8sv16        = "k8s-v16"
 	k8sv16_2      = "k8s-v16-2"
@@ -315,7 +316,7 @@ func TestSetStatusSetting(t *testing.T) { // nolint:funlen // ok
 				Status:  corev1.ConditionTrue,
 				Version: versionOne,
 				Type:    kraanv1alpha1.DeployedCondition,
-				Reason:  kraanv1alpha1.AddonsLayerDeployedReason,
+				Reason:  "AddonsLayer version 0.1.01 is Deployed",
 				Message: ""},
 			},
 		}},
@@ -648,6 +649,11 @@ func TestDependenciesDeployed(t *testing.T) {
 		layerName:  oneDepends,
 		layersData: layersData1,
 		expected:   true,
+	}, {
+		name:       "check dependencies with single dependsOn that is deployed but previous version",
+		layerName:  oneDependsV2,
+		layersData: layersData1,
+		expected:   false,
 	}, {
 		name:       "check dependencies with two dependsOn, both deployed",
 		layerName:  twoDepends,

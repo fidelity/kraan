@@ -66,7 +66,7 @@ func NewReconciler(config *rest.Config, client client.Client, logger logr.Logger
 	}
 	reconciler.k8client = reconciler.getK8sClient()
 	reconciler.Context = context.Background()
-	reconciler.Applier, err = apply.NewApplier(client, logger, scheme, config)
+	reconciler.Applier, err = apply.NewApplier(client, logger, scheme)
 	return reconciler, err
 }
 
@@ -264,7 +264,7 @@ func indexHelmReleaseByOwner(o runtime.Object) []string {
 		return nil
 	}
 	log := ctrl.Log.WithName("hr sync")
-	utils.Log(log, 1, 1, "HR update, requeuing", "Name", owner.Name, "HR", fmt.Sprintf("%s/%s", hr.GetNamespace(), hr.GetName()))
+	utils.Log(log, 1, 5, "HR associated with layer", "Layer Name", owner.Name, "HR", fmt.Sprintf("%s/%s", hr.GetNamespace(), hr.GetName()))
 
 	return []string{owner.Name}
 }

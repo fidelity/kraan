@@ -248,7 +248,7 @@ func TestSingleApply(t *testing.T) {
 	scheme := combinedScheme()
 	client := runtimeClient(t, scheme)
 
-	applier, err := NewApplier(client, logger, scheme, nil)
+	applier, err := NewApplier(client, logger, scheme)
 	if err != nil {
 		t.Fatalf("The NewApplier constructor returned an error: %s", err)
 	}
@@ -286,7 +286,7 @@ func TestDoubleApply(t *testing.T) {
 	scheme := combinedScheme()
 	client := managerClient(ctx, t, scheme, "simple")
 
-	applier, err := NewApplier(client, logger, scheme, nil)
+	applier, err := NewApplier(client, logger, scheme)
 	if err != nil {
 		t.Fatalf("The NewApplier constructor returned an error: %s", err)
 	}
@@ -327,7 +327,7 @@ func TestPruneIsRequired(t *testing.T) {
 	scheme := combinedScheme()
 	client := managerClient(ctx, t, scheme, "simple")
 
-	applier, err := NewApplier(client, logger, scheme, nil)
+	applier, err := NewApplier(client, logger, scheme)
 	if err != nil {
 		t.Fatalf("The NewApplier constructor returned an error: %s", err)
 	}
@@ -368,7 +368,7 @@ func TestApplyContextTimeoutIntegration(t *testing.T) {
 	logger := testlogr.TestLogger{T: t}
 	scheme := combinedScheme()
 	client := runtimeClient(t, scheme)
-	applier, err := NewApplier(client, logger, scheme, nil)
+	applier, err := NewApplier(client, logger, scheme)
 	if err != nil {
 		t.Fatalf("The NewApplier constructor returned an error: %s", err)
 	}

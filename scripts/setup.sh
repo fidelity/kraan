@@ -138,11 +138,11 @@ function args() {
   # If GIT_CREDENTIALS are not set warn the user but set up the cluster without a credentials secret
   if [ -z "${GIT_USER:-}" ] ; then 
     echo "GIT_USER is not set to the git user name"
-    usage; exit 1
+    # usage; exit 1
   fi
   if [ -z "${GIT_CREDENTIALS:-}" ] ; then
       echo "GIT_CREDENTIALS is not set to the git user's password or token"
-      usage; exit 1
+      # usage; exit 1
   fi
 }
 
@@ -207,7 +207,6 @@ function toolkit_refresh() {
 }
 
 function create_regcred() {
-  # TODO - enable user to setup cluster without regcred or git pull secrets
   local namespace="${1}"
   local auto_file="${2}"
   if [ "${auto_file}" == "auto" ] ; then

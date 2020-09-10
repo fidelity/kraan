@@ -3,10 +3,9 @@
 CRD_OPTIONS ?= "crd"
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
-ifeq (,$(shell go env GOBIN))
-GOBIN=$(shell go env GOPATH)/bin
-else
-GOBIN=$(shell go env GOBIN)
+GOBIN := $(shell go env GOBIN)
+ifeq (,$(strip ${GOBIN}))
+GOBIN := $(shell go env GOPATH)/bin
 endif
 
 TOOLS_DIR := hack/tools
@@ -44,7 +43,7 @@ BUILD_ARTIFACT:=${BUILD_DIR}${PROJECT}-build-${VERSION}-docker.tar
 
 GOMOD_CACHE_ARTIFACT:=${GOMOD_CACHE_DIR}._gomod
 GOMOD_VENDOR_ARTIFACT:=${GOMOD_VENDOR_DIR}._gomod
-GO_BIN_ARTIFACT:=$(shell echo "$${GOBIN:-$${GOPATH}/bin}/${PROJECT}")
+GO_BIN_ARTIFACT:=${GOBIN}/${PROJECT}
 GO_DOCS_ARTIFACTS:=$(shell echo $(subst $() $(),\\n,$(ALL_GO_PACKAGES)) | \
 	sed 's:\(.*[/\]\)\(.*\):\1\2/\2.md:')
 

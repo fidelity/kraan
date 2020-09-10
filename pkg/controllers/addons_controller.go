@@ -19,13 +19,8 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"os"
-	"time"
 
 	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
-	"github.com/fluxcd/pkg/untar"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -229,7 +224,7 @@ func (r *AddonsLayerReconciler) update(ctx context.Context, log logr.Logger,
 	return nil
 }
 
-func repoMapperFunc(a handler.MapObject) []reconcile.Request { // nolint:gocyclo // ok for now
+func repoMapperFunc(a handler.MapObject) []reconcile.Request {
 	kind := a.Object.GetObjectKind().GroupVersionKind()
 	repoKind := sourcev1.GitRepositoryKind
 	if kind.Kind != repoKind {
@@ -244,7 +239,7 @@ func repoMapperFunc(a handler.MapObject) []reconcile.Request { // nolint:gocyclo
 		return []reconcile.Request{}
 	}
 
-	dataPath, err := SyncRepo(repo)
+	dataPath, err := layers.SyncRepo(reconciler.Log, repo)
 	if err != nil {
 		reconciler.Log.Error(err, "unable to sync repository")
 		return []reconcile.Request{}
@@ -257,24 +252,7 @@ func repoMapperFunc(a handler.MapObject) []reconcile.Request { // nolint:gocyclo
 	}
 	addons := []reconcile.Request{}
 	for _, addon := range addonsList.Items {
-		addonsPath := layers.GetSourcePath(&addon) // nolint:scopelint // ok
-		addonsData := fmt.Sprintf("%s/%s", dataPath, addon.Spec.Source.Path)
-
-		info, err := os.Stat(addonsData)
-		if os.IsNotExist(err) {
-			reconciler.Log.Error(err, fmt.Sprintf("addons layer: %s, directory path not found in repository data", addon.Name))
-			continue
-		}
-		if err != nil {
-			reconciler.Log.Error(err, fmt.Sprintf("failed to stat addons Data directory: %s", addonsData))
-			continue
-		}
-		if !info.IsDir() {
-			reconciler.Log.Error(fmt.Errorf("addons Data path: %s, is not a directory", addonsData), "invalid path")
-			continue
-		}
-		if err := os.Link(addonsPath, addonsData); err != nil {
-			reconciler.Log.Error(err, fmt.Sprintf("unable link to new data for addonsLayers: %s", addon.Name))
+		if err := layers.LinkData(&addon, dataPath); err != nil { //nolint:scopelint // ok
 			continue
 		}
 
@@ -321,91 +299,4 @@ func (r *AddonsLayerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(hr).
 		Watches(repoKind, repoHandler).
 		Complete(r)
-}
-
-/*
-Copyright 2020 The Flux CD contributors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
-func SyncRepo(repository *sourcev1.GitRepository) (string, error) {
-	// set timeout for the reconciliation
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-
-	log := reconciler.Log
-	log.Info("New revision detected", "revision", repository.Status.Artifact.Revision)
-
-	// create tmp dir
-	tmpDir, err := ioutil.TempDir("", fmt.Sprintf("%s/%s-*", repository.Name, repository.Status.Artifact.Revision))
-	if err != nil {
-		return "", fmt.Errorf("failed to create temp dir, error: %w", err)
-	}
-
-	// download and extract artifact
-	summary, err := fetchArtifact(ctx, repository, tmpDir)
-	if err != nil {
-		return "", err
-	}
-	log.Info("fetched artifact", "summary", summary)
-	// list artifact content
-	files, err := ioutil.ReadDir(tmpDir)
-	if err != nil {
-		return "", fmt.Errorf("faild to list files, error: %w", err)
-	}
-	for _, file := range files {
-		log.Info("unpacked", "file", file)
-	}
-	return tmpDir, nil
-}
-
-func fetchArtifact(ctx context.Context, repository *sourcev1.GitRepository, dir string) (string, error) {
-	if repository.Status.Artifact == nil {
-		return "", fmt.Errorf("repository %s does not containt an artifact", repository.Name)
-	}
-
-	url := repository.Status.Artifact.URL
-
-	// for local run:
-	// kubectl -n gitops-system port-forward svc/source-controller 8080:80
-	// export SOURCE_HOST=localhost:8080
-	if hostname := os.Getenv("SOURCE_HOST"); hostname != "" {
-		url = fmt.Sprintf("http://%s/gitrepository/%s/%s/latest.tar.gz", hostname, repository.Namespace, repository.Name)
-	}
-
-	// download the tarball
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to create HTTP request, error: %w", err)
-	}
-
-	resp, err := http.DefaultClient.Do(req.WithContext(ctx))
-	if err != nil {
-		return "", fmt.Errorf("failed to download artifact from %s, error: %w", url, err)
-	}
-	defer resp.Body.Close()
-
-	// check response
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("faild to download artifact, status: %s", resp.Status)
-	}
-
-	// extract
-	summary, err := untar.Untar(resp.Body, dir)
-	if err != nil {
-		return "", fmt.Errorf("faild to untar artifact, error: %w", err)
-	}
-
-	return summary, nil
 }

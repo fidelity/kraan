@@ -225,17 +225,20 @@ func (r *AddonsLayerReconciler) update(ctx context.Context, log logr.Logger,
 }
 
 func repoMapperFunc(a handler.MapObject) []reconcile.Request {
-	kind := a.Object.GetObjectKind().GroupVersionKind().Kind
+	utils.DisplayAsJSON(a)
+	kind := a.Object.GetObjectKind().GroupVersionKind()
+	utils.DisplayAsJSON(kind)
 	repoKind := sourcev1.GitRepositoryKind
-	if kind != repoKind {
+	if kind.Kind != repoKind {
 		// If this isn't a GitRepository object, return an empty list of requests
 		reconciler.Log.Error(fmt.Errorf("unexpected object kind: %s, only %s supported", kind, sourcev1.GitRepositoryKind),
-			"unable to map to an AddonsLayer")
-		return []reconcile.Request{}
+			"unexpected kind, continuing")
+		//return []reconcile.Request{}
 	}
 	repo, ok := a.Object.(*sourcev1.GitRepository)
 	if !ok {
-		return nil
+		reconciler.Log.Error(fmt.Errorf("unable to cast object to GitRepository"), "skipping processing")
+		return []reconcile.Request{}
 	}
 	addonsList := &kraanv1alpha1.AddonsLayerList{}
 	if err := reconciler.List(reconciler.Context, addonsList); err != nil {
@@ -247,6 +250,7 @@ func repoMapperFunc(a handler.MapObject) []reconcile.Request {
 		if addon.Spec.Source.Name == repo.ObjectMeta.Name && addon.Spec.Source.NameSpace == repo.ObjectMeta.Namespace {
 			addons = append(addons, reconcile.Request{NamespacedName: types.NamespacedName{Name: addon.Name, Namespace: ""}})
 		}
+		reconciler.Log.Info("adding layer to list", "layer", addon.Name)
 	}
 	return addons
 }

@@ -74,11 +74,11 @@ func (a KubectlLayerApplier) getLog(layer layers.Layer) (logger logr.Logger) {
 }
 
 func (a KubectlLayerApplier) log(level int, msg string, layer layers.Layer, keysAndValues ...interface{}) {
-	a.getLog(layer).V(level).Info(msg, append(keysAndValues, "sourcePath", layer.GetSourcePath(), "layer", layer)...)
+	a.getLog(layer).V(level).Info(msg, append(keysAndValues, "sourcePath", layers.GetSourcePath(layer.GetAddonsLayer()), "layer", layer)...)
 }
 
 func (a KubectlLayerApplier) logError(err error, msg string, layer layers.Layer, keysAndValues ...interface{}) {
-	a.getLog(layer).Error(err, msg, append(keysAndValues, "sourcePath", layer.GetSourcePath(), "layer", layer)...)
+	a.getLog(layer).Error(err, msg, append(keysAndValues, "sourcePath", layers.GetSourcePath(layer.GetAddonsLayer()), "layer", layer)...)
 }
 
 func (a KubectlLayerApplier) logInfo(msg string, layer layers.Layer, keysAndValues ...interface{}) {
@@ -231,7 +231,7 @@ func (a KubectlLayerApplier) decodeList(layer layers.Layer,
 }
 
 func (a KubectlLayerApplier) checkSourcePath(layer layers.Layer) (sourceDir string, err error) {
-	sourceDir = layer.GetSourcePath()
+	sourceDir = layers.GetSourcePath(layer.GetAddonsLayer())
 	info, err := os.Stat(sourceDir)
 	if os.IsNotExist(err) {
 		a.logDebug("source directory not found", layer)

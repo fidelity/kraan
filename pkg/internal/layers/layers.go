@@ -22,7 +22,25 @@ import (
 )
 
 // MaxConditions is the maximum number of condtions to retain.
-var MaxConditions = 10
+var (
+	MaxConditions = 10
+	RootPath      = "/repos"
+)
+
+func init() {
+	path, set := os.LookupEnv("REPOS_PATH")
+	if set {
+		RootPath = path
+	}
+}
+
+// GetSourcePath gets the path to an addons layer's top directory in the local filesystem.
+func GetSourcePath(a *kraanv1alpha1.AddonsLayer) string {
+	return fmt.Sprintf("%s/%s/%s",
+		RootPath,
+		a.Name,
+		a.Spec.Version)
+}
 
 // Layer defines the interface for managing the layer.
 type Layer interface {

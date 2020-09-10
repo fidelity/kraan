@@ -48,15 +48,7 @@ import (
 var (
 	hrOwnerKey = ".owner"
 	reconciler *AddonsLayerReconciler
-	RootPath   = "/repos"
 )
-
-func init() {
-	path, set := os.LookupEnv("REPOS_PATH")
-	if set {
-		RootPath = path
-	}
-}
 
 // AddonsLayerReconciler reconciles a AddonsLayer object.
 type AddonsLayerReconciler struct {
@@ -237,7 +229,7 @@ func (r *AddonsLayerReconciler) update(ctx context.Context, log logr.Logger,
 	return nil
 }
 
-func repoMapperFunc(a handler.MapObject) []reconcile.Request {
+func repoMapperFunc(a handler.MapObject) []reconcile.Request { // nolint:gocyclo // ok for now
 	kind := a.Object.GetObjectKind().GroupVersionKind()
 	repoKind := sourcev1.GitRepositoryKind
 	if kind.Kind != repoKind {
@@ -265,16 +257,30 @@ func repoMapperFunc(a handler.MapObject) []reconcile.Request {
 	}
 	addons := []reconcile.Request{}
 	for _, addon := range addonsList.Items {
+		addonsPath := layers.GetSourcePath(&addon) // nolint:scopelint // ok
+		addonsData := fmt.Sprintf("%s/%s", dataPath, addon.Spec.Source.Path)
+
+		info, err := os.Stat(addonsData)
+		if os.IsNotExist(err) {
+			reconciler.Log.Error(err, fmt.Sprintf("addons layer: %s, directory path not found in repository data", addon.Name))
+			continue
+		}
+		if err != nil {
+			reconciler.Log.Error(err, fmt.Sprintf("failed to stat addons Data directory: %s", addonsData))
+			continue
+		}
+		if !info.IsDir() {
+			reconciler.Log.Error(fmt.Errorf("addons Data path: %s, is not a directory", addonsData), "invalid path")
+			continue
+		}
+		if err := os.Link(addonsPath, addonsData); err != nil {
+			reconciler.Log.Error(err, fmt.Sprintf("unable link to new data for addonsLayers: %s", addon.Name))
+			continue
+		}
+
+		reconciler.Log.Info("adding layer to list", "layer", addon.Name)
 		if addon.Spec.Source.Name == repo.ObjectMeta.Name && addon.Spec.Source.NameSpace == repo.ObjectMeta.Namespace {
 			addons = append(addons, reconcile.Request{NamespacedName: types.NamespacedName{Name: addon.Name, Namespace: ""}})
-		}
-		reconciler.Log.Info("adding layer to list", "layer", addon.Name)
-		addonsPath := GetSourcePath(&addon)
-
-		err := os.Link(addonsPath, fmt.Sprintf("%s/%s", dataPath, addon.Spec.Source.Path))
-		if err != nil {
-			reconciler.Log.Error(err, fmt.Sprintf("unable link to new data for addonsLayers: %s", addon.Name))
-			os.Exit(1)
 		}
 	}
 	return addons

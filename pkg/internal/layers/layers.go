@@ -23,14 +23,6 @@ import (
 
 // MaxConditions is the maximum number of condtions to retain.
 var MaxConditions = 10
-var rootPath = "/repos"
-
-func init() {
-	path, set := os.LookupEnv("REPOS_PATH")
-	if set {
-		rootPath = path
-	}
-}
 
 // Layer defines the interface for managing the layer.
 type Layer interface {
@@ -48,7 +40,6 @@ type Layer interface {
 	GetName() string
 	GetLogger() logr.Logger
 	GetContext() context.Context
-	GetSourcePath() string
 	GetTimeout() time.Duration
 	IsUpdated() bool
 	NeedsRequeue() bool
@@ -296,14 +287,6 @@ func (l *KraanLayer) SetHold() {
 			kraanv1alpha1.AddonsLayerHoldReason, kraanv1alpha1.AddonsLayerHoldMsg)
 		l.updated = true
 	}
-}
-
-// GetSourcePath gets the path to the addons layer's top directory in the local filesystem.
-func (l *KraanLayer) GetSourcePath() string {
-	return fmt.Sprintf("%s/%s/%s",
-		rootPath,
-		l.addonsLayer.Spec.Source.Name,
-		l.addonsLayer.Spec.Source.Path)
 }
 
 // GetContext gets the context.

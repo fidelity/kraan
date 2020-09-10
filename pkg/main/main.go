@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	// +kubebuilder:scaffold:imports
 
@@ -57,6 +58,7 @@ func main() {
 		enableLeaderElection    bool
 		leaderElectionNamespace string
 		logJSON                 bool
+		syncPeriodStr           string
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8282", "The address the metric endpoint binds to.")
@@ -78,11 +80,23 @@ func main() {
 		"The address the health endpoint binds to.",
 	)
 
+	flag.StringVar(
+		&syncPeriodStr,
+		"sync-period",
+		"30s",
+		"period between reprocessing of all AddonsLayers.",
+	)
+
 	flag.Parse()
 
+	syncPeriod, err := time.ParseDuration(syncPeriodStr)
+	if err != nil {
+		setupLog.Error(err, "unable to parse sync period")
+		os.Exit(1)
+	}
 	ctrl.SetLogger(zap.New(zap.UseDevMode(!logJSON)))
 
-	mgr, err := createManager(metricsAddr, healthAddr, enableLeaderElection, leaderElectionNamespace)
+	mgr, err := createManager(metricsAddr, healthAddr, enableLeaderElection, leaderElectionNamespace, syncPeriod)
 	if err != nil {
 		setupLog.Error(err, "problem creating manager")
 		os.Exit(1)
@@ -95,7 +109,7 @@ func main() {
 	}
 }
 
-func createManager(metricsAddr string, healthAddr string, enableLeaderElection bool, leaderElectionNamespace string) (manager.Manager, error) {
+func createManager(metricsAddr string, healthAddr string, enableLeaderElection bool, leaderElectionNamespace string, syncPeriod time.Duration) (manager.Manager, error) {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                  scheme,
 		MetricsBindAddress:      metricsAddr,
@@ -104,6 +118,7 @@ func createManager(metricsAddr string, healthAddr string, enableLeaderElection b
 		LeaderElectionNamespace: leaderElectionNamespace,
 		LeaderElectionID:        "925331a6.kraan.io",
 		Namespace:               os.Getenv("RUNTIME_NAMESPACE"),
+		SyncPeriod:              &syncPeriod,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("unable to start manager: %w", err)

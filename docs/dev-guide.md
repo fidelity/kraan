@@ -95,3 +95,9 @@ To test kraan-controller
     kraan-controller to process the addons layers using the temporary directory as its root directory when locating the yaml files
     to process for each addon layer. This enables the kraan-controller to be tested without relying use of the source controller to
     obtain the yaml files from the git repository.
+
+The kraan-controller will reprocess all AddonsLayers perioidically. This period defaults to 30 seconds but can be set using a command line argument.
+
+    kraan-controller -sync-period=1m
+
+The reprocessing period can also be set to a period in seconds using the 's' suffix, i.e. 20s.

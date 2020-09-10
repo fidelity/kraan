@@ -42,6 +42,7 @@ import (
 
 var (
 	hrOwnerKey = ".owner"
+	reconciler *AddonsLayerReconciler
 )
 
 // AddonsLayerReconciler reconciles a AddonsLayer object.
@@ -57,7 +58,7 @@ type AddonsLayerReconciler struct {
 
 // NewReconciler returns an AddonsLayerReconciler instance
 func NewReconciler(config *rest.Config, client client.Client, logger logr.Logger,
-	scheme *runtime.Scheme) (reconciler *AddonsLayerReconciler, err error) {
+	scheme *runtime.Scheme) (*AddonsLayerReconciler, error) {
 	reconciler = &AddonsLayerReconciler{
 		Config: config,
 		Client: client,
@@ -66,6 +67,7 @@ func NewReconciler(config *rest.Config, client client.Client, logger logr.Logger
 	}
 	reconciler.k8client = reconciler.getK8sClient()
 	reconciler.Context = context.Background()
+	var err error
 	reconciler.Applier, err = apply.NewApplier(client, logger, scheme)
 	return reconciler, err
 }
@@ -223,32 +225,32 @@ func (r *AddonsLayerReconciler) update(ctx context.Context, log logr.Logger,
 }
 
 func repoMapperFunc(a handler.MapObject) []reconcile.Request {
-	kind := a.Object.GetObjectKind().GroupVersionKind().Kind
+	kind := a.Object.GetObjectKind().GroupVersionKind()
 	repoKind := sourcev1.GitRepositoryKind
-	if kind != repoKind {
+	if kind.Kind != repoKind {
 		// If this isn't a GitRepository object, return an empty list of requests
-		// TODO - not sure if this is the correct way to handle this error
-		return []reconcile.Request{}
+		reconciler.Log.Error(fmt.Errorf("unexpected object kind: %s, only %s supported", kind, sourcev1.GitRepositoryKind),
+			"unexpected kind, continuing")
+		//return []reconcile.Request{}
 	}
 	repo, ok := a.Object.(*sourcev1.GitRepository)
 	if !ok {
-		return nil
+		reconciler.Log.Error(fmt.Errorf("unable to cast object to GitRepository"), "skipping processing")
+		return []reconcile.Request{}
 	}
-	namespace := repo.GetNamespace()
-	name := repo.GetName()
-	// TODO - here is where we need to map the GitRepository to the AddonsLayer(s)
-	firstLayerName := name + "first-layer"
-	secondLayerName := name + "second-layer"
-	return []reconcile.Request{
-		{NamespacedName: types.NamespacedName{
-			Name:      firstLayerName,
-			Namespace: namespace,
-		}},
-		{NamespacedName: types.NamespacedName{
-			Name:      secondLayerName,
-			Namespace: namespace,
-		}},
+	addonsList := &kraanv1alpha1.AddonsLayerList{}
+	if err := reconciler.List(reconciler.Context, addonsList); err != nil {
+		reconciler.Log.Error(err, "unable to list AddonsLayers")
+		return []reconcile.Request{}
 	}
+	addons := []reconcile.Request{}
+	for _, addon := range addonsList.Items {
+		if addon.Spec.Source.Name == repo.ObjectMeta.Name && addon.Spec.Source.NameSpace == repo.ObjectMeta.Namespace {
+			addons = append(addons, reconcile.Request{NamespacedName: types.NamespacedName{Name: addon.Name, Namespace: ""}})
+		}
+		reconciler.Log.Info("adding layer to list", "layer", addon.Name)
+	}
+	return addons
 }
 
 func indexHelmReleaseByOwner(o runtime.Object) []string {

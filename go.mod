@@ -18,12 +18,14 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/procfs v0.0.11 // indirect
 	go.uber.org/atomic v1.4.0 // indirect
+	go.uber.org/zap v1.10.0 // indirect
 	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975 // indirect
 	golang.org/x/mod v0.1.1-0.20191105210325-c90efee705ee
 	golang.org/x/text v0.3.3 // indirect
 	k8s.io/api v0.18.8
 	k8s.io/apimachinery v0.18.8
 	k8s.io/client-go v11.0.0+incompatible
+	k8s.io/klog/v2 v2.0.0
 	k8s.io/utils v0.0.0-20200603063816-c1c6865ac451 // indirect
 	sigs.k8s.io/controller-runtime v0.6.2
 	sigs.k8s.io/testing_frameworks v0.1.2 // indirect

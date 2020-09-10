@@ -225,9 +225,7 @@ func (r *AddonsLayerReconciler) update(ctx context.Context, log logr.Logger,
 }
 
 func repoMapperFunc(a handler.MapObject) []reconcile.Request {
-	utils.DisplayAsJSON(a)
 	kind := a.Object.GetObjectKind().GroupVersionKind()
-	utils.DisplayAsJSON(kind)
 	repoKind := sourcev1.GitRepositoryKind
 	if kind.Kind != repoKind {
 		// If this isn't a GitRepository object, return an empty list of requests

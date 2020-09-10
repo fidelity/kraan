@@ -34,7 +34,6 @@ import (
 
 	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/controllers"
-	"github.com/fidelity/kraan/pkg/internal/utils"
 )
 
 var (
@@ -58,7 +57,6 @@ func main() {
 		enableLeaderElection    bool
 		leaderElectionNamespace string
 		logJSON                 bool
-		debugFlag               bool
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8282", "The address the metric endpoint binds to.")
@@ -80,11 +78,7 @@ func main() {
 		"The address the health endpoint binds to.",
 	)
 
-	flag.BoolVar(&debugFlag, "debug-mode", false, "enable debugging.")
-
 	flag.Parse()
-
-	utils.DebugFlag = debugFlag
 
 	ctrl.SetLogger(zap.New(zap.UseDevMode(!logJSON)))
 

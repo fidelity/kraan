@@ -5,14 +5,10 @@ package layers
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/fluxcd/pkg/untar"
-	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
 	"github.com/go-logr/logr"
 	"golang.org/x/mod/semver"
 	corev1 "k8s.io/api/core/v1"
@@ -38,14 +34,6 @@ func init() {
 	}
 }
 
-// GetSourcePath gets the path to an addons layer's top directory in the local filesystem.
-func GetSourcePath(a *kraanv1alpha1.AddonsLayer) string {
-	return fmt.Sprintf("%s/layers/%s/%s",
-		RootPath,
-		a.Name,
-		a.Spec.Version)
-}
-
 // Layer defines the interface for managing the layer.
 type Layer interface {
 	SetStatusK8sVersion()
@@ -62,6 +50,7 @@ type Layer interface {
 	GetName() string
 	GetLogger() logr.Logger
 	GetContext() context.Context
+	GetSourcePath() string
 	GetTimeout() time.Duration
 	IsUpdated() bool
 	NeedsRequeue() bool
@@ -122,6 +111,15 @@ func (l *KraanLayer) RefreshData() error {
 // SetRequeue sets the requeue flag to cause the AddonsLayer to be requeued.
 func (l *KraanLayer) SetRequeue() {
 	l.requeue = true
+}
+
+
+// GetSourcePath gets the path to an addons layer's top directory in the local filesystem.
+func (l *KraanLayer) GetSourcePath() string {
+	return fmt.Sprintf("%s/layers/%s/%s",
+		RootPath,
+		l.GetName(),
+		l.GetSpec().Version)
 }
 
 // SetUpdated sets the updated flag to cause the AddonsLayer to update the custom resource.
@@ -339,115 +337,4 @@ func (l *KraanLayer) getOtherAddonsLayer(name string) (*kraanv1alpha1.AddonsLaye
 		return nil, err
 	}
 	return obj, nil
-}
-
-func LinkData(addon *kraanv1alpha1.AddonsLayer, dataPath string) error {
-	addonsPath := GetSourcePath(addon)
-	addonsData := fmt.Sprintf("%s/%s", dataPath, addon.Spec.Source.Path)
-
-	info, err := os.Stat(addonsData)
-	if os.IsNotExist(err) {
-		//reconciler.Log.Error(err, fmt.Sprintf("addons layer: %s, directory path not found in repository data", addon.Name))
-		return err
-	}
-	if err != nil {
-		//reconciler.Log.Error(err, fmt.Sprintf("failed to stat addons Data directory: %s", addonsData))
-		return err
-	}
-	if !info.IsDir() {
-		err := fmt.Errorf("addons Data path: %s, is not a directory", addonsData)
-		//reconciler.Log.Error(err, "invalid path")
-		return err
-	}
-	if err := os.Link(addonsPath, addonsData); err != nil {
-		//reconciler.Log.Error(err, fmt.Sprintf("unable link to new data for addonsLayers: %s", addon.Name))
-		return err
-	}
-	return nil
-}
-
-/*
-Copyright 2020 The Flux CD contributors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
-func SyncRepo(log logr.Logger, repository *sourcev1.GitRepository) (string, error) {
-	// set timeout for the reconciliation
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-
-	log.Info("New revision detected", "revision", repository.Status.Artifact.Revision)
-
-	dataPath := fmt.Sprintf("%s/repos/%s/%s", RootPath, repository.Name, repository.Status.Artifact.Revision)
-	err := os.MkdirAll(dataPath, os.ModePerm)
-	if err != nil {
-		return "", fmt.Errorf("failed to create dir, error: %w", err)
-	}
-
-	// download and extract artifact
-	summary, err := fetchArtifact(ctx, repository, dataPath)
-	if err != nil {
-		return "", err
-	}
-	log.Info("fetched artifact", "summary", summary)
-	// list artifact content
-	files, err := ioutil.ReadDir(dataPath)
-	if err != nil {
-		return "", fmt.Errorf("faild to list files, error: %w", err)
-	}
-	for _, file := range files {
-		log.Info("unpacked", "file", file)
-	}
-	return dataPath, nil
-}
-
-func fetchArtifact(ctx context.Context, repository *sourcev1.GitRepository, dir string) (string, error) {
-	if repository.Status.Artifact == nil {
-		return "", fmt.Errorf("repository %s does not containt an artifact", repository.Name)
-	}
-
-	url := repository.Status.Artifact.URL
-
-	// for local run:
-	// kubectl -n gitops-system port-forward svc/source-controller 8080:80
-	// export SOURCE_HOST=localhost:8080
-	if hostname := os.Getenv("SOURCE_HOST"); hostname != "" {
-		url = fmt.Sprintf("http://%s/gitrepository/%s/%s/latest.tar.gz", hostname, repository.Namespace, repository.Name)
-	}
-
-	// download the tarball
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to create HTTP request, error: %w", err)
-	}
-
-	resp, err := http.DefaultClient.Do(req.WithContext(ctx))
-	if err != nil {
-		return "", fmt.Errorf("failed to download artifact from %s, error: %w", url, err)
-	}
-	defer resp.Body.Close()
-
-	// check response
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("faild to download artifact, status: %s", resp.Status)
-	}
-
-	// extract
-	summary, err := untar.Untar(resp.Body, dir)
-	if err != nil {
-		return "", fmt.Errorf("faild to untar artifact, error: %w", err)
-	}
-
-	return summary, nil
 }

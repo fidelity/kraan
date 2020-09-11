@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -152,10 +153,21 @@ func (r *repoData) LinkData(layerPath, sourcePath string) error {
 	if err := utils.IsExistingDir(addonsPath); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(layerPath, os.ModePerm); err != nil {
+	layerPathParts := strings.Split(layerPath, "/")
+	layerPathDir := strings.Join(layerPathParts[:len(layerPathParts)-1], "/")
+
+	if err := os.MkdirAll(layerPathDir, os.ModePerm); err != nil {
 		return err
 	}
-	if err := os.Link(layerPath, addonsPath); err != nil {
+	if _, err := os.Lstat(layerPath); err == nil {
+		if e := os.Remove(layerPath); e != nil {
+			return err
+		}
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+
+	if err := os.Symlink(addonsPath, layerPath); err != nil {
 		return err
 	}
 	return nil

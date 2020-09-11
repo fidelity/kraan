@@ -4,9 +4,10 @@
 package repos
 
 import (
+	reflect "reflect"
+
 	v1alpha1 "github.com/fluxcd/source-controller/api/v1alpha1"
 	gomock "github.com/golang/mock/gomock"
-	reflect "reflect"
 )
 
 // MockRepos is a mock of Repos interface

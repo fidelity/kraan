@@ -118,7 +118,7 @@ func newRepo(ctx context.Context, log logr.Logger, repo *sourcev1.GitRepository)
 }
 
 func (r *repoData) getDataPath() string {
-	return fmt.Sprintf("%s/repos/%s/%s/%s", RootPath, r.repo.GetNamespace(), r.repo.GetName(), r.repo.GetArtifact().Revision)
+	return fmt.Sprintf("%s/%s/%s/%s", RootPath, r.repo.GetNamespace(), r.repo.GetName(), r.repo.GetArtifact().Revision)
 }
 
 func (r *repoData) GetDataPath() string {
@@ -218,9 +218,6 @@ func (r *repoData) fetchArtifact(ctx context.Context) (string, error) {
 
 	url := r.repo.Status.Artifact.URL
 
-	// for local run:
-	// kubectl -n gitops-system port-forward svc/source-controller 8080:80
-	// export SC_HOST=localhost:8080
 	if HostName != "" {
 		url = fmt.Sprintf("http://%s/gitrepository/%s/%s/latest.tar.gz", HostName, r.repo.Namespace, r.repo.Name)
 	}

@@ -152,6 +152,9 @@ func (r *repoData) LinkData(layerPath, sourcePath string) error {
 	if err := utils.IsExistingDir(addonsPath); err != nil {
 		return err
 	}
+	if err := os.MkdirAll(layerPath, os.ModePerm); err != nil {
+		return err
+	}
 	if err := os.Link(layerPath, addonsPath); err != nil {
 		return err
 	}

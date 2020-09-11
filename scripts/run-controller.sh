@@ -15,7 +15,7 @@ function usage()
    echo "'--set-git-repo' set the url of the git repo in the testdata helm releases, defaults to 'https://github.com/fidelity/kraan'"
    echo "'--set-git-ref' set the git repo branch in the testdata helm releases, defaults to 'master'"
    echo "This script will create a temporary directory and copy the testdata/addons directory to addons-config/testdata subdirectory in"
-   echo "the temporary directory. It will then set the environmental variable REPOS_PATH to the temporary directory. This will cause the"
+   echo "the temporary directory. It will then set the environmental variable DATA_PATH to the temporary directory. This will cause the"
    echo "kraan-controller to process the addons layers using the temporary directory as its root directory when locating the yaml files"
    echo "to process for each addon layer. This enables the kraan-controller to be tested without relying use of the source controller to"
    echo "obtain the yaml files from the git repository."
@@ -74,7 +74,7 @@ function create_secrets {
 function updateHRs() {
   if [ -n "${add_secret}" ] ; then
     echo "adding secretRef to helm releases access git repo containing test charts"
-    for hr_file in `find $REPOS_PATH -name microservice*.yaml`
+    for hr_file in `find $DATA_PATH -name microservice*.yaml`
     do
       save_file="${work_dir}"/`basename ${hr_file}`
       cp "${hr_file}" "${save_file}"
@@ -88,21 +88,21 @@ function updateHRs() {
   fi
   if [ -n "${ignore_test_errors}" ] ; then
     echo "setting ignore failed tests due to issue with podinfo tests"
-    for hr_file in `find $REPOS_PATH -name microservice*.yaml`
+    for hr_file in `find $DATA_PATH -name microservice*.yaml`
     do
       sed -i s/ignoreFailures\:\ false/ignoreFailures\:\ true/ "${hr_file}"
     done
   fi
   if [ -n "${set_git_ref}" ] ; then
     echo "setting git repo branch to obtain test charts from to: ${set_git_ref}"
-    for hr_file in `find $REPOS_PATH -name microservice*.yaml`
+    for hr_file in `find $DATA_PATH -name microservice*.yaml`
     do
       sed -i s/ref\:\ master/ref\:\ ${set_git_ref}/ "${hr_file}"
     done
   fi
   if [ -n "${set_git_repo}" ] ; then
     echo "setting git repo to obtain test charts from to: ${set_git_repo}"
-    for hr_file in `find $REPOS_PATH -name microservice*.yaml`
+    for hr_file in `find $DATA_PATH -name microservice*.yaml`
     do
       sed -i s!git\:\ https\://github.com/fidelity/kraan!git\:\ ${set_git_repo}! "${hr_file}"
     done
@@ -112,17 +112,17 @@ function updateHRs() {
 args "$@"
 base_dir="$(git rev-parse --show-toplevel)"
 work_dir="$(mktemp -d -t kraan-XXXXXX)"
-mkdir -p "${work_dir}"/addons-config/testdata
-cp -rf "${base_dir}"/testdata/addons "${work_dir}"/addons-config/testdata
-export REPOS_PATH="${work_dir}"
+mkdir -p "${work_dir}"/gitops-system/addons-config/master/testdata
+cp -rf "${base_dir}"/testdata/addons "${work_dir}"/gitops-system/addons-config/master/testdata
+export DATA_PATH="${work_dir}"
 updateHRs
-echo "Running kraan-controller with REPOS_PATH set to ${REPOS_PATH}"
+echo "Running kraan-controller with DATA_PATH set to ${DATA_PATH}"
 echo "You may change files in this directory to test kraan-controller"
-echo "Edit and then kubectl apply ${work_dir}/addons-config/testdata/addons/addons.yaml to cause kraan-controller to reprocess layers."
+echo "Edit and then kubectl apply ${work_dir}/gitops-system/addons-config/master/testdata/addons/addons.yaml to cause kraan-controller to reprocess layers."
 echo "if you want change and rerun the kraan-controller you should type..."
-echo "export REPOS_PATH=${work_dir}"
+echo "export DATA_PATH=${work_dir}"
 echo "kraan-controller"
-echo "The temporary directory will not be deleted to allow for this sceanrio so you are responsible for deleting this directory"
+echo "The temporary directory will not be deleted to allow for this scenario so you are responsible for deleting this directory"
 echo ""
 read -p "Pausing to allow user to make manual changes to testdata in ${work_dir}, press enter to continue"
 kraan-controller

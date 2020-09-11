@@ -37,6 +37,7 @@ import (
 	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/internal/apply"
 	layers "github.com/fidelity/kraan/pkg/internal/layers"
+	"github.com/fidelity/kraan/pkg/internal/repos"
 	utils "github.com/fidelity/kraan/pkg/internal/utils"
 )
 
@@ -54,6 +55,7 @@ type AddonsLayerReconciler struct {
 	Scheme   *runtime.Scheme
 	Context  context.Context
 	Applier  apply.LayerApplier
+	Repos    repos.Repos
 }
 
 // NewReconciler returns an AddonsLayerReconciler instance
@@ -69,6 +71,7 @@ func NewReconciler(config *rest.Config, client client.Client, logger logr.Logger
 	reconciler.Context = context.Background()
 	var err error
 	reconciler.Applier, err = apply.NewApplier(client, logger, scheme)
+	reconciler.Repos = repos.NewRepos(reconciler.Context, reconciler.Log)
 	return reconciler, err
 }
 
@@ -233,9 +236,15 @@ func repoMapperFunc(a handler.MapObject) []reconcile.Request {
 			"unexpected kind, continuing")
 		//return []reconcile.Request{}
 	}
-	repo, ok := a.Object.(*sourcev1.GitRepository)
+	srcRepo, ok := a.Object.(*sourcev1.GitRepository)
 	if !ok {
 		reconciler.Log.Error(fmt.Errorf("unable to cast object to GitRepository"), "skipping processing")
+		return []reconcile.Request{}
+	}
+
+	repo := reconciler.Repos.Add(srcRepo)
+	if err := repo.SyncRepo(); err != nil {
+		reconciler.Log.Error(err, "unable to sync repo, not requeuing")
 		return []reconcile.Request{}
 	}
 	addonsList := &kraanv1alpha1.AddonsLayerList{}
@@ -245,10 +254,16 @@ func repoMapperFunc(a handler.MapObject) []reconcile.Request {
 	}
 	addons := []reconcile.Request{}
 	for _, addon := range addonsList.Items {
-		if addon.Spec.Source.Name == repo.ObjectMeta.Name && addon.Spec.Source.NameSpace == repo.ObjectMeta.Namespace {
-			addons = append(addons, reconcile.Request{NamespacedName: types.NamespacedName{Name: addon.Name, Namespace: ""}})
+		layer := layers.CreateLayer(reconciler.Context, reconciler.Client, reconciler.k8client, reconciler.Log, &addon) //nolint:scopelint // ok
+		if err := repo.LinkData(layer.GetSourcePath(), layer.GetSpec().Source.Path); err != nil {
+			reconciler.Log.Error(err, "unable to link AddonsLayer directory to repository data")
+			continue
 		}
+
 		reconciler.Log.Info("adding layer to list", "layer", addon.Name)
+		if layer.GetSpec().Source.Name == repo.GetSourceName() && layer.GetSpec().Source.NameSpace == repo.GetSourceNameSpace() {
+			addons = append(addons, reconcile.Request{NamespacedName: types.NamespacedName{Name: layer.GetName(), Namespace: ""}})
+		}
 	}
 	return addons
 }

@@ -22,13 +22,15 @@ import (
 )
 
 // MaxConditions is the maximum number of condtions to retain.
-var MaxConditions = 10
-var rootPath = "/repos"
+var (
+	MaxConditions = 10
+	RootPath      = "/data"
+)
 
 func init() {
-	path, set := os.LookupEnv("REPOS_PATH")
+	path, set := os.LookupEnv("DATA_PATH")
 	if set {
-		rootPath = path
+		RootPath = path
 	}
 }
 
@@ -103,6 +105,14 @@ func CreateLayer(ctx context.Context, client client.Client, k8client kubernetes.
 // SetRequeue sets the requeue flag to cause the AddonsLayer to be requeued.
 func (l *KraanLayer) SetRequeue() {
 	l.requeue = true
+}
+
+// GetSourcePath gets the path to an addons layer's top directory in the local filesystem.
+func (l *KraanLayer) GetSourcePath() string {
+	return fmt.Sprintf("%s/layers/%s/%s",
+		RootPath,
+		l.GetName(),
+		l.GetSpec().Version)
 }
 
 // SetUpdated sets the updated flag to cause the AddonsLayer to update the custom resource.
@@ -296,14 +306,6 @@ func (l *KraanLayer) SetHold() {
 			kraanv1alpha1.AddonsLayerHoldReason, kraanv1alpha1.AddonsLayerHoldMsg)
 		l.updated = true
 	}
-}
-
-// GetSourcePath gets the path to the addons layer's top directory in the local filesystem.
-func (l *KraanLayer) GetSourcePath() string {
-	return fmt.Sprintf("%s/%s/%s",
-		rootPath,
-		l.addonsLayer.Spec.Source.Name,
-		l.addonsLayer.Spec.Source.Path)
 }
 
 // GetContext gets the context.

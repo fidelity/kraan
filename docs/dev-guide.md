@@ -91,7 +91,7 @@ To test kraan-controller
     '--set-git-repo' set the url of the git repo in the testdata helm releases, defaults to 'https://github.com/fidelity/kraan'
     '--set-git-ref' set the git repo branch in the testdata helm releases, defaults to 'master'
     This script will create a temporary directory and copy the testdata/addons directory to addons-config/testdata subdirectory in
-    the temporary directory. It will then set the environmental variable REPOS_PATH to the temporary directory. This will cause the
+    the temporary directory. It will then set the environmental variable DATA_PATH to the temporary directory. This will cause the
     kraan-controller to process the addons layers using the temporary directory as its root directory when locating the yaml files
     to process for each addon layer. This enables the kraan-controller to be tested without relying use of the source controller to
     obtain the yaml files from the git repository.
@@ -101,3 +101,13 @@ The kraan-controller will reprocess all AddonsLayers perioidically. This period 
     kraan-controller -sync-period=1m
 
 The reprocessing period can also be set to a period in seconds using the 's' suffix, i.e. 20s.
+
+The SC_TIMEOUT environmental variable can be used to set the timeout period for retrieving data from the source controller, default is 15 seconds.
+
+    export SC_TIMEOUT=30s
+
+The SC_HOST environmental variable can be used to set the host component of the source controller's artifact url. This is useful when running the
+kraan-controller out of cluster to enable it to access the source controller via a local address using kubectl port-forward, i.e.
+
+    kubectl -n gitops-system port-forward svc/source-controller 8090:80 &
+	export SC_HOST=localhost:8090

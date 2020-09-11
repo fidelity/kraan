@@ -330,30 +330,6 @@ func (_mr *MockLayerMockRecorder) GetAddonsLayer() *gomock.Call {
 	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "GetAddonsLayer", reflect.TypeOf((*MockLayer)(nil).GetAddonsLayer))
 }
 
-// RefreshData mocks base method
-func (_m *MockLayer) RefreshData() error {
-	ret := _m.ctrl.Call(_m, "RefreshData")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// RefreshData indicates an expected call of RefreshData
-func (_mr *MockLayerMockRecorder) RefreshData() *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "RefreshData", reflect.TypeOf((*MockLayer)(nil).RefreshData))
-}
-
-// LinkData mocks base method
-func (_m *MockLayer) LinkData(dataPath string) error {
-	ret := _m.ctrl.Call(_m, "LinkData", dataPath)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// LinkData indicates an expected call of LinkData
-func (_mr *MockLayerMockRecorder) LinkData(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "LinkData", reflect.TypeOf((*MockLayer)(nil).LinkData), arg0)
-}
-
 // getOtherAddonsLayer mocks base method
 func (_m *MockLayer) getOtherAddonsLayer(name string) (*v1alpha1.AddonsLayer, error) {
 	ret := _m.ctrl.Call(_m, "getOtherAddonsLayer", name)

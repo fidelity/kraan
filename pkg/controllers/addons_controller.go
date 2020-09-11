@@ -55,6 +55,7 @@ type AddonsLayerReconciler struct {
 	Scheme   *runtime.Scheme
 	Context  context.Context
 	Applier  apply.LayerApplier
+	Repos    repos.Repos
 }
 
 // NewReconciler returns an AddonsLayerReconciler instance
@@ -70,6 +71,7 @@ func NewReconciler(config *rest.Config, client client.Client, logger logr.Logger
 	reconciler.Context = context.Background()
 	var err error
 	reconciler.Applier, err = apply.NewApplier(client, logger, scheme)
+	reconciler.Repos = repos.NewRepos(reconciler.Context, reconciler.Log)
 	return reconciler, err
 }
 
@@ -240,7 +242,11 @@ func repoMapperFunc(a handler.MapObject) []reconcile.Request {
 		return []reconcile.Request{}
 	}
 
-	repo := repos.ReposData.Add(srcRepo)
+	repo := reconciler.Repos.Add(srcRepo)
+	if err := repo.SyncRepo(); err != nil {
+		reconciler.Log.Error(err, "unable to sync repo, not requeuing")
+		return []reconcile.Request{}
+	}
 	addonsList := &kraanv1alpha1.AddonsLayerList{}
 	if err := reconciler.List(reconciler.Context, addonsList); err != nil {
 		reconciler.Log.Error(err, "unable to list AddonsLayers")
@@ -249,13 +255,14 @@ func repoMapperFunc(a handler.MapObject) []reconcile.Request {
 	addons := []reconcile.Request{}
 	for _, addon := range addonsList.Items {
 		layer := layers.CreateLayer(reconciler.Context, reconciler.Client, reconciler.k8client, reconciler.Log, &addon) //nolint:scopelint // ok
-		if err := layer.LinkData(repo.GetDataPath()); err != nil {
+		if err := repo.LinkData(layer.GetSourcePath(), layer.GetSpec().Source.Path); err != nil {
+			reconciler.Log.Error(err, "unable to link AddonsLayer directory to repository data")
 			continue
 		}
 
 		reconciler.Log.Info("adding layer to list", "layer", addon.Name)
-		if addon.Spec.Source.Name == srcRepo.ObjectMeta.Name && addon.Spec.Source.NameSpace == srcRepo.ObjectMeta.Namespace {
-			addons = append(addons, reconcile.Request{NamespacedName: types.NamespacedName{Name: addon.Name, Namespace: ""}})
+		if layer.GetSpec().Source.Name == repo.GetSourceName() && layer.GetSpec().Source.NameSpace == repo.GetSourceNameSpace() {
+			addons = append(addons, reconcile.Request{NamespacedName: types.NamespacedName{Name: layer.GetName(), Namespace: ""}})
 		}
 	}
 	return addons

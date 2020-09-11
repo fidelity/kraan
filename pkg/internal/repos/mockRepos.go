@@ -113,6 +113,30 @@ func (_mr *MockRepoMockRecorder) GetName() *gomock.Call {
 	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "GetName", reflect.TypeOf((*MockRepo)(nil).GetName))
 }
 
+// GetSourceName mocks base method
+func (_m *MockRepo) GetSourceName() string {
+	ret := _m.ctrl.Call(_m, "GetSourceName")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetSourceName indicates an expected call of GetSourceName
+func (_mr *MockRepoMockRecorder) GetSourceName() *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "GetSourceName", reflect.TypeOf((*MockRepo)(nil).GetSourceName))
+}
+
+// GetSourceNameSpace mocks base method
+func (_m *MockRepo) GetSourceNameSpace() string {
+	ret := _m.ctrl.Call(_m, "GetSourceNameSpace")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetSourceNameSpace indicates an expected call of GetSourceNameSpace
+func (_mr *MockRepoMockRecorder) GetSourceNameSpace() *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "GetSourceNameSpace", reflect.TypeOf((*MockRepo)(nil).GetSourceNameSpace))
+}
+
 // SyncRepo mocks base method
 func (_m *MockRepo) SyncRepo() error {
 	ret := _m.ctrl.Call(_m, "SyncRepo")
@@ -135,4 +159,16 @@ func (_m *MockRepo) GetDataPath() string {
 // GetDataPath indicates an expected call of GetDataPath
 func (_mr *MockRepoMockRecorder) GetDataPath() *gomock.Call {
 	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "GetDataPath", reflect.TypeOf((*MockRepo)(nil).GetDataPath))
+}
+
+// LinkData mocks base method
+func (_m *MockRepo) LinkData(layerPath string, sourcePath string) error {
+	ret := _m.ctrl.Call(_m, "LinkData", layerPath, sourcePath)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// LinkData indicates an expected call of LinkData
+func (_mr *MockRepoMockRecorder) LinkData(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "LinkData", reflect.TypeOf((*MockRepo)(nil).LinkData), arg0, arg1)
 }

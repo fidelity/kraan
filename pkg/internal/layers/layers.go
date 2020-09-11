@@ -64,8 +64,6 @@ type Layer interface {
 	GetFullStatus() *kraanv1alpha1.AddonsLayerStatus
 	GetSpec() *kraanv1alpha1.AddonsLayerSpec
 	GetAddonsLayer() *kraanv1alpha1.AddonsLayer
-	RefreshData() error
-	LinkData(dataPath string) error
 
 	getOtherAddonsLayer(name string) (*kraanv1alpha1.AddonsLayer, error)
 	getK8sClient() kubernetes.Interface
@@ -102,22 +100,6 @@ func CreateLayer(ctx context.Context, client client.Client, k8client kubernetes.
 	}
 	l.delay = l.addonsLayer.Spec.Interval.Duration
 	return l
-}
-
-// RefreshData fetches data for an addon layer
-func (l *KraanLayer) RefreshData() error {
-	return nil
-}
-
-func (l *KraanLayer) LinkData(dataPath string) error {
-	addonsPath := fmt.Sprintf("%s/%s", dataPath, l.GetSpec().Source.Path)
-	if err := utils.IsExistingDir(addonsPath); err != nil {
-		return err
-	}
-	if err := os.Link(l.GetSourcePath(), addonsPath); err != nil {
-		return err
-	}
-	return nil
 }
 
 // SetRequeue sets the requeue flag to cause the AddonsLayer to be requeued.

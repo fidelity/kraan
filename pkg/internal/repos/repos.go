@@ -14,13 +14,14 @@ import (
 	"github.com/fluxcd/pkg/untar"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
 	"github.com/go-logr/logr"
+
+	"github.com/fidelity/kraan/pkg/internal/utils"
 )
 
 var (
-	RootPath  = "/data"
-	HostName  = ""
-	TimeOut   = 15 * time.Second
-	ReposData = reposData{repos: map[string]Repo{}}
+	RootPath = "/data"
+	HostName = ""
+	TimeOut  = 15 * time.Second
 )
 
 // Repos defines the interface for managing multiple instances of repository and revision data.
@@ -38,6 +39,16 @@ type reposData struct {
 	log          logr.Logger
 	Repos        `json:"-"`
 	sync.RWMutex `json:"-"`
+}
+
+// NewRepos creates a repos object.
+func NewRepos(ctx context.Context, log logr.Logger) Repos {
+	r := &reposData{
+		ctx: ctx,
+		log: log,
+	}
+	r.repos = map[string]Repo{}
+	return r
 }
 
 // List returns a map of workers keyed by cluster-entity name
@@ -61,10 +72,11 @@ func (r *reposData) Get(name string) Repo {
 func (r *reposData) Add(srcRepo *sourcev1.GitRepository) Repo {
 	r.Lock()
 	defer r.Unlock()
-	if _, found := r.repos[srcRepo.Name]; !found {
-		r.repos[srcRepo.Name] = newRepo(r.ctx, r.log, srcRepo)
+	name := fmt.Sprintf("%s/%s/%s", srcRepo.GetNamespace(), srcRepo.GetName(), srcRepo.GetArtifact().Revision)
+	if _, found := r.repos[name]; !found {
+		r.repos[name] = newRepo(r.ctx, r.log, srcRepo)
 	}
-	return r.repos[srcRepo.Name]
+	return r.repos[name]
 }
 
 // Delete deletes a worker from the map of active workers
@@ -79,8 +91,11 @@ func (r *reposData) Delete(name string) {
 // Repo defines the interface for managing repository and revision data.
 type Repo interface {
 	GetName() string
+	GetSourceName() string
+	GetSourceNameSpace() string
 	SyncRepo() error
 	GetDataPath() string
+	LinkData(layerPath, sourcePath string) error
 }
 
 // repoData hold data about a repository.
@@ -92,12 +107,7 @@ type repoData struct {
 	sync.RWMutex `json:"-"`
 }
 
-// NewRepo creates a layer object.
-func NewRepo(ctx context.Context, log logr.Logger, srcRepo *sourcev1.GitRepository) Repo {
-	return ReposData.Add(srcRepo)
-}
-
-// NewRepo creates a layer object.
+// newRepo creates a repo.
 func newRepo(ctx context.Context, log logr.Logger, repo *sourcev1.GitRepository) Repo {
 	r := &repoData{
 		ctx:  ctx,
@@ -108,7 +118,7 @@ func newRepo(ctx context.Context, log logr.Logger, repo *sourcev1.GitRepository)
 }
 
 func (r *repoData) getDataPath() string {
-	return fmt.Sprintf("%s/repos/%s/%s", RootPath, r.repo.Name, r.repo.Status.Artifact.Revision)
+	return fmt.Sprintf("%s/repos/%s/%s/%s", RootPath, r.repo.GetNamespace(), r.repo.GetName(), r.repo.GetArtifact().Revision)
 }
 
 func (r *repoData) GetDataPath() string {
@@ -120,7 +130,32 @@ func (r *repoData) GetDataPath() string {
 func (r *repoData) GetName() string {
 	r.RLock()
 	defer r.RUnlock()
-	return r.repo.Name
+	return fmt.Sprintf("%s/%s/%s", r.repo.GetNamespace(), r.repo.GetName(), r.repo.GetArtifact().Revision)
+}
+
+func (r *repoData) GetSourceName() string {
+	r.RLock()
+	defer r.RUnlock()
+	return r.repo.GetName()
+}
+
+func (r *repoData) GetSourceNameSpace() string {
+	r.RLock()
+	defer r.RUnlock()
+	return r.repo.GetNamespace()
+}
+
+func (r *repoData) LinkData(layerPath, sourcePath string) error {
+	r.Lock()
+	defer r.Unlock()
+	addonsPath := fmt.Sprintf("%s/%s", r.getDataPath(), sourcePath)
+	if err := utils.IsExistingDir(addonsPath); err != nil {
+		return err
+	}
+	if err := os.Link(layerPath, addonsPath); err != nil {
+		return err
+	}
+	return nil
 }
 
 /*

@@ -35,6 +35,7 @@ import (
 
 	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/controllers"
+	"github.com/fidelity/kraan/pkg/internal/repos"
 )
 
 var (
@@ -43,12 +44,26 @@ var (
 )
 
 func init() {
-	_ = corev1.AddToScheme(scheme) // nolint:errcheck // ok
-	//_ = clientgoscheme.AddToScheme(scheme) // nolint:errcheck // ok
+	_ = corev1.AddToScheme(scheme)        // nolint:errcheck // ok
 	_ = helmopv1.AddToScheme(scheme)      // nolint:errcheck // ok
 	_ = kraanv1alpha1.AddToScheme(scheme) // nolint:errcheck // ok
 	_ = sourcev1.AddToScheme(scheme)      // nolint:errcheck // ok
 	// +kubebuilder:scaffold:scheme
+
+	if path, set := os.LookupEnv("DATA_PATH"); set {
+		repos.RootPath = path
+	}
+	if host, set := os.LookupEnv("SC_HOST"); set {
+		repos.HostName = host
+	}
+	if timeout, set := os.LookupEnv("SC_TIMEOUT"); set {
+		timeOut, err := time.ParseDuration(timeout)
+		if err != nil {
+			setupLog.Error(err, "unable to parse timeout period")
+			os.Exit(1)
+		}
+		repos.TimeOut = timeOut
+	}
 }
 
 func main() {

@@ -1,6 +1,6 @@
-//Package layers provides an interface for processing AddonsLayers.
-//go:generate mockgen -destination=mockLayers.go -package=layers -source=layers.go . Layer
-package layers
+//Package repos provides an interface for processing repositories.
+//go:generate mockgen -destination=mockRepos.go -package=repos -source=repos.go . Repo Repos
+package repos
 
 import (
 	"context"
@@ -14,21 +14,30 @@ import (
 	"github.com/fluxcd/pkg/untar"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
 	"github.com/go-logr/logr"
-
-	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
 )
 
-// MaxConditions is the maximum number of condtions to retain.
 var (
-	RootPath = "/data"
+	RootPath  = "/data"
+	HostName  = ""
+	TimeOut   = 15 * time.Second
 	ReposData = reposData{repos: map[string]Repo{}}
 )
 
-func init() {
-	path, set := os.LookupEnv("DATA_PATH")
-	if set {
-		RootPath = path
-	}
+// Repos defines the interface for managing multiple instances of repository and revision data.
+type Repos interface {
+	Add(srcRepo *sourcev1.GitRepository) Repo
+	Get(name string) Repo
+	Delete(name string)
+	List() map[string]Repo
+}
+
+// reposData hold data about all repositories.
+type reposData struct {
+	repos        map[string]Repo
+	ctx          context.Context
+	log          logr.Logger
+	Repos        `json:"-"`
+	sync.RWMutex `json:"-"`
 }
 
 // List returns a map of workers keyed by cluster-entity name
@@ -49,14 +58,13 @@ func (r *reposData) Get(name string) Repo {
 }
 
 // Add adds a worker for an entity returning the new worker or existing one if already present
-func (r *reposData) Add(name string, repo Repo) Repo {
+func (r *reposData) Add(srcRepo *sourcev1.GitRepository) Repo {
 	r.Lock()
 	defer r.Unlock()
-	if repo, found := r.repos[name]; found {
-		return repo
+	if _, found := r.repos[srcRepo.Name]; !found {
+		r.repos[srcRepo.Name] = newRepo(r.ctx, r.log, srcRepo)
 	}
-	r.repos[name] = &repoData{}
-	return r.repos[name]
+	return r.repos[srcRepo.Name]
 }
 
 // Delete deletes a worker from the map of active workers
@@ -68,44 +76,25 @@ func (r *reposData) Delete(name string) {
 	}
 }
 
-// Repos defines the interface for managing multiple instances of repository and revision data.
-type Repos interface {
-	Add(name string, repo Repo) Repo
-	Get(name string) Repo
-	Delete(name string)
-	List() map[string]Repo
-}
-
-// reposData hold data about all repositories.
-type reposData struct {
-	repos      map[string]Repo
-	ctx        context.Context
-	log        logr.Logger
-	Repos      `json:"-"`
-	sync.RWMutex `json:"-"`
-}
-
 // Repo defines the interface for managing repository and revision data.
 type Repo interface {
 	GetName() string
-	LinkData() error
 	SyncRepo() error
+	GetDataPath() string
 }
 
 // repoData hold data about a repository.
 type repoData struct {
-	repo       *sourcev1.GitRepository
-	ctx        context.Context
-	log        logr.Logger
-	Repo       `json:"-"`
+	repo         *sourcev1.GitRepository
+	ctx          context.Context
+	log          logr.Logger
+	Repo         `json:"-"`
 	sync.RWMutex `json:"-"`
 }
 
 // NewRepo creates a layer object.
-func NewRepo(ctx context.Context, log logr.Logger, repo *sourcev1.GitRepository) Repo {
-	r := newRepo(ctx, log, repo)
-	ReposData.Add(repo.Name, r)
-	return r
+func NewRepo(ctx context.Context, log logr.Logger, srcRepo *sourcev1.GitRepository) Repo {
+	return ReposData.Add(srcRepo)
 }
 
 // NewRepo creates a layer object.
@@ -118,30 +107,20 @@ func newRepo(ctx context.Context, log logr.Logger, repo *sourcev1.GitRepository)
 	return r
 }
 
+func (r *repoData) getDataPath() string {
+	return fmt.Sprintf("%s/repos/%s/%s", RootPath, r.repo.Name, r.repo.Status.Artifact.Revision)
+}
 
-func LinkData(addon *kraanv1alpha1.AddonsLayer, dataPath string) error {
-	addonsPath := GetSourcePath(addon)
-	addonsData := fmt.Sprintf("%s/%s", dataPath, addon.Spec.Source.Path)
+func (r *repoData) GetDataPath() string {
+	r.RLock()
+	defer r.RUnlock()
+	return r.getDataPath()
+}
 
-	info, err := os.Stat(addonsData)
-	if os.IsNotExist(err) {
-		//reconciler.Log.Error(err, fmt.Sprintf("addons layer: %s, directory path not found in repository data", addon.Name))
-		return err
-	}
-	if err != nil {
-		//reconciler.Log.Error(err, fmt.Sprintf("failed to stat addons Data directory: %s", addonsData))
-		return err
-	}
-	if !info.IsDir() {
-		err := fmt.Errorf("addons Data path: %s, is not a directory", addonsData)
-		//reconciler.Log.Error(err, "invalid path")
-		return err
-	}
-	if err := os.Link(addonsPath, addonsData); err != nil {
-		//reconciler.Log.Error(err, fmt.Sprintf("unable link to new data for addonsLayers: %s", addon.Name))
-		return err
-	}
-	return nil
+func (r *repoData) GetName() string {
+	r.RLock()
+	defer r.RUnlock()
+	return r.repo.Name
 }
 
 /*
@@ -160,48 +139,55 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-func SyncRepo() error {
-	// set timeout for the reconciliation
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+func (r *repoData) SyncRepo() error {
+	r.Lock()
+	defer r.Unlock()
+	ctx, cancel := context.WithTimeout(r.ctx, TimeOut)
 	defer cancel()
 
-	log.Info("New revision detected", "revision", repository.Status.Artifact.Revision)
+	r.log.Info("New revision detected", "revision", r.repo.Status.Artifact.Revision)
 
-	dataPath := fmt.Sprintf("%s/repos/%s/%s", RootPath, repository.Name, repository.Status.Artifact.Revision)
-	err := os.MkdirAll(dataPath, os.ModePerm)
-	if err != nil {
-		return "", fmt.Errorf("failed to create dir, error: %w", err)
+	dataPath := fmt.Sprintf("%s/repos/%s/%s", RootPath, r.repo.Name, r.repo.Status.Artifact.Revision)
+	if _, err := os.Stat(dataPath); os.IsNotExist(err) {
+		if e := os.RemoveAll(dataPath); e != nil {
+			return fmt.Errorf("failed to remove dir, error: %w", e)
+		}
+	} else if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(dataPath, os.ModePerm); err != nil {
+		return err
 	}
 
 	// download and extract artifact
-	summary, err := fetchArtifact(ctx, repository, dataPath)
+	summary, err := r.fetchArtifact(ctx)
 	if err != nil {
-		return "", err
+		return err
 	}
-	log.Info("fetched artifact", "summary", summary)
+	r.log.Info("fetched artifact", "summary", summary)
 	// list artifact content
 	files, err := ioutil.ReadDir(dataPath)
 	if err != nil {
-		return "", fmt.Errorf("faild to list files, error: %w", err)
+		return fmt.Errorf("faild to list files, error: %w", err)
 	}
 	for _, file := range files {
-		log.Info("unpacked", "file", file)
+		r.log.Info("unpacked", "file", file)
 	}
-	return dataPath, nil
+	return nil
 }
 
-func fetchArtifact(ctx context.Context, repository *sourcev1.GitRepository, dir string) (string, error) {
-	if repository.Status.Artifact == nil {
-		return "", fmt.Errorf("repository %s does not containt an artifact", repository.Name)
+func (r *repoData) fetchArtifact(ctx context.Context) (string, error) {
+	if r.repo.Status.Artifact == nil {
+		return "", fmt.Errorf("repository %s does not containt an artifact", r.repo.Name)
 	}
 
-	url := repository.Status.Artifact.URL
+	url := r.repo.Status.Artifact.URL
 
 	// for local run:
 	// kubectl -n gitops-system port-forward svc/source-controller 8080:80
 	// export SOURCE_HOST=localhost:8080
-	if hostname := os.Getenv("SOURCE_HOST"); hostname != "" {
-		url = fmt.Sprintf("http://%s/gitrepository/%s/%s/latest.tar.gz", hostname, repository.Namespace, repository.Name)
+	if HostName != "" {
+		url = fmt.Sprintf("http://%s/gitrepository/%s/%s/latest.tar.gz", HostName, r.repo.Namespace, r.repo.Name)
 	}
 
 	// download the tarball
@@ -222,7 +208,7 @@ func fetchArtifact(ctx context.Context, repository *sourcev1.GitRepository, dir 
 	}
 
 	// extract
-	summary, err := untar.Untar(resp.Body, dir)
+	summary, err := untar.Untar(resp.Body, r.getDataPath())
 	if err != nil {
 		return "", fmt.Errorf("faild to untar artifact, error: %w", err)
 	}

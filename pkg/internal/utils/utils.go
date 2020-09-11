@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/go-logr/logr"
 	"github.com/paulcarlton-ww/go-utils/pkg/goutils"
@@ -20,4 +21,19 @@ func Log(logger logr.Logger, skip uint, level int, msg string, keysAndValues ...
 func LogError(logger logr.Logger, skip uint, err error, msg string, keysAndValues ...interface{}) {
 	line := fmt.Sprintf("%s %s", goutils.GetCaller(skip+3, true), msg)
 	logger.Error(err, line, keysAndValues...)
+}
+
+func IsExistingDir(dataPath string) error {
+	info, err := os.Stat(dataPath)
+	if os.IsNotExist(err) {
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("addons Data path: %s, is not a directory", dataPath)
+	}
+
+	return nil
 }

@@ -37,6 +37,7 @@ import (
 	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/internal/apply"
 	layers "github.com/fidelity/kraan/pkg/internal/layers"
+	"github.com/fidelity/kraan/pkg/internal/repos"
 	utils "github.com/fidelity/kraan/pkg/internal/utils"
 )
 
@@ -233,18 +234,13 @@ func repoMapperFunc(a handler.MapObject) []reconcile.Request {
 			"unexpected kind, continuing")
 		//return []reconcile.Request{}
 	}
-	repo, ok := a.Object.(*sourcev1.GitRepository)
+	srcRepo, ok := a.Object.(*sourcev1.GitRepository)
 	if !ok {
 		reconciler.Log.Error(fmt.Errorf("unable to cast object to GitRepository"), "skipping processing")
 		return []reconcile.Request{}
 	}
 
-	dataPath, err := layers.SyncRepo(reconciler.Log, repo)
-	if err != nil {
-		reconciler.Log.Error(err, "unable to sync repository")
-		return []reconcile.Request{}
-	}
-
+	repo := repos.ReposData.Add(srcRepo)
 	addonsList := &kraanv1alpha1.AddonsLayerList{}
 	if err := reconciler.List(reconciler.Context, addonsList); err != nil {
 		reconciler.Log.Error(err, "unable to list AddonsLayers")
@@ -252,12 +248,13 @@ func repoMapperFunc(a handler.MapObject) []reconcile.Request {
 	}
 	addons := []reconcile.Request{}
 	for _, addon := range addonsList.Items {
-		if err := layers.LinkData(&addon, dataPath); err != nil { //nolint:scopelint // ok
+		layer := layers.CreateLayer(reconciler.Context, reconciler.Client, reconciler.k8client, reconciler.Log, &addon) //nolint:scopelint // ok
+		if err := layer.LinkData(repo.GetDataPath()); err != nil {
 			continue
 		}
 
 		reconciler.Log.Info("adding layer to list", "layer", addon.Name)
-		if addon.Spec.Source.Name == repo.ObjectMeta.Name && addon.Spec.Source.NameSpace == repo.ObjectMeta.Namespace {
+		if addon.Spec.Source.Name == srcRepo.ObjectMeta.Name && addon.Spec.Source.NameSpace == srcRepo.ObjectMeta.Namespace {
 			addons = append(addons, reconcile.Request{NamespacedName: types.NamespacedName{Name: addon.Name, Namespace: ""}})
 		}
 	}

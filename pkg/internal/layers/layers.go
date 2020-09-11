@@ -65,6 +65,7 @@ type Layer interface {
 	GetSpec() *kraanv1alpha1.AddonsLayerSpec
 	GetAddonsLayer() *kraanv1alpha1.AddonsLayer
 	RefreshData() error
+	LinkData(dataPath string) error
 
 	getOtherAddonsLayer(name string) (*kraanv1alpha1.AddonsLayer, error)
 	getK8sClient() kubernetes.Interface
@@ -108,11 +109,21 @@ func (l *KraanLayer) RefreshData() error {
 	return nil
 }
 
+func (l *KraanLayer) LinkData(dataPath string) error {
+	addonsPath := fmt.Sprintf("%s/%s", dataPath, l.GetSpec().Source.Path)
+	if err := utils.IsExistingDir(addonsPath); err != nil {
+		return err
+	}
+	if err := os.Link(l.GetSourcePath(), addonsPath); err != nil {
+		return err
+	}
+	return nil
+}
+
 // SetRequeue sets the requeue flag to cause the AddonsLayer to be requeued.
 func (l *KraanLayer) SetRequeue() {
 	l.requeue = true
 }
-
 
 // GetSourcePath gets the path to an addons layer's top directory in the local filesystem.
 func (l *KraanLayer) GetSourcePath() string {

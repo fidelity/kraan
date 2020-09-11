@@ -220,7 +220,7 @@ func (r *repoData) fetchArtifact(ctx context.Context) (string, error) {
 
 	// for local run:
 	// kubectl -n gitops-system port-forward svc/source-controller 8080:80
-	// export SOURCE_HOST=localhost:8080
+	// export SC_HOST=localhost:8080
 	if HostName != "" {
 		url = fmt.Sprintf("http://%s/gitrepository/%s/%s/latest.tar.gz", HostName, r.repo.Namespace, r.repo.Name)
 	}

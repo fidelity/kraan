@@ -112,17 +112,20 @@ function updateHRs() {
 args "$@"
 base_dir="$(git rev-parse --show-toplevel)"
 work_dir="$(mktemp -d -t kraan-XXXXXX)"
-mkdir -p "${work_dir}"/gitops-system/addons-config/master/testdata
-cp -rf "${base_dir}"/testdata/addons "${work_dir}"/gitops-system/addons-config/master/testdata
+mkdir -p "${work_dir}"/testdata/addons
+cp -rf "${base_dir}"/testdata/addons/addons*.yaml "${work_dir}"/testdata/addons
 export DATA_PATH="${work_dir}"
 updateHRs
 echo "Running kraan-controller with DATA_PATH set to ${DATA_PATH}"
-echo "You may change files in this directory to test kraan-controller"
-echo "Edit and then kubectl apply ${work_dir}/gitops-system/addons-config/master/testdata/addons/addons.yaml to cause kraan-controller to reprocess layers."
+echo "You may change files in ${work_dir}/testdata/addons to test kraan-controller"
+echo "Edit and then kubectl apply ${work_dir}/testdata/addons/addons.yaml to cause kraan-controller to reprocess layers."
+echo "Edit and then kubectl apply ${work_dir}/testdata/addons/addons-source.yaml to cause kraan-controller to reprocess source controller data."
 echo "if you want change and rerun the kraan-controller you should type..."
 echo "export DATA_PATH=${work_dir}"
 echo "kraan-controller"
-echo "The temporary directory will not be deleted to allow for this scenario so you are responsible for deleting this directory"
+echo "In order to allow for this scenario thw temporary directory will not be deleted so you are responsible for deleting this directory"
 echo ""
-read -p "Pausing to allow user to make manual changes to testdata in ${work_dir}, press enter to continue"
+read -p "Pausing to allow user to make manual changes to testdata in ${work_dir}/testdata/addons, press enter to continue"
+kubectl -n gitops-system port-forward svc/source-controller 8090:80 &
+export SC_HOST=localhost:8090
 kraan-controller

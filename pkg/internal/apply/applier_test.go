@@ -150,7 +150,7 @@ func TODOTestBasicApply(t *testing.T) { //nolint
 	mockCommand.EXPECT().WithLogger(logger).Return(mockCommand).Times(1)
 	mockCommand.EXPECT().DryRun().Return(fakeHrJSON, nil).Times(1)
 
-	mockLayer := layers.NewMockLayer(mockCtl)
+	mockLayer := mocklayers.NewMockLayer(mockCtl)
 	mockLayer.EXPECT().GetName().Return(layerName).AnyTimes()
 	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
 	mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()

@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 //Package kubectl executes various kubectl sub-commands in a forked shell
-//go:generate mockgen -destination=mockKubectl.go -package=kubectl -source=kubectl.go . Kubectl,Command
+//go:generate mockgen -destination=../mocks/mockkubectl/mockKubectl.go -package=mockkubectl -source=kubectl.go . Kubectl,Command
 package kubectl
 
 import (

@@ -1,5 +1,5 @@
 //Package apply xxx
-// TEMP DISABLED - go:generate mockgen -destination=mockLayerApplier.go -package=apply -source=layerApplier.go . LayerApplier
+// go:generate mockgen -destination=../mocks/mockapply/mockLayerApplier.go -package=mockapply -source=layerApplier.go . LayerApplier
 // re-enable the go:generate annotation when we're ready to write tests for the controller
 package apply
 
@@ -17,10 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-
-	//"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	//"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 

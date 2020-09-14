@@ -1,5 +1,5 @@
 //Package repos provides an interface for processing repositories.
-//go:generate mockgen -destination=mockRepos.go -package=repos -source=repos.go . Repo Repos
+//go:generate mockgen -destination=../mocks/mockrepo/mockRepos.go -package=mockrepos -source=repos.go . Repo Repos
 package repos
 
 import (

@@ -1,6 +1,5 @@
-/*Package kubectl xxx
- */
-//  Old - mockgen -destination=pkg/internal/kubectl/mockExecProvider.go -package=kubectl -source=pkg/internal/kubectl/execProvider.go github.com/fidelity/common-platform/addons-manager/pkg/internal/kubectl ExecProvider
+//Package kubectl executes various kubectl sub-commands in a forked shell
+
 //go:generate mockgen -destination=mockExecProvider.go -package=kubectl -source=execProvider.go . ExecProvider
 //go:generate mockgen -destination=../mocks/logr/mockLogger.go -package=mocks github.com/go-logr/logr Logger
 package kubectl

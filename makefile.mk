@@ -64,7 +64,7 @@ ${COVERAGE_ARTIFACT}: ${TEST_ARTIFACT}
 		echo "${YELLOW}Running go tool cover${NC_DIR}" && \
 		mkdir -p $(dir ${COVERAGE_ARTIFACT}) && \
 		go tool cover -html=$< -o $@ && \
-		echo "${GREEN}Generated: $@${NC}"
+		echo "${GREEN}Generated: file://$@${NC}"
 	fi
 
 

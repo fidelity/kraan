@@ -95,7 +95,7 @@ type Repo interface {
 	GetSourceNameSpace() string
 	SyncRepo() error
 	LinkData(layerPath, sourcePath string) error
-	GetGitRepo() *sourcev1.GitRepository
+	getGitRepo() *sourcev1.GitRepository
 	getTarConsumer() tarconsumer.TarConsumer
 	setTarConsumer(ctx context.Context, httpClient *http.Client, url string)
 }
@@ -130,14 +130,10 @@ func getDataPath(srcRepo *sourcev1.GitRepository) string {
 }
 
 func (r *repoData) getTarConsumer() tarconsumer.TarConsumer {
-	r.RLock()
-	defer r.RUnlock()
 	return r.tarConsumer
 }
 
 func (r *repoData) setTarConsumer(ctx context.Context, httpClient *http.Client, url string) {
-	r.RLock()
-	defer r.RUnlock()
 	r.tarConsumer = tarconsumer.NewTarConsumer(ctx, httpClient, url)
 }
 
@@ -153,9 +149,7 @@ func (r *repoData) GetSourceNameSpace() string {
 	return r.repo.GetNamespace()
 }
 
-func (r *repoData) GetGitRepo() *sourcev1.GitRepository {
-	r.RLock()
-	defer r.RUnlock()
+func (r *repoData) getGitRepo() *sourcev1.GitRepository {
 	return r.repo
 }
 
@@ -164,7 +158,7 @@ func (r *repoData) LinkData(layerPath, sourcePath string) error {
 	defer r.Unlock()
 	addonsPath := fmt.Sprintf("%s/%s", getDataPath(r.repo), sourcePath)
 	if err := utils.IsExistingDir(addonsPath); err != nil {
-		return err
+		return fmt.Errorf("failed, target directory does not exit, %s", err.Error())
 	}
 	layerPathParts := strings.Split(layerPath, "/")
 	layerPathDir := strings.Join(layerPathParts[:len(layerPathParts)-1], "/")
@@ -173,7 +167,7 @@ func (r *repoData) LinkData(layerPath, sourcePath string) error {
 		return err
 	}
 	if _, err := os.Lstat(layerPath); err == nil {
-		if e := os.Remove(layerPath); e != nil {
+		if e := os.RemoveAll(layerPath); e != nil {
 			return err
 		}
 	} else if !os.IsNotExist(err) {
@@ -227,7 +221,7 @@ func (r *repoData) SyncRepo() error {
 }
 
 func fetchArtifact(ctx context.Context, r Repo) error {
-	repo := r.GetGitRepo()
+	repo := r.getGitRepo()
 	if repo.Status.Artifact == nil {
 		return fmt.Errorf("repository %s does not containt an artifact", getRepoName(repo))
 	}
@@ -246,7 +240,7 @@ func fetchArtifact(ctx context.Context, r Repo) error {
 		return fmt.Errorf("failed to download artifact from %s, error: %w", url, err)
 	}
 
-	if err := tarconsumer.UnpackTar(tar, getDataPath(r.GetGitRepo())); err != nil {
+	if err := tarconsumer.UnpackTar(tar, getDataPath(r.getGitRepo())); err != nil {
 		return fmt.Errorf("faild to untar artifact, error: %w", err)
 	}
 

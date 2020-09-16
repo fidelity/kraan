@@ -5,24 +5,24 @@ package repos
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/fluxcd/pkg/untar"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
 	"github.com/go-logr/logr"
 
+	"github.com/fidelity/kraan/pkg/internal/tarconsumer"
 	"github.com/fidelity/kraan/pkg/internal/utils"
 )
 
 var (
-	RootPath = "/data"
-	HostName = ""
-	TimeOut  = 15 * time.Second
+	RootPath   = "/data"
+	HostName   = ""
+	TimeOut    = 15 * time.Second
+	httpClient = &http.Client{}
 )
 
 // Repos defines the interface for managing multiple instances of repository and revision data.
@@ -73,7 +73,7 @@ func (r *reposData) Get(name string) Repo {
 func (r *reposData) Add(srcRepo *sourcev1.GitRepository) Repo {
 	r.Lock()
 	defer r.Unlock()
-	name := fmt.Sprintf("%s/%s/%s", srcRepo.GetNamespace(), srcRepo.GetName(), srcRepo.GetArtifact().Revision)
+	name := getRepoName(srcRepo)
 	if _, found := r.repos[name]; !found {
 		r.repos[name] = newRepo(r.ctx, r.log, srcRepo)
 	}
@@ -91,12 +91,13 @@ func (r *reposData) Delete(name string) {
 
 // Repo defines the interface for managing repository and revision data.
 type Repo interface {
-	GetName() string
 	GetSourceName() string
 	GetSourceNameSpace() string
 	SyncRepo() error
-	GetDataPath() string
 	LinkData(layerPath, sourcePath string) error
+	GetGitRepo() *sourcev1.GitRepository
+	getTarConsumer() tarconsumer.TarConsumer
+	setTarConsumer(ctx context.Context, httpClient *http.Client, url string)
 }
 
 // repoData hold data about a repository.
@@ -104,6 +105,7 @@ type repoData struct {
 	repo         *sourcev1.GitRepository
 	ctx          context.Context
 	log          logr.Logger
+	tarConsumer  tarconsumer.TarConsumer
 	Repo         `json:"-"`
 	sync.RWMutex `json:"-"`
 }
@@ -115,23 +117,28 @@ func newRepo(ctx context.Context, log logr.Logger, repo *sourcev1.GitRepository)
 		log:  log,
 		repo: repo,
 	}
+	r.setTarConsumer(ctx, httpClient, repo.Status.Artifact.URL)
 	return r
 }
 
-func (r *repoData) getDataPath() string {
-	return fmt.Sprintf("%s/%s/%s/%s", RootPath, r.repo.GetNamespace(), r.repo.GetName(), r.repo.GetArtifact().Revision)
+func getRepoName(srcRepo *sourcev1.GitRepository) string {
+	return fmt.Sprintf("%s/%s/%s", srcRepo.GetNamespace(), srcRepo.GetName(), srcRepo.GetArtifact().Revision)
 }
 
-func (r *repoData) GetDataPath() string {
-	r.RLock()
-	defer r.RUnlock()
-	return r.getDataPath()
+func getDataPath(srcRepo *sourcev1.GitRepository) string {
+	return fmt.Sprintf("%s/%s/%s/%s", RootPath, srcRepo.GetNamespace(), srcRepo.GetName(), srcRepo.GetArtifact().Revision)
 }
 
-func (r *repoData) GetName() string {
+func (r *repoData) getTarConsumer() tarconsumer.TarConsumer {
 	r.RLock()
 	defer r.RUnlock()
-	return fmt.Sprintf("%s/%s/%s", r.repo.GetNamespace(), r.repo.GetName(), r.repo.GetArtifact().Revision)
+	return r.tarConsumer
+}
+
+func (r *repoData) setTarConsumer(ctx context.Context, httpClient *http.Client, url string) {
+	r.RLock()
+	defer r.RUnlock()
+	r.tarConsumer = tarconsumer.NewTarConsumer(ctx, httpClient, url)
 }
 
 func (r *repoData) GetSourceName() string {
@@ -146,10 +153,16 @@ func (r *repoData) GetSourceNameSpace() string {
 	return r.repo.GetNamespace()
 }
 
+func (r *repoData) GetGitRepo() *sourcev1.GitRepository {
+	r.RLock()
+	defer r.RUnlock()
+	return r.repo
+}
+
 func (r *repoData) LinkData(layerPath, sourcePath string) error {
 	r.Lock()
 	defer r.Unlock()
-	addonsPath := fmt.Sprintf("%s/%s", r.getDataPath(), sourcePath)
+	addonsPath := fmt.Sprintf("%s/%s", getDataPath(r.repo), sourcePath)
 	if err := utils.IsExistingDir(addonsPath); err != nil {
 		return err
 	}
@@ -197,7 +210,7 @@ func (r *repoData) SyncRepo() error {
 
 	r.log.Info("New revision detected", "revision", r.repo.Status.Artifact.Revision)
 
-	dataPath := fmt.Sprintf("%s/repos/%s/%s", RootPath, r.repo.Name, r.repo.Status.Artifact.Revision)
+	dataPath := getDataPath(r.repo)
 	if _, err := os.Stat(dataPath); os.IsNotExist(err) {
 		if e := os.RemoveAll(dataPath); e != nil {
 			return fmt.Errorf("failed to remove dir, error: %w", e)
@@ -210,55 +223,32 @@ func (r *repoData) SyncRepo() error {
 	}
 
 	// download and extract artifact
-	summary, err := r.fetchArtifact(ctx)
-	if err != nil {
-		return err
-	}
-	r.log.Info("fetched artifact", "summary", summary)
-	// list artifact content
-	files, err := ioutil.ReadDir(dataPath)
-	if err != nil {
-		return fmt.Errorf("faild to list files, error: %w", err)
-	}
-	for _, file := range files {
-		r.log.Info("unpacked", "file", file)
-	}
-	return nil
+	return fetchArtifact(ctx, r)
 }
 
-func (r *repoData) fetchArtifact(ctx context.Context) (string, error) {
-	if r.repo.Status.Artifact == nil {
-		return "", fmt.Errorf("repository %s does not containt an artifact", r.repo.Name)
+func fetchArtifact(ctx context.Context, r Repo) error {
+	repo := r.GetGitRepo()
+	if repo.Status.Artifact == nil {
+		return fmt.Errorf("repository %s does not containt an artifact", getRepoName(repo))
 	}
 
-	url := r.repo.Status.Artifact.URL
+	url := repo.Status.Artifact.URL
 
 	if HostName != "" {
-		url = fmt.Sprintf("http://%s/gitrepository/%s/%s/latest.tar.gz", HostName, r.repo.Namespace, r.repo.Name)
+		url = fmt.Sprintf("http://%s/gitrepository/%s/%s/latest.tar.gz", HostName, repo.Namespace, repo.Name)
 	}
 
-	// download the tarball
-	req, err := http.NewRequest("GET", url, nil)
+	tarConsumer := r.getTarConsumer()
+	tarConsumer.SetURL(url)
+
+	tar, err := tarConsumer.GetTar(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to create HTTP request, error: %w", err)
+		return fmt.Errorf("failed to download artifact from %s, error: %w", url, err)
 	}
 
-	resp, err := http.DefaultClient.Do(req.WithContext(ctx))
-	if err != nil {
-		return "", fmt.Errorf("failed to download artifact from %s, error: %w", url, err)
-	}
-	defer resp.Body.Close()
-
-	// check response
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("faild to download artifact, status: %s", resp.Status)
+	if err := tarconsumer.UnpackTar(tar, getDataPath(r.GetGitRepo())); err != nil {
+		return fmt.Errorf("faild to untar artifact, error: %w", err)
 	}
 
-	// extract
-	summary, err := untar.Untar(resp.Body, r.getDataPath())
-	if err != nil {
-		return "", fmt.Errorf("faild to untar artifact, error: %w", err)
-	}
-
-	return summary, nil
+	return nil
 }

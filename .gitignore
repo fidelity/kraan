@@ -30,5 +30,5 @@ pkg/**/._gometalinter
 #**/pkg/**/*.md
 vendor/
 .vscode/
-**/._spellcheck
-pkg/main/__debug_bin
+
+pkg/main/__debug_bin.DS_Store

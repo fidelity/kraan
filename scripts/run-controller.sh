@@ -122,6 +122,8 @@ echo "Edit and then kubectl apply ${work_dir}/testdata/addons/addons.yaml to cau
 echo "Edit and then kubectl apply ${work_dir}/testdata/addons/addons-source.yaml to cause kraan-controller to reprocess source controller data."
 echo "if you want change and rerun the kraan-controller you should type..."
 echo "export DATA_PATH=${work_dir}"
+echo "kubectl -n gitops-system port-forward svc/source-controller 8090:80 &"
+echo "export SC_HOST=localhost:8090"
 echo "kraan-controller"
 echo "In order to allow for this scenario thw temporary directory will not be deleted so you are responsible for deleting this directory"
 echo ""

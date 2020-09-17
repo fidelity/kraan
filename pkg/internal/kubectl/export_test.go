@@ -15,3 +15,7 @@ var (
 	IsJSONOutput      = Command.isJSONOutput
 	AsCommandString   = Command.asString
 )
+
+func SetKubectlCmd(command string) {
+	kubectlCmd = command
+}

@@ -89,7 +89,6 @@ function git_url() {
 }
 
 function args() {
-  debug=""
   toolkit=""
   dry_run=""
   deploy_kind=0

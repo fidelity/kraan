@@ -1,4 +1,4 @@
-package kubectl
+package kubectl_test
 
 /*
 
@@ -20,11 +20,15 @@ From the project root directory, you can then generate mocks for all the interfa
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/fidelity/kraan/pkg/internal/kubectl"
+	mocks "github.com/fidelity/kraan/pkg/internal/mocks/kubectl"
 	mocklogr "github.com/fidelity/kraan/pkg/internal/mocks/logr"
 
+	"github.com/go-logr/logr"
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -32,131 +36,282 @@ import (
 var (
 	errFromExec         = fmt.Errorf("error from executable")
 	errExecFileNotFound = fmt.Errorf("executable file not found in $PATH")
+	kubectlPath         = "/mocked/path/to/kubectl"
+	sourcePath          = "/mocked/path/to/source/directory"
 )
 
 func TestNewKubectl(t *testing.T) {
 	logger := testlogr.TestLogger{T: t}
-	k, err := NewKubectl(logger)
+	k, err := kubectl.NewKubectl(logger)
 	if err != nil {
 		t.Errorf("The NewKubectl function returned an error! %w", err)
 	}
 	t.Logf("k (%T) %#v", k, k)
-	gotLogger := k.getLogger()
+	fType := &kubectl.CommandFactory{}
+	if reflect.TypeOf(k) != reflect.TypeOf(fType) {
+		t.Fatalf("The NewKubectl function did not return an instance of %T", fType)
+	}
+	f, ok := k.(*kubectl.CommandFactory)
+	if !ok {
+		t.Fatalf("Failed to cast Kubectl instance to %T : %#v", fType, k)
+	}
+	gotLogger := kubectl.GetLogger(*f)
 	t.Logf("gotLogger (%T) %#v", gotLogger, gotLogger)
 	if logger != gotLogger {
 		t.Errorf("The passed logger was not stored as the new Kubectl instance's Logger")
 	}
+	gotExecProvider := kubectl.GetExecProvider(*f)
+	if gotExecProvider == nil {
+		t.Errorf("The NewKubectl function did not instantiate an execProvider!")
+	}
+	t.Logf("kubectl full path: %s", kubectl.GetFactoryPath(*f))
 }
 
-type FakeExecProvider struct {
-	findOnPathFunc func(file string) (string, error)
-	execCmdFunc    func(name string, arg ...string) ([]byte, error)
+type Setup struct {
+	t            *testing.T
+	mockCtl      *gomock.Controller
+	execProvider *mocks.MockExecProvider
+	factory      *kubectl.CommandFactory
+	path         string
+	subCmd       string
+	sourceDir    string
+	args         []string
+	cmdArgs      []string
+	runArgs      []string
+	dryRunArgs   []string
+	cmdStr       string
+	runStr       string
+	dryRunStr    string
+	expectJSON   bool
+	output       string
+	testLogr     testlogr.TestLogger
+	mockLogr     *mocklogr.MockLogger
+	cmdLogr      *mocklogr.MockLogger
+	restoreFunc  func()
 }
 
-func (p FakeExecProvider) findOnPath(file string) (string, error) {
-	return p.findOnPathFunc(file)
-}
+func setup(t *testing.T, subCmd string, expectJSON bool, expectedArgs ...string) *Setup {
+	mockCtl := gomock.NewController(t)
 
-func (p FakeExecProvider) execCmd(name string, arg ...string) ([]byte, error) {
-	return p.execCmdFunc(name, arg...)
-}
+	mockExecProvider := mocks.NewMockExecProvider(mockCtl)
 
-func (p FakeExecProvider) setFindOnPathFunc(mockFunc func(file string) (string, error)) FakeExecProvider {
-	p.findOnPathFunc = mockFunc
-	return p
-}
+	restoreFunc := func() {
+		mockCtl.Finish()
+	}
 
-/* Not used
-func (p FakeExecProvider) setExecCmdFunc(mockFunc func(name string, arg ...string) ([]byte, error)) FakeExecProvider {
-	p.execCmdFunc = mockFunc
-	return p
-}
-*/
-// BaseFakeExecProvider implements a fake exec.
-func BaseFakeExecProvider() FakeExecProvider {
-	return FakeExecProvider{
-		findOnPathFunc: func(file string) (string, error) {
-			return "/fake/path/to/kubectl/binary", nil
-		},
-		execCmdFunc: func(name string, arg ...string) ([]byte, error) {
-			return nil, nil
-		},
+	cmdArgs := append([]string{subCmd}, expectedArgs...)
+	runArgs := cmdArgs
+	dryRunArgs := append(runArgs, "--dry-run")
+	if expectJSON {
+		jsonArgs := []string{"-o", "json"}
+		runArgs = append(runArgs, jsonArgs...)
+		dryRunArgs = append(dryRunArgs, jsonArgs...)
+	}
+
+	return &Setup{
+		t:            t,
+		mockCtl:      mockCtl,
+		execProvider: mockExecProvider,
+		subCmd:       subCmd,
+		sourceDir:    sourcePath,
+		path:         kubectlPath,
+		args:         expectedArgs,
+		cmdArgs:      cmdArgs,
+		runArgs:      runArgs,
+		dryRunArgs:   dryRunArgs,
+		cmdStr:       fmt.Sprintf("%s %s", kubectlPath, strings.Join(cmdArgs, " ")),
+		runStr:       fmt.Sprintf("%s %s", kubectlPath, strings.Join(runArgs, " ")),
+		dryRunStr:    fmt.Sprintf("%s %s", kubectlPath, strings.Join(dryRunArgs, " ")),
+		expectJSON:   expectJSON,
+		output:       "FAKE OUTPUT",
+		testLogr:     testlogr.TestLogger{T: t},
+		mockLogr:     mocklogr.NewMockLogger(mockCtl),
+		cmdLogr:      mocklogr.NewMockLogger(mockCtl),
+		restoreFunc:  restoreFunc,
 	}
 }
 
-func TestFakeKubectlCommandFoundInPath(t *testing.T) {
-	restoreExecProvider := execProvider
-	defer func() { execProvider = restoreExecProvider }()
+func setupApply(t *testing.T) *Setup {
+	return setup(t, "apply", true, "-R", "-f", sourcePath)
+}
 
-	execProvider = BaseFakeExecProvider()
+func setupDelete(t *testing.T) *Setup {
+	return setup(t, "delete", false, "pod", "random-pod", "-n", "some-namespace")
+}
 
-	logger := testlogr.TestLogger{T: t}
-	k, err := NewKubectl(logger)
-	t.Logf("Kubectl (%T) %#v", k, k)
+func setupGet(t *testing.T) *Setup {
+	return setup(t, "get", true, "helmrelease", "addon", "-n", "kube-system")
+}
+
+func (s *Setup) expectKubectlFound() *Setup {
+	s.execProvider.EXPECT().FindOnPath(kubectl.KubectlCmd).Return(s.path, nil).Times(1)
+	return s
+}
+
+func (s *Setup) exepectKubectlNotFound() *Setup {
+	s.execProvider.EXPECT().FindOnPath(kubectl.KubectlCmd).Return(s.path, errExecFileNotFound).Times(1)
+	return s
+}
+
+func (s *Setup) withFactoryLogr(logger logr.Logger) *Setup {
+	factory, err := kubectl.NewCommandFactory(logger, s.execProvider)
+	s.t.Logf("Kubectl (%T) %#v", factory, factory)
 	if err != nil {
-		t.Errorf("Error returned from the execLookPath function : %w", err)
+		s.t.Errorf("Error returned from the execLookPath function : %w", err)
 	}
-	t.Logf("Kubectl command path '%s'", k.getPath())
+	s.factory = factory
+	return s
 }
 
-func TestFakeKubectlCommandNotFoundInPath(t *testing.T) {
-	restoreExecProvider := execProvider
-	defer func() { execProvider = restoreExecProvider }()
+func (s *Setup) withFactory() *Setup {
+	return s.withFactoryLogr(s.testLogr)
+}
 
-	execProvider = BaseFakeExecProvider().setFindOnPathFunc(
-		func(file string) (string, error) {
-			return "", errExecFileNotFound
-		},
-	)
+func (s *Setup) withFactoryMockLogr() *Setup {
+	return s.withFactoryLogr(s.mockLogr)
+}
 
-	logger := testlogr.TestLogger{T: t}
-	k, err := NewKubectl(logger)
-	t.Logf("Kubectl (%T) %#v", k, k)
-	if err == nil {
-		t.Errorf("Expected error 'executable file not found' was not returned from NewKubectl constructor")
-	} else {
-		t.Logf("Expected error was returned: %#v", err)
+func (s *Setup) expectRun() *Setup {
+	s.expectKubectlFound()
+	s.execProvider.EXPECT().ExecCmd(s.path, s.runArgs).Return([]byte(s.output), nil).Times(1)
+	return s
+}
+
+func (s *Setup) expectDryRun() *Setup {
+	s.expectKubectlFound()
+	s.execProvider.EXPECT().ExecCmd(s.path, s.dryRunArgs).Return([]byte(s.output), nil).Times(1)
+	return s
+}
+
+func (s *Setup) expectRunError() *Setup {
+	s.expectKubectlFound()
+	s.execProvider.EXPECT().ExecCmd(s.path, s.runArgs).Return(nil, errFromExec).Times(1)
+	return s
+}
+
+func (s *Setup) expectRunUsesFactoryLogger() *Setup {
+	s.expectRun()
+	// The ApplyCommand should use the factory's mockLogger to log a log-leveled message indicating that kubectl was executed with the expected command
+	s.mockLogr.EXPECT().V(gomock.Any()).Return(s.mockLogr).Times(1)
+	s.mockLogr.EXPECT().Info("executing kubectl", "command", s.runStr).Times(1)
+	return s
+}
+
+func (s *Setup) expectRunUsesCommandLogger() *Setup {
+	s.expectRun()
+	// The ApplyCommand should use the command's mockLogger to log a log-leveled message indicating that kubectl was executed with the expected command
+	s.cmdLogr.EXPECT().V(gomock.Any()).Return(s.cmdLogr).Times(1)
+	s.cmdLogr.EXPECT().Info("executing kubectl", "command", s.runStr).Times(1)
+	// The Factory's mockLogger should never be used
+	s.mockLogr.EXPECT().V(gomock.Any()).Return(s.mockLogr).Times(0)
+	s.mockLogr.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+	return s
+}
+
+func (s *Setup) validateCommand(command kubectl.Command, cmdType kubectl.Command, functionName string) {
+	if command == nil {
+		s.t.Fatalf("nil returned from Kubectl %s function", functionName)
 	}
+	s.t.Logf("%s Returned (%T) %#v for (%T) %#v", functionName, command, command, cmdType, cmdType)
+	if reflect.TypeOf(command) == reflect.TypeOf(cmdType) {
+		s.t.Logf("Expected type (%T) match for %#v", cmdType, command)
+	} else {
+		s.t.Logf("return value from Kubectl.%s is not of type %T: %#v", functionName, cmdType, command)
+	}
+}
+
+func (s *Setup) validateCommandState(c kubectl.Command) {
+	typ := reflect.TypeOf(c).String()
+
+	if s.subCmd != kubectl.GetSubCmd(c) {
+		s.t.Fatalf("expected '%s', got '%s' for the returned %s.GetSubCmd", s.subCmd, kubectl.GetSubCmd(c), typ)
+	} else {
+		s.t.Logf("SubCmd expected '%s' matches '%s'", s.subCmd, kubectl.GetSubCmd(c))
+	}
+
+	if len(kubectl.GetArgs(c)) != len(s.cmdArgs) {
+		s.t.Errorf("expected %d args, got %d args in the returned %s", len(s.cmdArgs), len(kubectl.GetArgs(c)), typ)
+	}
+	argsEqual := true
+	for i, arg := range kubectl.GetArgs(c) {
+		expectedArg := s.cmdArgs[i]
+		if arg != expectedArg {
+			s.t.Errorf("expected arg '%s', got arg '%s' at index [%d] in the returned %s", expectedArg, arg, i, typ)
+			argsEqual = false
+		} else {
+			s.t.Logf("at index [%d] expected arg '%s' matches arg '%s'", i, expectedArg, arg)
+		}
+	}
+	if !argsEqual {
+		s.t.Fatalf("args in the returned %s did not match expectations", typ)
+	}
+
+	if s.path != kubectl.GetCommandPath(c) {
+		s.t.Fatalf("expected '%s', got '%s' for Path in the returned %s", s.path, kubectl.GetCommandPath(c), typ)
+	} else {
+		s.t.Logf("Path expected '%s' matches '%s'", s.path, kubectl.GetCommandPath(c))
+	}
+
+	if s.cmdStr != kubectl.AsCommandString(c) {
+		s.t.Fatalf("expected '%s', got '%s' from the returned %s AsString function", s.cmdStr, kubectl.AsCommandString(c), typ)
+	} else {
+		s.t.Logf("AsString expected '%s' matches '%s'", s.cmdStr, kubectl.AsCommandString(c))
+	}
+
+	if s.expectJSON != kubectl.IsJSONOutput(c) {
+		s.t.Fatalf("expected %v, got %v from the returned %s IsJSONOutput function", s.expectJSON, kubectl.IsJSONOutput(c), typ)
+	}
+}
+
+func (s *Setup) Apply() *kubectl.ApplyCommand {
+	command := s.factory.Apply(s.sourceDir)
+	s.validateCommand(command, &kubectl.ApplyCommand{}, "Apply")
+	typedCommand, ok := command.(*kubectl.ApplyCommand)
+	if !ok {
+		s.t.Logf("error casting to *kubectl.ApplyCommand! %#v", command)
+	}
+	return typedCommand
+}
+
+func (s *Setup) Get() *kubectl.GetCommand {
+	command := s.factory.Get(s.args...)
+	s.validateCommand(command, &kubectl.GetCommand{}, "Get")
+	typedCommand, ok := command.(*kubectl.GetCommand)
+	if !ok {
+		s.t.Logf("error casting to *kubectl.GetCommand! %#v", command)
+	}
+	return typedCommand
+}
+
+func (s *Setup) Delete() *kubectl.DeleteCommand {
+	command := s.factory.Delete(s.args...)
+	s.validateCommand(command, &kubectl.DeleteCommand{}, "Delete")
+	typedCommand, ok := command.(*kubectl.DeleteCommand)
+	if !ok {
+		s.t.Logf("error casting to *kubectl.DeleteCommand! %#v", command)
+	}
+	return typedCommand
 }
 
 func TestKubectlCommandFoundInPath(t *testing.T) {
-	mockCtl := gomock.NewController(t)
-	defer mockCtl.Finish()
+	s := setupApply(t).expectKubectlFound()
+	defer s.restoreFunc()
 
-	restoreExecProvider := execProvider
-	defer func() { execProvider = restoreExecProvider }()
-	mockExecProvider := NewMockExecProvider(mockCtl)
-	execProvider = mockExecProvider
-
-	// Verifies that the "findOnPath" method was called once with the exact expected string input as the parameter
-	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return("/mocked/path/to/kubectl/binary", nil).Times(1)
-
-	logger := testlogr.TestLogger{T: t}
-	k, err := NewKubectl(logger)
-	t.Logf("Kubectl (%T) %#v", k, k)
+	f, err := kubectl.NewCommandFactory(s.testLogr, s.execProvider)
+	t.Logf("Kubectl (%T) %#v", f, f)
 	if err != nil {
 		t.Errorf("Error returned from the execLookPath function : %w", err)
 	} else {
-		t.Logf("Kubectl command path '%s'", k.getPath())
+		t.Logf("Kubectl command path '%s'", kubectl.GetFactoryPath(*f))
 	}
 }
 
 func TestKubectlCommandNotFoundInPath(t *testing.T) {
-	mockCtl := gomock.NewController(t)
-	defer mockCtl.Finish()
+	s := setupApply(t).exepectKubectlNotFound()
+	defer s.restoreFunc()
 
-	restoreExecProvider := execProvider
-	defer func() { execProvider = restoreExecProvider }()
-
-	mockExecProvider := NewMockExecProvider(mockCtl)
-	execProvider = mockExecProvider
-
-	// Verifies that the "findOnPath" method was called once with the exact expected string input as the parameter
-	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return("MOCKED", errExecFileNotFound).Times(1)
-
-	logger := testlogr.TestLogger{T: t}
-	k, err := NewKubectl(logger)
-	t.Logf("Kubectl (%T) %#v", k, k)
+	f, err := kubectl.NewCommandFactory(s.testLogr, s.execProvider)
+	t.Logf("Kubectl (%T) %#v", f, f)
 	if err == nil {
 		t.Errorf("Expected error 'executable file not found' was not returned from NewKubectl constructor")
 	} else {
@@ -164,342 +319,103 @@ func TestKubectlCommandNotFoundInPath(t *testing.T) {
 	}
 }
 
-func TestKubectlApplyReturnsApplyCommand(t *testing.T) { // nolint:funlen,gocyclo // allow longer test functions
-	mockCtl := gomock.NewController(t)
-	defer mockCtl.Finish()
-
-	restoreExecProvider := execProvider
-	defer func() { execProvider = restoreExecProvider }()
-
-	mockExecProvider := NewMockExecProvider(mockCtl)
-	execProvider = mockExecProvider
-
-	fakeCommandPath := "/mocked/path/to/kubectl/binary"
-	// Verifies that the "findOnPath" method was called once with the exact expected string input as the parameter
-	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return(fakeCommandPath, nil).Times(1)
-
-	logger := testlogr.TestLogger{T: t}
-	k, err := NewKubectl(logger)
-	t.Logf("Kubectl (%T) %#v", k, k)
-	if err != nil {
-		t.Errorf("Error returned from the execLookPath function : %w", err)
-	}
-
-	fakeSourceDir := "/mocked/path/to/source/directory"
-	expectedSubCmd := "apply"
-	expectedArgs := []string{expectedSubCmd, "-R", "-f", fakeSourceDir}
-	expectedCmd := fmt.Sprintf("%s %s", fakeCommandPath, strings.Join(expectedArgs, " "))
-
-	var c interface{} = k.Apply(fakeSourceDir)
-	if c == nil {
-		t.Fatalf("nil returned from Kubectl.Apply(sourcedir) function")
-	}
-	t.Logf("Returned (%T) %#v", c, c)
-	switch c.(type) {
-	case *ApplyCommand:
-		t.Logf("ApplyCommand (%T) %#v", c, c)
-	default:
-		t.Fatalf("return value from Kubectl.Apply is not an ApplyCommand type: (%T) %#v", c, c)
-	}
-	a, ok := c.(*ApplyCommand)
-	if !ok {
-		t.Logf("error casting to ApplyCommand")
-	}
-
-	// verify that the returned ApplyCommand.kubectlSubCmd matches expectations
-	if expectedSubCmd != a.kubectlSubCmd() {
-		t.Fatalf("expected '%s', got '%s' for the returned ApplyCommand.kubectlSubCmd", expectedSubCmd, a.kubectlSubCmd())
-	} else {
-		t.Logf("kubectlSubCmd expected '%s' matches '%s'", expectedSubCmd, a.kubectlSubCmd())
-	}
-
-	// verify that the returned ApplyCommand.kubectlArgs match expectations
-	if len(a.kubectlArgs()) != len(expectedArgs) {
-		t.Fatalf("expected %d args, got %d args in the returned ApplyCommand", len(expectedArgs), len(a.args))
-	}
-	argsEqual := true
-	for i, arg := range a.kubectlArgs() {
-		expectedArg := expectedArgs[i]
-		if arg != expectedArg {
-			t.Errorf("expected arg '%s', got arg '%s' at index [%d] in the returned ApplyCommand", expectedArg, arg, i)
-			argsEqual = false
-		} else {
-			t.Logf("at index [%d] expected arg '%s' matches arg '%s'", i, expectedArg, arg)
-		}
-	}
-	if !argsEqual {
-		t.Fatalf("args in the returned ApplyCommand did not match expectations")
-	}
-
-	// verify that the command path in the returned ApplyCommand matches expectations
-	if fakeCommandPath != a.kubectlPath() {
-		t.Fatalf("expected '%s', got '%s' for kubectlPath in the returned ApplyCommand", fakeCommandPath, a.kubectlPath())
-	} else {
-		t.Logf("kubectlPath expected '%s' matches '%s'", fakeCommandPath, a.kubectlPath())
-	}
-
-	// verify that asString concatenates the kubectlCommand and args slice in order
-	if expectedCmd != a.asString() {
-		t.Fatalf("expected '%s', got '%s' from the returned ApplyCommand asString function", expectedCmd, a.asString())
-	} else {
-		t.Logf("asString expected '%s' matches '%s'", expectedCmd, a.asString())
-	}
+func TestKubectlApplyReturnsApplyCommand(t *testing.T) {
+	s := setupApply(t).expectKubectlFound().withFactory()
+	defer s.restoreFunc()
+	s.validateCommandState(s.Apply())
 }
 
-func TestKubectlApplyRunHandlesExecError(t *testing.T) {
-	mockCtl := gomock.NewController(t)
-	defer mockCtl.Finish()
+func TestGetReturnsGetCommand(t *testing.T) {
+	s := setupGet(t).expectKubectlFound().withFactory()
+	defer s.restoreFunc()
+	s.validateCommandState(s.Get())
+}
 
-	restoreExecProvider := execProvider
-	defer func() { execProvider = restoreExecProvider }()
+func TestDeleteReturnsDeleteCommand(t *testing.T) {
+	s := setupDelete(t).expectKubectlFound().withFactory()
+	defer s.restoreFunc()
+	s.validateCommandState(s.Delete())
+}
 
-	mockExecProvider := NewMockExecProvider(mockCtl)
-	execProvider = mockExecProvider
+func TestKubectlApplyRunReturnsOutput(t *testing.T) {
+	s := setupApply(t).expectRun().withFactory()
+	defer s.restoreFunc()
 
-	fakeCommandPath := "/mocked/path/to/kubectl"
-	expectedSubCmd := "apply"
-	fakeSourceDir := "/mocked/path/to/source/directory"
-	expectedArgs := []string{expectedSubCmd, "-R", "-f", fakeSourceDir, "-o", "json"}
-	expectedOutput := "FAKE OUTPUT"
-	// Verifies that the "findOnPath" method was called once with the exact expected string input as the parameter
-	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return(fakeCommandPath, nil).Times(1)
-	mockExecProvider.EXPECT().execCmd(fakeCommandPath, expectedArgs).Return([]byte(expectedOutput), nil).Times(1)
-
-	logger := testlogr.TestLogger{T: t}
-	k, err := NewKubectl(logger)
-	t.Logf("Kubectl (%T) %#v", k, k)
-	if err != nil {
-		t.Errorf("Error returned from the execLookPath function : %w", err)
-	}
-
-	c := k.Apply(fakeSourceDir)
-	if c == nil {
-		t.Fatalf("nil returned from Kubectl.Apply(sourcedir) function")
-	}
-	t.Logf("Returned (%T) %#v", c, c)
-
-	gotOutput, err := c.Run()
+	gotOutput, err := s.Apply().Run()
 	if err != nil {
 		t.Errorf("Error returned from ApplyCommand.Run: %w", err)
 		t.Fatalf("Error returned from ApplyCommand.Run")
 	}
 
-	if !bytes.Equal([]byte(expectedOutput), gotOutput) {
-		t.Fatalf("expected output '%s', got output '%s' from ApplyCommand.Run", expectedOutput, string(gotOutput))
+	if !bytes.Equal([]byte(s.output), gotOutput) {
+		t.Fatalf("expected output '%s', got output '%s' from ApplyCommand.Run", s.output, string(gotOutput))
 	} else {
-		t.Logf("ApplyCommand.Run expected output '%s' matches output '%s'", expectedOutput, string(gotOutput))
+		t.Logf("ApplyCommand.Run expected output '%s' matches output '%s'", s.output, string(gotOutput))
 	}
 }
 
-func TestKubectlApplyDryRun(t *testing.T) {
-	mockCtl := gomock.NewController(t)
-	defer mockCtl.Finish()
+func TestKubectlApplyRunReturnsExecError(t *testing.T) {
+	s := setupApply(t).expectRunError().withFactory()
+	defer s.restoreFunc()
 
-	restoreExecProvider := execProvider
-	defer func() { execProvider = restoreExecProvider }()
-
-	mockExecProvider := NewMockExecProvider(mockCtl)
-	execProvider = mockExecProvider
-
-	fakeCommandPath := "/mocked/path/to/kubectl"
-	expectedSubCmd := "apply"
-	fakeSourceDir := "/mocked/path/to/source/directory"
-	expectedArgs := []string{expectedSubCmd, "-R", "-f", fakeSourceDir, "--dry-run", "-o", "json"}
-	expectedOutput := "FAKE OUTPUT"
-	// Verifies that the "findOnPath" method was called once with the exact expected string input as the parameter
-	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return(fakeCommandPath, nil).Times(1)
-	mockExecProvider.EXPECT().execCmd(fakeCommandPath, expectedArgs).Return([]byte(expectedOutput), nil).Times(1)
-
-	logger := testlogr.TestLogger{T: t}
-	k, err := NewKubectl(logger)
-	t.Logf("Kubectl (%T) %#v", k, k)
-	if err != nil {
-		t.Errorf("Error returned from the execLookPath function : %w", err)
-	}
-
-	c := k.Apply(fakeSourceDir)
-	if c == nil {
-		t.Fatalf("nil returned from Kubectl.Apply(sourcedir) function")
-	}
-	t.Logf("Returned (%T) %#v", c, c)
-
-	gotOutput, err := c.DryRun()
-	if err != nil {
-		t.Errorf("Error returned from ApplyCommand.Run: %w", err)
-		t.Fatalf("Error returned from ApplyCommand.Run")
-	}
-
-	if !bytes.Equal([]byte(expectedOutput), gotOutput) {
-		t.Fatalf("expected output '%s', got output '%s' from ApplyCommand.Run", expectedOutput, string(gotOutput))
-	} else {
-		t.Logf("ApplyCommand.Run expected output '%s' matches output '%s'", expectedOutput, string(gotOutput))
-	}
-}
-
-func TestKubectlApplyRun(t *testing.T) {
-	mockCtl := gomock.NewController(t)
-	defer mockCtl.Finish()
-
-	restoreExecProvider := execProvider
-	defer func() { execProvider = restoreExecProvider }()
-
-	mockExecProvider := NewMockExecProvider(mockCtl)
-	execProvider = mockExecProvider
-
-	fakeCommandPath := "/mocked/path/to/kubectl"
-	expectedSubCmd := "apply"
-	fakeSourceDir := "/mocked/path/to/source/directory"
-	expectedArgs := []string{expectedSubCmd, "-R", "-f", fakeSourceDir, "-o", "json"}
-	expectedOutput := ""
-	// Verifies that the "findOnPath" method was called once with the exact expected string input as the parameter
-	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return(fakeCommandPath, nil).Times(1)
-	mockExecProvider.EXPECT().execCmd(fakeCommandPath, expectedArgs).Return([]byte(expectedOutput), errFromExec).Times(1)
-
-	logger := testlogr.TestLogger{T: t}
-	k, err := NewKubectl(logger)
-	t.Logf("Kubectl (%T) %#v", k, k)
-	if err != nil {
-		t.Errorf("Error returned from the execLookPath function : %w", err)
-	}
-
-	c := k.Apply(fakeSourceDir)
-	if c == nil {
-		t.Fatalf("nil returned from Kubectl.Apply(sourcedir) function")
-	}
-	t.Logf("Returned (%T) %#v", c, c)
-
-	_, err = c.Run()
+	_, err := s.Apply().Run()
 	if err == nil {
-		t.Fatalf("Expected error was not returned from ApplyCommand.Run")
-	} else {
-		t.Logf("Expected error was returned: %#v", err)
+		t.Fatalf("Expected error was not returned from ApplyCommand.Run!")
 	}
 }
 
-func TestKubectlCommandUsesKubectlLogger(t *testing.T) {
-	mockCtl := gomock.NewController(t)
-	defer mockCtl.Finish()
+func TestKubectlApplyDryRunReturnsOutput(t *testing.T) {
+	s := setupApply(t).expectDryRun().withFactory()
+	defer s.restoreFunc()
 
-	restoreExecProvider := execProvider
-	defer func() { execProvider = restoreExecProvider }()
-
-	mockExecProvider := NewMockExecProvider(mockCtl)
-	execProvider = mockExecProvider
-
-	fakeCommandPath := "/mocked/path/to/kubectl"
-	expectedSubCmd := "apply"
-	fakeSourceDir := "/mocked/path/to/source/directory"
-	expectedArgs := []string{expectedSubCmd, "-R", "-f", fakeSourceDir, "-o", "json"}
-	expectedCmd := fmt.Sprintf("%s %s", fakeCommandPath, strings.Join(expectedArgs, " "))
-	expectedOutput := "FAKE OUTPUT"
-	// Verifies that the "findOnPath" method was called once with the exact expected string input as the parameter
-	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return(fakeCommandPath, nil).AnyTimes()
-	mockExecProvider.EXPECT().execCmd(fakeCommandPath, expectedArgs).Return([]byte(expectedOutput), nil).AnyTimes()
-
-	mockLogger := mocklogr.NewMockLogger(mockCtl)
-
-	// The ApplyCommand should use the mockLogger to log a log-leveled message indicating that kubectl was executed with the expected command
-	mockLogger.EXPECT().V(gomock.Any()).Return(mockLogger).Times(1)
-	mockLogger.EXPECT().Info("executing kubectl", "command", expectedCmd).Times(1)
-
-	// Create the Kubectl type instance with the wrongLogger
-	k, err := NewKubectl(mockLogger)
-	t.Logf("Kubectl (%T) %#v", k, k)
+	gotOutput, err := s.Apply().DryRun()
 	if err != nil {
-		t.Errorf("Error returned from the execLookPath function : %w", err)
+		t.Errorf("Error returned from ApplyCommand.DryRun: %w", err)
+		t.Fatalf("Error returned from ApplyCommand.DryRun")
 	}
 
-	// Create the ApplyCommand from the Kubectl factory
-	output, err := k.Apply(fakeSourceDir).Run()
+	if !bytes.Equal([]byte(s.output), gotOutput) {
+		t.Fatalf("expected output '%s', got output '%s' from ApplyCommand.Run", s.output, string(gotOutput))
+	} else {
+		t.Logf("ApplyCommand.Run expected output '%s' matches output '%s'", s.output, string(gotOutput))
+	}
+}
+
+func TestKubectlRunUsesFactoryLogger(t *testing.T) {
+	s := setupApply(t).expectRunUsesFactoryLogger().withFactoryMockLogr()
+	defer s.restoreFunc()
+
+	output, err := s.Apply().Run()
 	if err != nil {
-		t.Fatalf("nil returned from Kubectl.Apply(sourcedir) function")
+		t.Errorf("Error returned from ApplyCommand.DryRun: %w", err)
+		t.Fatalf("Error returned from ApplyCommand.DryRun")
 	}
 	t.Logf("output: (%T) %#v", output, output)
 }
 
 func TestKubectlCommandWithLoggerPassedNil(t *testing.T) {
-	mockCtl := gomock.NewController(t)
-	defer mockCtl.Finish()
-
-	restoreExecProvider := execProvider
-	defer func() { execProvider = restoreExecProvider }()
-
-	mockExecProvider := NewMockExecProvider(mockCtl)
-	execProvider = mockExecProvider
-
-	fakeCommandPath := "/mocked/path/to/kubectl"
-	expectedSubCmd := "apply"
-	fakeSourceDir := "/mocked/path/to/source/directory"
-	expectedArgs := []string{expectedSubCmd, "-R", "-f", fakeSourceDir, "-o", "json"}
-	expectedCmd := fmt.Sprintf("%s %s", fakeCommandPath, strings.Join(expectedArgs, " "))
-	expectedOutput := "FAKE OUTPUT"
-	// Verifies that the "findOnPath" method was called once with the exact expected string input as the parameter
-	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return(fakeCommandPath, nil).AnyTimes()
-	mockExecProvider.EXPECT().execCmd(fakeCommandPath, expectedArgs).Return([]byte(expectedOutput), nil).AnyTimes()
-
-	mockLogger := mocklogr.NewMockLogger(mockCtl)
-
-	// The ApplyCommand should use the mockLogger to log a log-leveled message indicating that kubectl was executed with the expected command
-	mockLogger.EXPECT().V(gomock.Any()).Return(mockLogger).Times(1)
-	mockLogger.EXPECT().Info("executing kubectl", "command", expectedCmd).Times(1)
-
-	// Create the Kubectl type instance with the wrongLogger
-	k, err := NewKubectl(mockLogger)
-	t.Logf("Kubectl (%T) %#v", k, k)
-	if err != nil {
-		t.Errorf("Error returned from the execLookPath function : %w", err)
-	}
+	s := setupApply(t).expectRunUsesFactoryLogger().withFactoryMockLogr()
+	defer s.restoreFunc()
 
 	// Create the ApplyCommand from the Kubectl factory and try passing nil to Withlogger
-	output, err := k.Apply(fakeSourceDir).WithLogger(nil).Run()
+	output, err := s.Apply().WithLogger(nil).Run()
+	// No error, and the message should be logged to the CommandFactory's logger as expected
 	if err != nil {
-		t.Fatalf("nil returned from Kubectl.Apply(sourcedir) function")
+		t.Errorf("Error returned from ApplyCommand.Run: %w", err)
+		t.Fatalf("Error returned from ApplyCommand.Run")
 	}
 	t.Logf("output: (%T) %#v", output, output)
 }
 
-func TestKubectlCommandWithLoggerChangesTheCommandLogger(t *testing.T) {
-	mockCtl := gomock.NewController(t)
-	defer mockCtl.Finish()
-
-	restoreExecProvider := execProvider
-	defer func() { execProvider = restoreExecProvider }()
-
-	mockExecProvider := NewMockExecProvider(mockCtl)
-	execProvider = mockExecProvider
-
-	fakeCommandPath := "/mocked/path/to/kubectl"
-	expectedSubCmd := "apply"
-	fakeSourceDir := "/mocked/path/to/source/directory"
-	expectedArgs := []string{expectedSubCmd, "-R", "-f", fakeSourceDir, "-o", "json"}
-	expectedCmd := fmt.Sprintf("%s %s", fakeCommandPath, strings.Join(expectedArgs, " "))
-	expectedOutput := "FAKE OUTPUT"
-	// Verifies that the "findOnPath" method was called once with the exact expected string input as the parameter
-	mockExecProvider.EXPECT().findOnPath(kubectlCmd).Return(fakeCommandPath, nil).AnyTimes()
-	mockExecProvider.EXPECT().execCmd(fakeCommandPath, expectedArgs).Return([]byte(expectedOutput), nil).AnyTimes()
-
-	wrongLogger := mocklogr.NewMockLogger(mockCtl)
-	rightLogger := mocklogr.NewMockLogger(mockCtl)
-
-	// The wrongLogger should never be used
-	wrongLogger.EXPECT().V(gomock.Any()).Return(wrongLogger).Times(0)
-	wrongLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
-
-	// The rightLogger should be used to log a log-leveled message indicating that kubectl was executed with the expected command
-	rightLogger.EXPECT().V(gomock.Any()).Return(rightLogger).Times(1)
-	rightLogger.EXPECT().Info("executing kubectl", "command", expectedCmd).Times(1)
-
-	// Create the Kubectl type instance with the wrongLogger
-	k, err := NewKubectl(wrongLogger)
-	t.Logf("Kubectl (%T) %#v", k, k)
-	if err != nil {
-		t.Errorf("Error returned from the execLookPath function : %w", err)
-	}
+func TestKubectlCommandWithLoggerUsesPassedLogger(t *testing.T) {
+	s := setupApply(t).expectRunUsesCommandLogger().withFactoryMockLogr()
+	defer s.restoreFunc()
 
 	// Create the ApplyCommand from the Kubectl factory, and swap in the rightLogger with the WithLogger function
-	output, err := k.Apply(fakeSourceDir).WithLogger(rightLogger).Run()
+	output, err := s.Apply().WithLogger(s.cmdLogr).Run()
 	if err != nil {
-		t.Fatalf("nil returned from Kubectl.Apply(sourcedir) function")
+		t.Errorf("Error returned from ApplyCommand.Run: %w", err)
+		t.Fatalf("Error returned from ApplyCommand.Run")
 	}
 	t.Logf("output: (%T) %#v", output, output)
 }

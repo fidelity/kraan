@@ -1,6 +1,6 @@
 // +build integration
 
-package kubectl
+package kubectl_test
 
 /*
 
@@ -24,17 +24,18 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/fidelity/kraan/pkg/internal/kubectl"
 	testlogr "github.com/go-logr/logr/testing"
 )
 
 func TestRealKubectlBinaryInstalled(t *testing.T) {
 	logger := testlogr.TestLogger{T: t}
-	k, err := NewKubectl(logger)
+	k, err := kubectl.NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
 	if err != nil {
 		t.Errorf("Error from NewKubectl constructor function: %w", err)
 	} else {
-		t.Logf("Found '%s' binary at '%s'", kubectlCmd, k.getPath())
+		t.Logf("Found '%s' binary at '%s'", kubectlCmd, kubectl.GetFactoryPath(*k.(*kubectl.CommandFactory)))
 	}
 }
 
@@ -45,10 +46,10 @@ func TestRealOtherBinaryNotInstalled(t *testing.T) {
 	kubectlCmd = "not-kubectl-and-not-installed"
 
 	logger := testlogr.TestLogger{T: t}
-	k, err := NewKubectl(logger)
+	k, err := kubectl.NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
 	if err == nil {
-		foundCmdMsg := fmt.Sprintf("Found '%s' binary at '%s'", kubectlCmd, k.getPath())
+		foundCmdMsg := fmt.Sprintf("Found '%s' binary at '%s'", kubectlCmd, kubectl.GetFactoryPath(*k.(*kubectl.CommandFactory)))
 		t.Errorf("Expected error 'executable file not found' was not returned from NewKubectl constructor: %s", foundCmdMsg)
 	} else {
 		t.Logf("Expected error was returned: %#v", err)
@@ -57,7 +58,7 @@ func TestRealOtherBinaryNotInstalled(t *testing.T) {
 
 func TestSimpleApply(t *testing.T) {
 	logger := testlogr.TestLogger{T: t}
-	k, err := NewKubectl(logger)
+	k, err := kubectl.NewKubectl(logger)
 	t.Logf("Kubectl (%T) %#v", k, k)
 	if err != nil {
 		t.Fatalf("Error from NewKubectl constructor function: %s", err)

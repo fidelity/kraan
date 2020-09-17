@@ -69,6 +69,7 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
                     admin user for the cluster you want to use. This cluster must be running API version 16 or
                     greater.
     '--no-kraan' do not deploy the Kraan runtime container to the target cluster.
+    '--no-testdata' do not deploy addons layers and source controller custom resources to the target cluster.
     '--git-user' set (or override) the GIT_USER environment variables.
     '--git-token' set (or override) the GIT_CREDENTIALS environment variables.
     '--git-url' set the URL for the git repository from which Kraan should pull AddonsLayer configs.
@@ -81,20 +82,15 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
 To test kraan-controller
 
     scripts/run-controller.sh --help
-    USAGE: run-controller.sh [--debug] [--add-secret] [--ignore-test-errors] [--set-git-repo <repo url>] [--set-git-ref <branch name>]
+    USAGE: run-controller.sh [--debug]
     Run the Kraan Addon Manager on local machine
     options:
     '--debug' for verbose output
-    '--ignore-test-errors' update helm releases in testdata to ignore test failures
-    '--add-secret' create a secret in kraan namespace for use by helm-operator when accessing git repository containing charts
-                the environmental variable GIT_USER and GIT_CREDENTIALS must be set to the git user and credentials respectively
-    '--set-git-repo' set the url of the git repo in the testdata helm releases, defaults to 'https://github.com/fidelity/kraan'
-    '--set-git-ref' set the git repo branch in the testdata helm releases, defaults to 'master'
-    This script will create a temporary directory and copy the testdata/addons directory to addons-config/testdata subdirectory in
+    This script will create a temporary directory and copy the addons.yaml and addons-source.yam files from testdata/addons to
     the temporary directory. It will then set the environmental variable DATA_PATH to the temporary directory. This will cause the
-    kraan-controller to process the addons layers using the temporary directory as its root directory when locating the yaml files
-    to process for each addon layer. This enables the kraan-controller to be tested without relying use of the source controller to
-    obtain the yaml files from the git repository.
+    kraan-controller to process the addons layers using the temporary directory as its root directory when storing files it retrieves
+    from this git repository's testdata/addons directory using the source controller.
+
 
 The kraan-controller will reprocess all AddonsLayers perioidically. This period defaults to 30 seconds but can be set using a command line argument.
 

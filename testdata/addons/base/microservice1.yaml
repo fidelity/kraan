@@ -9,7 +9,7 @@ spec:
   releaseName: microservice-test-1
   test:
     enable: true
-    ignoreFailures: false
+    ignoreFailures: ture
     timeout: 300
   chart:
     git: https://github.com/fidelity/kraan

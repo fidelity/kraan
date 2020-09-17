@@ -47,12 +47,12 @@ echo "Edit and then kubectl apply ${work_dir}/testdata/addons/addons.yaml to cau
 echo "Edit and then kubectl apply ${work_dir}/testdata/addons/addons-source.yaml to cause kraan-controller to reprocess source controller data."
 echo "In order to allow for this scenario the temporary directory will not be deleted so you are responsible for deleting this directory"
 echo ""
-read -p "Pausing to allow user to make manual changes to testdata in ${work_dir}/testdata/addons, press enter to continue"
 echo "if you want change and rerun the kraan-controller you should type..."
 echo "export DATA_PATH=${work_dir}"
 echo "kubectl -n gitops-system port-forward svc/source-controller 8090:80 &"
 echo "export SC_HOST=localhost:8090"
 echo "kraan-controller"
+read -p "Pausing to allow user to make manual changes to testdata in ${work_dir}/testdata/addons, press enter to continue"
 
 kubectl -n gitops-system port-forward svc/source-controller 8090:80 &
 export SC_HOST=localhost:8090

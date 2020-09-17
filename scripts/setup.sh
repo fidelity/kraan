@@ -34,6 +34,7 @@ Options:
                   admin user for the cluster you want to use. This cluster must be running API version 16 or 
                   greater.
   '--no-kraan' do not deploy the Kraan runtime container to the target cluster.
+  '--no-testdata' do not deploy addons layers and source controller custom resources to the target cluster.
   '--git-user' set (or override) the GIT_USER environment variables.
   '--git-token' set (or override) the GIT_CREDENTIALS environment variables.
   '--git-url' set the URL for the git repository from which Kraan should pull AddonsLayer configs.
@@ -100,6 +101,7 @@ function args() {
   git_url
   helm_op_ns="${HELM_OPERATOR_NS:-helm-operator}"
   deploy_kraan=1
+  apply_testdata=1
 
   arg_list=( "$@" )
   arg_count=${#arg_list[@]}
@@ -109,6 +111,7 @@ function args() {
           "--toolkit") toolkit=1;;
           "--deploy-kind") deploy_kind=1;;
           "--no-kraan") deploy_kraan=0;;
+          "--no-testdata") apply_testdata=0;;
           "--kraan-image-pull-secret") (( arg_index+=1 )); kraan_regcred="${arg_list[${arg_index}]}";;
           "--gitops-image-pull-secret") (( arg_index+=1 )); gitops_regcred="${arg_list[${arg_index}]}";toolkit=1;;
           "--gitops-proxy") (( arg_index+=1 )); gitops_proxy="${arg_list[${arg_index}]}";toolkit=1;;
@@ -297,25 +300,25 @@ if [ -n "${gitops_regcred}" ] ; then
   create_regcred gitops-system "${gitops_regcred}"
 fi
 
-create_addons_source_yaml "${base_dir}/testdata/addons/addons-source.yaml" "${work_dir}/addons-source.yaml"
-
 kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/kraan/namespace.yaml
 
 if [ -n "${kraan_regcred}" ] ; then
   create_regcred kraan "${kraan_regcred}"
 fi
 
-install_helm
-
 kubectl apply ${dry_run} -k "${base_dir}"/config/crd
 kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/kraan/rbac
 
 deploy_kraan_mgr
+install_helm
 
-# Create namespaces for each addon layer
-kubectl apply ${dry_run} -f "${base_dir}"/testdata/namespaces.yaml
+if [ $apply_testdata -gt 0 ]; then
+  create_addons_source_yaml "${base_dir}/testdata/addons/addons-source.yaml" "${work_dir}/addons-source.yaml"
+  # Create namespaces for each addon layer
+  kubectl apply ${dry_run} -f "${base_dir}"/testdata/namespaces.yaml
+  kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/addons.yaml
+fi
 
-kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/addons.yaml
 if [ -z "${dry_run}" ] ; then
   rm -rf "${work_dir}"
 fi

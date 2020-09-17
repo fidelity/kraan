@@ -69,6 +69,7 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
                     admin user for the cluster you want to use. This cluster must be running API version 16 or
                     greater.
     '--no-kraan' do not deploy the Kraan runtime container to the target cluster.
+    '--no-testdata' do not deploy addons layers and source controller custom resources to the target cluster.
     '--git-user' set (or override) the GIT_USER environment variables.
     '--git-token' set (or override) the GIT_CREDENTIALS environment variables.
     '--git-url' set the URL for the git repository from which Kraan should pull AddonsLayer configs.

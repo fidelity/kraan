@@ -59,14 +59,14 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
                                 the last element of the filename should also be the secret name, e.g.
                                 filename /tmp/regcred.yaml should define a secret called 'regcred'
     '--gitops-image-pull-secret' as above for gitops components
-    '--helm-operator-namespace' deploy the Helm Operator to this namespace if it's not already running.
+    '--install-helm-operator' deploy the Helm Operator to kraan namespace.
     '--kraan-image-repo' provide image repository to use for Kraan, docker.pkg.github.com/
     '--gitops-image-repo' provide image repository to use for gitops components, defaults to docker.io/fluxcd
-    '--gitops-proxy' set to 'auto' to generate proxy setting for source controller using value of HTTPS_PROXY
+    '--gitops-proxy' set to 'auto' to generate proxy setting for source controller using value of HTTPS_PROXY 
                     environment variable or supply the proxy url to use.
-    '--deploy-kind' create a new kind cluster and deploy to it. Otherwise the script will deploy to an existing
-                    cluster. The KUBECONFIG environmental variable or ~/.kube/config should be set to a cluster
-                    admin user for the cluster you want to use. This cluster must be running API version 16 or
+    '--deploy-kind' create a new kind cluster and deploy to it. Otherwise the script will deploy to an existing 
+                    cluster. The KUBECONFIG environmental variable or ~/.kube/config should be set to a cluster 
+                    admin user for the cluster you want to use. This cluster must be running API version 16 or 
                     greater.
     '--no-kraan' do not deploy the Kraan runtime container to the target cluster.
     '--no-testdata' do not deploy addons layers and source controller custom resources to the target cluster.

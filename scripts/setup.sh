@@ -24,7 +24,7 @@ Options:
                               the last element of the filename should also be the secret name, e.g.
                               filename /tmp/regcred.yaml should define a secret called 'regcred'
   '--gitops-image-pull-secret' as above for gitops components
-  '--helm-operator-namespace' deploy the Helm Operator to this namespace if it's not already running.
+  '--install-helm-operator' deploy the Helm Operator to kraan namespace.
   '--kraan-image-repo' provide image repository to use for Kraan, docker.pkg.github.com/
   '--gitops-image-repo' provide image repository to use for gitops components, defaults to docker.io/fluxcd
   '--gitops-proxy' set to 'auto' to generate proxy setting for source controller using value of HTTPS_PROXY 
@@ -99,7 +99,7 @@ function args() {
   gitops_regcred=""
   gitops_proxy=""
   git_url
-  helm_op_ns="${HELM_OPERATOR_NS:-helm-operator}"
+  install_helm_operator=0
   deploy_kraan=1
   apply_testdata=1
 
@@ -121,7 +121,7 @@ function args() {
           "--git-user") (( arg_index+=1 )); GIT_USER="${arg_list[${arg_index}]}";;
           "--git-token") (( arg_index+=1 )); GIT_CREDENTIALS="${arg_list[${arg_index}]}";;
           "--gitops-image-repo") (( arg_index+=1 )); gitops_repo="${arg_list[${arg_index}]}";toolkit=1;;
-          "--helm-operator-namespace") (( arg_index+=1 )); helm_op_ns="${arg_list[${arg_index}]}";;
+          "--install-helm-operator") install_helm_operator=1;;
           "--dry-run") dry_run="--dry-run";;
           "--debug") set -x;;
                "-h") usage; exit;;
@@ -250,25 +250,11 @@ function deploy_kraan_mgr() {
 }
 
 function install_helm() {
-  # Install Helm Operator, already present on some systems, so check first if needed
-  set +e
-  local FOUND=0
-  FOUND=$(kubectl get deployments -A -l app=helm-operator --no-headers | wc -l)
-  if [ $FOUND -ge 1 ] ; then
-    echo "helm-operator already present"
-    set -e
-    return
-  fi
-  FOUND=$(kubectl get namespace $helm_op_ns --no-headers | wc -l)
-  if [ $FOUND -lt 1 ] ; then
-    echo "creating helm-operator namespace $helm_op_ns"
-    kubectl create namespace $helm_op_ns
-  fi
-  set -e
-  echo "helm-operator not installed, installing"
+  # Install Helm Operator
+  echo "installing helm-operator"
   helm repo add fluxcd https://charts.fluxcd.io
   kubectl apply ${dry_run} -f https://raw.githubusercontent.com/fluxcd/helm-operator/1.1.0/deploy/crds.yaml
-  helm upgrade ${dry_run} -i helm-operator fluxcd/helm-operator --namespace $helm_op_ns --set helm.versions=v3
+  helm upgrade ${dry_run} -i helm-operator fluxcd/helm-operator --namespace kraan --set helm.versions=v3
 }
 
 args "$@"
@@ -310,7 +296,9 @@ kubectl apply ${dry_run} -k "${base_dir}"/config/crd
 kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/kraan/rbac
 
 deploy_kraan_mgr
-install_helm
+if [ $install_helm_operator -gt 0 ]; then
+  install_helm
+fi
 
 if [ $apply_testdata -gt 0 ]; then
   create_addons_source_yaml "${base_dir}/testdata/addons/addons-source.yaml" "${work_dir}/addons-source.yaml"

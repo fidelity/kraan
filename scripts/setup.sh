@@ -10,7 +10,7 @@ function usage() {
     set +x
     cat <<EOF
 USAGE: ${0##*/} [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--no-kraan]
-       [--helm-operator-namespace <namespace>]
+       [--helm-operator-namespace <namespace>] [--install-helm-operator]
        [--kraan-image-pull-secret auto | <filename>] [--kraan-image-repo <repo-name>]
        [--gitops-image-pull-secret auto | <filename>] [--gitops-image-repo <repo-name>]
        [--gitops-proxy auto | <proxy-url>] [--git-url <git-repo-url>]
@@ -24,7 +24,8 @@ Options:
                               the last element of the filename should also be the secret name, e.g.
                               filename /tmp/regcred.yaml should define a secret called 'regcred'
   '--gitops-image-pull-secret' as above for gitops components
-  '--install-helm-operator' deploy the Helm Operator to kraan namespace.
+  '--install-helm-operator' deploy the Helm Operator.
+  '--helm-operator-namespace' set the namespace to install helm-operator in, defaults to 'helm-operator'.
   '--kraan-image-repo' provide image repository to use for Kraan, docker.pkg.github.com/
   '--gitops-image-repo' provide image repository to use for gitops components, defaults to docker.io/fluxcd
   '--gitops-proxy' set to 'auto' to generate proxy setting for source controller using value of HTTPS_PROXY 
@@ -100,6 +101,7 @@ function args() {
   gitops_proxy=""
   git_url
   install_helm_operator=0
+  helm_operator_namespace="helm-operator"
   deploy_kraan=1
   apply_testdata=1
 
@@ -122,6 +124,7 @@ function args() {
           "--git-token") (( arg_index+=1 )); GIT_CREDENTIALS="${arg_list[${arg_index}]}";;
           "--gitops-image-repo") (( arg_index+=1 )); gitops_repo="${arg_list[${arg_index}]}";toolkit=1;;
           "--install-helm-operator") install_helm_operator=1;;
+          "--helm-operator-namespace") (( arg_index+=1 )); helm_operator_namespace="${arg_list[${arg_index}]}";;
           "--dry-run") dry_run="--dry-run";;
           "--debug") set -x;;
                "-h") usage; exit;;
@@ -254,7 +257,14 @@ function install_helm() {
   echo "installing helm-operator"
   helm repo add fluxcd https://charts.fluxcd.io
   kubectl apply ${dry_run} -f https://raw.githubusercontent.com/fluxcd/helm-operator/1.1.0/deploy/crds.yaml
-  helm upgrade ${dry_run} -i helm-operator fluxcd/helm-operator --namespace kraan --set helm.versions=v3
+  set +e
+  kubectl get namespace $helm_operator_namespace >/dev/null
+  if [ $? -ne 0 ] ; then
+    echo "creating namespace $helm_operator_namespace for helm-operator"
+    kubectl create namespace $helm_operator_namespace
+  fi
+  set -e
+  helm upgrade ${dry_run} -i helm-operator fluxcd/helm-operator --namespace $helm_operator_namespace --set helm.versions=v3
 }
 
 args "$@"

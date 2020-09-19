@@ -18,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
+	"github.com/fidelity/kraan/pkg/internal/repos"
 	"github.com/fidelity/kraan/pkg/internal/utils"
 )
 
@@ -110,7 +111,7 @@ func (l *KraanLayer) SetRequeue() {
 // GetSourcePath gets the path to an addons layer's top directory in the local filesystem.
 func (l *KraanLayer) GetSourcePath() string {
 	return fmt.Sprintf("%s/layers/%s/%s",
-		RootPath,
+		repos.DefaultRootPath,
 		l.GetName(),
 		l.GetSpec().Version)
 }

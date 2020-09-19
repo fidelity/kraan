@@ -51,10 +51,10 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 
 	if path, set := os.LookupEnv("DATA_PATH"); set {
-		repos.RootPath = path
+		repos.DefaultRootPath = path
 	}
 	if host, set := os.LookupEnv("SC_HOST"); set {
-		repos.HostName = host
+		repos.DefaultHostName = host
 	}
 	if timeout, set := os.LookupEnv("SC_TIMEOUT"); set {
 		timeOut, err := time.ParseDuration(timeout)
@@ -62,7 +62,7 @@ func init() {
 			setupLog.Error(err, "unable to parse timeout period")
 			os.Exit(1)
 		}
-		repos.TimeOut = timeOut
+		repos.DefaultTimeOut = timeOut
 	}
 }
 

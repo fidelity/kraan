@@ -1,5 +1,5 @@
 //Package tarconsumer provides an interface for processing repositories.
-//go:generate mockgen -destination=../mocks/tarconsumer/mockTarconsumer.go -package=tarconsumer -source=tarconsumer.go . TarConsumer
+//go:generate mockgen -destination=../mocks/tarconsumer/mockTarconsumer.go -package=mocks -source=tarconsumer.go . TarConsumer
 package tarconsumer
 
 import (
@@ -11,14 +11,6 @@ import (
 
 	"github.com/fluxcd/pkg/untar"
 )
-
-func NewTarConsumer(ctx context.Context, client *http.Client, url string) TarConsumer {
-	t := &tarConsumerData{}
-	t.SetCtx(ctx)
-	t.SetHTTPClient(client)
-	t.SetURL(url)
-	return t
-}
 
 type TarConsumer interface {
 	SetCtx(ctx context.Context)
@@ -32,6 +24,14 @@ type tarConsumerData struct {
 	url         string
 	httpClient  *http.Client
 	TarConsumer `json:"-"`
+}
+
+func NewTarConsumer(ctx context.Context, client *http.Client, url string) TarConsumer {
+	return &tarConsumerData{
+		ctx:        ctx,
+		url:        url,
+		httpClient: client,
+	}
 }
 
 func (t *tarConsumerData) SetCtx(ctx context.Context) {
@@ -57,7 +57,7 @@ func (t *tarConsumerData) GetTar(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	return StreamToByte(resp.Body)
+	return streamToByte(resp.Body)
 }
 
 func UnpackTar(tar []byte, path string) (err error) {
@@ -66,7 +66,7 @@ func UnpackTar(tar []byte, path string) (err error) {
 	return err
 }
 
-func StreamToByte(stream io.Reader) ([]byte, error) {
+func streamToByte(stream io.Reader) ([]byte, error) {
 	buf := new(bytes.Buffer)
 	n, err := buf.ReadFrom(stream)
 	if err != nil {

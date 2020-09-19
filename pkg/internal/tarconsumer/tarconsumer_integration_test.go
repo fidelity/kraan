@@ -1,13 +1,16 @@
-package tarconsumer
+// +build integration
+
+package tarconsumer_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
+	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
+	"github.com/fidelity/kraan/pkg/internal/tarconsumer"
 	"github.com/fidelity/kraan/pkg/internal/testutils"
 )
 
@@ -38,13 +41,17 @@ func TestTarConsumer(t *testing.T) {
 		httpClient, host, teardown := testutils.StartHTTPServer(t, test.tarDataDir)
 		defer teardown()
 
-		tarConsumer := NewTarConsumer(context.Background(), httpClient,
+		tarConsumer := tarconsumer.NewTarConsumer(context.Background(), httpClient,
 			fmt.Sprintf("http://%s/%s", host, test.tarDataDir))
 
 		data, err := tarConsumer.GetTar(context.Background())
+		if err != nil {
+			t.Fatalf("error from %T.GetTar function %#v", tarConsumer, err)
+		}
 
-		assert.Nil(t, err)
-		assert.Equal(t, data, test.expected)
+		if !bytes.Equal(data, test.expected) {
+			t.Fatalf("data returned from %T.GetTar did not match expected data:\nWanted: %v\nGot: %v", tarConsumer, test.expected, data)
+		}
 		t.Logf("test: %s, successful", test.name)
 	}
 
@@ -75,7 +82,7 @@ func TestTarUpack(t *testing.T) {
 		httpClient, host, teardown := testutils.StartHTTPServer(t, test.tarDataDir)
 		defer teardown()
 
-		tarConsumer := NewTarConsumer(context.Background(), httpClient,
+		tarConsumer := tarconsumer.NewTarConsumer(context.Background(), httpClient,
 			fmt.Sprintf("http://%s/%s", host, test.tarDataDir))
 
 		data, err := tarConsumer.GetTar(context.Background())
@@ -89,8 +96,10 @@ func TestTarUpack(t *testing.T) {
 			t.Fatalf(err.Error())
 			return
 		}
-		err = UnpackTar(data, dir)
-		assert.Equal(t, err, test.expected)
+		err = tarconsumer.UnpackTar(data, dir)
+		if !reflect.DeepEqual(err, test.expected) {
+			t.Fatalf("error returned from %T.UnpackTar did not match expected error:\nWanted: %#v\nGot: %#v", tarConsumer, test.expected, err)
+		}
 		t.Logf("test: %s, successful", test.name)
 	}
 

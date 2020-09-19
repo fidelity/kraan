@@ -111,7 +111,7 @@ func (l *KraanLayer) SetRequeue() {
 // GetSourcePath gets the path to an addons layer's top directory in the local filesystem.
 func (l *KraanLayer) GetSourcePath() string {
 	return fmt.Sprintf("%s/layers/%s/%s",
-		repos.RootPath,
+		repos.DefaultRootPath,
 		l.GetName(),
 		l.GetSpec().Version)
 }

@@ -1,5 +1,5 @@
 //Package repos provides an interface for processing repositories.
-//go:generate mockgen -destination=mockRepos.go -package=repos -source=repos.go . Repo Repos
+//go:generate mockgen -destination=../mocks/repos/mockRepos.go -package=mocks -source=repos.go . Repo,Repos
 package repos
 
 import (
@@ -19,10 +19,9 @@ import (
 )
 
 var (
-	RootPath   = "/data"
-	HostName   = ""
-	TimeOut    = 15 * time.Second
-	httpClient = &http.Client{}
+	DefaultRootPath = "/data"
+	DefaultHostName = ""
+	DefaultTimeOut  = 15 * time.Second
 )
 
 // Repos defines the interface for managing multiple instances of repository and revision data.
@@ -31,6 +30,10 @@ type Repos interface {
 	Get(name string) Repo
 	Delete(name string)
 	List() map[string]Repo
+	SetRootPath(path string)
+	SetHostName(hostName string)
+	SetTimeOut(timeOut time.Duration)
+	SetHTTPClient(client *http.Client)
 }
 
 // reposData hold data about all repositories.
@@ -38,21 +41,48 @@ type reposData struct {
 	repos        map[string]Repo
 	ctx          context.Context
 	log          logr.Logger
+	rootPath     string
+	hostName     string
+	timeOut      time.Duration
+	client       *http.Client
 	Repos        `json:"-"`
 	sync.RWMutex `json:"-"`
 }
 
 // NewRepos creates a repos object.
 func NewRepos(ctx context.Context, log logr.Logger) Repos {
-	r := &reposData{
-		ctx: ctx,
-		log: log,
+	return &reposData{
+		repos:    make(map[string]Repo, 1),
+		ctx:      ctx,
+		log:      log,
+		rootPath: DefaultRootPath,
+		hostName: DefaultHostName,
+		timeOut:  DefaultTimeOut,
+		client:   &http.Client{},
 	}
-	r.repos = map[string]Repo{}
-	return r
 }
 
-// List returns a map of workers keyed by cluster-entity name
+func (r *reposData) pathKey(repo *sourcev1.GitRepository) string {
+	return fmt.Sprintf("%s/%s/%s", repo.GetNamespace(), repo.GetName(), repo.GetArtifact().Revision)
+}
+
+func (r *reposData) SetRootPath(path string) {
+	r.rootPath = path
+}
+
+func (r *reposData) SetHostName(hostName string) {
+	r.hostName = hostName
+}
+
+func (r *reposData) SetTimeOut(timeOut time.Duration) {
+	r.timeOut = timeOut
+}
+
+func (r *reposData) SetHTTPClient(client *http.Client) {
+	r.client = client
+}
+
+// List returns a map of repos keyed by repo label
 func (r *reposData) List() map[string]Repo {
 	r.RLock()
 	defer r.RUnlock()
@@ -69,18 +99,18 @@ func (r *reposData) Get(name string) Repo {
 	return nil
 }
 
-// Add adds a worker for an entity returning the new worker or existing one if already present
-func (r *reposData) Add(srcRepo *sourcev1.GitRepository) Repo {
+// Add adds a repo to the map of active repos
+func (r *reposData) Add(repo *sourcev1.GitRepository) Repo {
 	r.Lock()
 	defer r.Unlock()
-	name := getRepoName(srcRepo)
-	if _, found := r.repos[name]; !found {
-		r.repos[name] = newRepo(r.ctx, r.log, srcRepo)
+	key := r.pathKey(repo)
+	if _, found := r.repos[key]; !found {
+		r.repos[key] = r.newRepo(key, repo)
 	}
-	return r.repos[name]
+	return r.repos[key]
 }
 
-// Delete deletes a worker from the map of active workers
+// Delete deletes a repo from the map of active repos
 func (r *reposData) Delete(name string) {
 	r.Lock()
 	defer r.Unlock()
@@ -95,46 +125,66 @@ type Repo interface {
 	GetSourceNameSpace() string
 	SyncRepo() error
 	LinkData(layerPath, sourcePath string) error
-	getGitRepo() *sourcev1.GitRepository
-	getTarConsumer() tarconsumer.TarConsumer
-	setTarConsumer(ctx context.Context, httpClient *http.Client, url string)
+	GetGitRepo() *sourcev1.GitRepository
+	GetPath() string
+	GetDataPath() string
+	SetHostName(hostName string)
+	SetHTTPClient(client *http.Client)
+	SetTarConsumer(tarConsumer tarconsumer.TarConsumer)
+	fetchArtifact(ctx context.Context) error
 }
 
 // repoData hold data about a repository.
 type repoData struct {
-	repo         *sourcev1.GitRepository
 	ctx          context.Context
 	log          logr.Logger
+	client       *http.Client
+	hostName     string
+	dataPath     string
+	path         string
+	repo         *sourcev1.GitRepository
 	tarConsumer  tarconsumer.TarConsumer
 	Repo         `json:"-"`
 	sync.RWMutex `json:"-"`
 }
 
 // newRepo creates a repo.
-func newRepo(ctx context.Context, log logr.Logger, repo *sourcev1.GitRepository) Repo {
-	r := &repoData{
-		ctx:  ctx,
-		log:  log,
-		repo: repo,
+func (r *reposData) newRepo(path string, sourceRepo *sourcev1.GitRepository) Repo {
+	repo := &repoData{
+		ctx:         r.ctx,
+		log:         r.log,
+		client:      r.client,
+		hostName:    r.hostName,
+		dataPath:    fmt.Sprintf("%s/%s", r.rootPath, path),
+		path:        path,
+		repo:        sourceRepo,
+		tarConsumer: tarconsumer.NewTarConsumer(r.ctx, r.client, sourceRepo.Status.Artifact.URL),
 	}
-	r.setTarConsumer(ctx, httpClient, repo.Status.Artifact.URL)
-	return r
+	return repo
 }
 
-func getRepoName(srcRepo *sourcev1.GitRepository) string {
-	return fmt.Sprintf("%s/%s/%s", srcRepo.GetNamespace(), srcRepo.GetName(), srcRepo.GetArtifact().Revision)
+/*func (r *repoData) getGitRepo() *sourcev1.GitRepository {
+	return r.repo
+}*/
+
+func (r *repoData) GetPath() string {
+	return r.path
 }
 
-func getDataPath(srcRepo *sourcev1.GitRepository) string {
-	return fmt.Sprintf("%s/%s/%s/%s", RootPath, srcRepo.GetNamespace(), srcRepo.GetName(), srcRepo.GetArtifact().Revision)
+func (r *repoData) GetDataPath() string {
+	return r.dataPath
 }
 
-func (r *repoData) getTarConsumer() tarconsumer.TarConsumer {
-	return r.tarConsumer
+func (r *repoData) SetHostName(hostName string) {
+	r.hostName = hostName
 }
 
-func (r *repoData) setTarConsumer(ctx context.Context, httpClient *http.Client, url string) {
-	r.tarConsumer = tarconsumer.NewTarConsumer(ctx, httpClient, url)
+func (r *repoData) SetHTTPClient(client *http.Client) {
+	r.client = client
+}
+
+func (r *repoData) SetTarConsumer(tarConsumer tarconsumer.TarConsumer) {
+	r.tarConsumer = tarConsumer
 }
 
 func (r *repoData) GetSourceName() string {
@@ -149,16 +199,12 @@ func (r *repoData) GetSourceNameSpace() string {
 	return r.repo.GetNamespace()
 }
 
-func (r *repoData) getGitRepo() *sourcev1.GitRepository {
-	return r.repo
-}
-
 func (r *repoData) LinkData(layerPath, sourcePath string) error {
 	r.Lock()
 	defer r.Unlock()
-	addonsPath := fmt.Sprintf("%s/%s", getDataPath(r.repo), sourcePath)
+	addonsPath := fmt.Sprintf("%s/%s", r.GetDataPath(), sourcePath)
 	if err := utils.IsExistingDir(addonsPath); err != nil {
-		return fmt.Errorf("failed, target directory does not exit, %s", err.Error())
+		return fmt.Errorf("failed, target directory does not exist: %w", err)
 	}
 	layerPathParts := strings.Split(layerPath, "/")
 	layerPathDir := strings.Join(layerPathParts[:len(layerPathParts)-1], "/")
@@ -199,48 +245,46 @@ limitations under the License.
 func (r *repoData) SyncRepo() error {
 	r.Lock()
 	defer r.Unlock()
-	ctx, cancel := context.WithTimeout(r.ctx, TimeOut)
+	ctx, cancel := context.WithTimeout(r.ctx, DefaultTimeOut)
 	defer cancel()
 
 	r.log.Info("New revision detected", "revision", r.repo.Status.Artifact.Revision)
 
-	dataPath := getDataPath(r.repo)
-	if _, err := os.Stat(dataPath); os.IsNotExist(err) {
-		if e := os.RemoveAll(dataPath); e != nil {
+	if _, err := os.Stat(r.dataPath); os.IsNotExist(err) {
+		if e := os.RemoveAll(r.dataPath); e != nil {
 			return fmt.Errorf("failed to remove dir, error: %w", e)
 		}
 	} else if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(dataPath, os.ModePerm); err != nil {
+	if err := os.MkdirAll(r.dataPath, os.ModePerm); err != nil {
 		return err
 	}
 
 	// download and extract artifact
-	return fetchArtifact(ctx, r)
+	return r.fetchArtifact(ctx)
 }
 
-func fetchArtifact(ctx context.Context, r Repo) error {
-	repo := r.getGitRepo()
+func (r *repoData) fetchArtifact(ctx context.Context) error {
+	repo := r.repo
 	if repo.Status.Artifact == nil {
-		return fmt.Errorf("repository %s does not containt an artifact", getRepoName(repo))
+		return fmt.Errorf("repository %s does not containt an artifact", r.path)
 	}
 
 	url := repo.Status.Artifact.URL
 
-	if HostName != "" {
-		url = fmt.Sprintf("http://%s/gitrepository/%s/%s/latest.tar.gz", HostName, repo.Namespace, repo.Name)
+	if r.hostName != "" {
+		url = fmt.Sprintf("http://%s/gitrepository/%s/%s/latest.tar.gz", r.hostName, repo.Namespace, repo.Name)
 	}
 
-	tarConsumer := r.getTarConsumer()
-	tarConsumer.SetURL(url)
+	r.tarConsumer.SetURL(url)
 
-	tar, err := tarConsumer.GetTar(ctx)
+	tar, err := r.tarConsumer.GetTar(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to download artifact from %s, error: %w", url, err)
 	}
 
-	if err := tarconsumer.UnpackTar(tar, getDataPath(r.getGitRepo())); err != nil {
+	if err := tarconsumer.UnpackTar(tar, r.GetDataPath()); err != nil {
 		return fmt.Errorf("faild to untar artifact, error: %w", err)
 	}
 

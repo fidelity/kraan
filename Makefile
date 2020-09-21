@@ -29,7 +29,7 @@ BUILD_DIR:=build/
 GOMOD_VENDOR_DIR:=vendor/
 GITHUB_USER?=$(shell git config --local  user.name)
 export VERSION?=latest
-export REPO ?=docker.pkg.github.com/${GITHUB_USER}/
+export REPO ?=ghcr.io/${GITHUB_USER}/
 # Image URL to use all building/pushing image targets
 IMG ?= ${REPO}${ORG}/${PROJECT}:${VERSION}
 

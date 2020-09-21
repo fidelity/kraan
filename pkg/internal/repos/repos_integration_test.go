@@ -194,7 +194,7 @@ func (l linkDataTest) checkExpected(t *testing.T, repo repos.Repo, err error) {
 	}
 }
 
-func TestLinkData(t *testing.T) { //nolint:funlen,gocyclo // ok
+func TestLinkData(t *testing.T) {
 	testRepos := repos.NewRepos(context.Background(), testlogr.TestLogger{T: t})
 
 	newTest := func(name, path, layerPath, sourcePath string, createTarget, createSource bool, expected interface{}) linkDataTest {

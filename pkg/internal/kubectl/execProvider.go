@@ -1,7 +1,4 @@
 //Package kubectl executes various kubectl sub-commands in a forked shell
-
-//go:generate mockgen -destination=mockExecProvider.go -package=kubectl -source=execProvider.go . ExecProvider
-//go:generate mockgen -destination=../mocks/logr/mockLogger.go -package=mocks github.com/go-logr/logr Logger
 package kubectl
 
 import (
@@ -10,22 +7,22 @@ import (
 
 // ExecProvider interface defines functions Kubectl uses to verify and execute a local command.
 type ExecProvider interface {
-	findOnPath(file string) (string, error)
-	execCmd(name string, arg ...string) ([]byte, error)
+	FindOnPath(file string) (string, error)
+	ExecCmd(name string, arg ...string) ([]byte, error)
 }
 
 // OsExecProvider implements the ExecProvider interface using the os/exec go module.
-type OsExecProvider struct{}
+type realExecProvider struct{}
 
 // NewExecProvider returns an instance of OsExecProvider to implement the ExecProvider interface.
-func NewExecProvider() ExecProvider {
-	return OsExecProvider{}
+func newExecProvider() ExecProvider {
+	return realExecProvider{}
 }
 
-func (p OsExecProvider) findOnPath(file string) (string, error) {
+func (p realExecProvider) FindOnPath(file string) (string, error) {
 	return exec.LookPath(file)
 }
 
-func (p OsExecProvider) execCmd(name string, arg ...string) ([]byte, error) {
+func (p realExecProvider) ExecCmd(name string, arg ...string) ([]byte, error) {
 	return exec.Command(name, arg...).Output()
 }

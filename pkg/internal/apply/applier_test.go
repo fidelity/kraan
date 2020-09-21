@@ -21,6 +21,7 @@ import (
 	"github.com/fidelity/kraan/pkg/internal/kubectl"
 	"github.com/fidelity/kraan/pkg/internal/layers"
 	mocks "github.com/fidelity/kraan/pkg/internal/mocks/client"
+	kubectlmocks "github.com/fidelity/kraan/pkg/internal/mocks/kubectl"
 )
 
 var (
@@ -100,7 +101,7 @@ func TestMockKubectl(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	defer mockCtl.Finish()
 
-	mockKubectl := kubectl.NewMockKubectl(mockCtl)
+	mockKubectl := kubectlmocks.NewMockKubectl(mockCtl)
 	newKubectlFunc = func(logger logr.Logger) (kubectl.Kubectl, error) {
 		return mockKubectl, nil
 	}
@@ -118,8 +119,8 @@ func TODOTestBasicApply(t *testing.T) { //nolint
 	mockCtl := gomock.NewController(t)
 	defer mockCtl.Finish()
 
-	mockCommand := kubectl.NewMockCommand(mockCtl)
-	mockKubectl := kubectl.NewMockKubectl(mockCtl)
+	mockCommand := kubectlmocks.NewMockCommand(mockCtl)
+	mockKubectl := kubectlmocks.NewMockKubectl(mockCtl)
 	newKubectlFunc = func(logger logr.Logger) (kubectl.Kubectl, error) {
 		return mockKubectl, nil
 	}

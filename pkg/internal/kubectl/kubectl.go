@@ -15,7 +15,6 @@ limitations under the License.
 */
 
 //Package kubectl executes various kubectl sub-commands in a forked shell
-//go:generate mockgen -destination=mockKubectl.go -package=kubectl -source=kubectl.go . Kubectl,Command
 package kubectl
 
 import (
@@ -26,8 +25,7 @@ import (
 )
 
 var (
-	kubectlCmd   = "kubectl"
-	execProvider = NewExecProvider()
+	kubectlCmd = "kubectl"
 )
 
 // Kubectl is a Factory interface that returns concrete Command implementations from named constructors.
@@ -35,26 +33,31 @@ type Kubectl interface {
 	Apply(path string) (c Command)
 	Delete(args ...string) (c Command)
 	Get(args ...string) (c Command)
-	getLogger() logr.Logger
-	getPath() string
 }
 
 // CommandFactory is a concrete Factory implementation of the Kubectl interface's API.
 type CommandFactory struct {
-	logger logr.Logger
-	path   string
+	logger       logr.Logger
+	path         string
+	execProvider ExecProvider
 }
 
 // NewKubectl returns a Kubectl object for creating and running kubectl sub-commands.
-func NewKubectl(logger logr.Logger) (factory Kubectl, err error) {
-	kFactory := CommandFactory{
-		logger: logger,
+func NewKubectl(logger logr.Logger) (kubectl Kubectl, err error) {
+	execProvider := newExecProvider()
+	return newCommandFactory(logger, execProvider)
+}
+
+func newCommandFactory(logger logr.Logger, execProvider ExecProvider) (factory *CommandFactory, err error) {
+	factory = &CommandFactory{
+		logger:       logger,
+		execProvider: execProvider,
 	}
-	kFactory.path, err = execProvider.findOnPath(kubectlCmd)
+	factory.path, err = factory.getExecProvider().FindOnPath(kubectlCmd)
 	if err != nil {
 		err = fmt.Errorf("unable to find %s binary on system PATH: %w", kubectlCmd, err)
 	}
-	return &kFactory, err
+	return factory, err
 }
 
 func (f CommandFactory) getLogger() logr.Logger {
@@ -65,11 +68,20 @@ func (f CommandFactory) getPath() string {
 	return f.path
 }
 
+func (f CommandFactory) getExecProvider() ExecProvider {
+	return f.execProvider
+}
+
 // Command defines an interface for commands created by the Kubectl factory type.
 type Command interface {
 	Run() (output []byte, err error)
 	DryRun() (output []byte, err error)
-	WithLogger(logger logr.Logger) (self *abstractCommand)
+	WithLogger(logger logr.Logger) (self Command)
+	getPath() string
+	getSubCmd() string
+	getArgs() []string
+	asString() string
+	isJSONOutput() bool
 }
 
 // abstractCommand is a parent type with common logic and fields used by concrete Command types.
@@ -93,21 +105,25 @@ func (c *abstractCommand) logError(sourceErr error, keysAndValues ...interface{}
 	return fmt.Errorf("%s '%s' : %w", msg, c.asString(), sourceErr)
 }
 
-func (c *abstractCommand) kubectlPath() (path string) {
+func (c *abstractCommand) getPath() (path string) {
 	return c.factory.path
 }
 
-func (c *abstractCommand) kubectlSubCmd() (subCmd string) {
+func (c *abstractCommand) getSubCmd() (subCmd string) {
 	return c.subCmd
 }
 
-func (c *abstractCommand) kubectlArgs() (kargz []string) {
+func (c *abstractCommand) getArgs() (kargz []string) {
 	return append([]string{c.subCmd}, c.args...)
+}
+
+func (c *abstractCommand) isJSONOutput() bool {
+	return c.jsonOutput
 }
 
 func (c *abstractCommand) asString() (cmdString string) {
 	if c.cmd == "" {
-		c.cmd = strings.Join(append([]string{c.kubectlPath()}, c.kubectlArgs()...), " ")
+		c.cmd = strings.Join(append([]string{c.getPath()}, c.getArgs()...), " ")
 	}
 	return c.cmd
 }
@@ -118,7 +134,7 @@ func (c *abstractCommand) Run() (output []byte, err error) {
 		c.args = append(c.args, "-o", "json")
 	}
 	c.logInfo("executing kubectl")
-	c.output, err = execProvider.execCmd(c.kubectlPath(), c.kubectlArgs()...)
+	c.output, err = c.factory.getExecProvider().ExecCmd(c.getPath(), c.getArgs()...)
 	if err != nil {
 		err = c.logError(err)
 	}
@@ -132,7 +148,7 @@ func (c *abstractCommand) DryRun() (output []byte, err error) {
 }
 
 // WithLogger sets the Logger the command should use to log actions if passed a Logger that is not nil.
-func (c *abstractCommand) WithLogger(logger logr.Logger) (self *abstractCommand) {
+func (c *abstractCommand) WithLogger(logger logr.Logger) (self Command) {
 	if logger != nil {
 		c.logger = logger
 	}
@@ -184,12 +200,12 @@ type GetCommand struct {
 
 // Get instantiates a GetCommand instance for the described Kubernetes resource
 func (f *CommandFactory) Get(args ...string) (c Command) {
-	c = &DeleteCommand{
+	c = &GetCommand{
 		abstractCommand: abstractCommand{
 			logger:     f.logger,
 			factory:    f,
 			subCmd:     "get",
-			jsonOutput: false,
+			jsonOutput: true,
 			args:       args,
 		},
 	}

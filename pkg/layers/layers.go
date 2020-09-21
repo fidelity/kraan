@@ -1,5 +1,5 @@
 //Package layers provides an interface for processing AddonsLayers.
-//go:generate mockgen -destination=../mocks/layers/mockLayers.go -package=layers -source=layers.go . Layer
+//go:generate mockgen -destination=../mocks/layers/mockLayers.go -package=mocks -source=layers.go . Layer
 package layers
 
 import (
@@ -9,6 +9,10 @@ import (
 	"strings"
 	"time"
 
+	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
+	"github.com/fidelity/kraan/pkg/internal/utils"
+	"github.com/fidelity/kraan/pkg/repos"
+
 	"github.com/go-logr/logr"
 	"golang.org/x/mod/semver"
 	corev1 "k8s.io/api/core/v1"
@@ -16,10 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
-	"github.com/fidelity/kraan/pkg/internal/utils"
-	"github.com/fidelity/kraan/pkg/repos"
 )
 
 // MaxConditions is the maximum number of condtions to retain.
@@ -65,11 +65,6 @@ type Layer interface {
 	GetFullStatus() *kraanv1alpha1.AddonsLayerStatus
 	GetSpec() *kraanv1alpha1.AddonsLayerSpec
 	GetAddonsLayer() *kraanv1alpha1.AddonsLayer
-
-	getOtherAddonsLayer(name string) (*kraanv1alpha1.AddonsLayer, error)
-	getK8sClient() kubernetes.Interface
-	setStatus(status, reason, message string)
-	isOtherDeployed(otherVersion string, otherLayer *kraanv1alpha1.AddonsLayer) bool
 }
 
 // KraanLayer is the Schema for the addons API.

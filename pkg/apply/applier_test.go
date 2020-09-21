@@ -19,7 +19,7 @@ import (
 	"github.com/fidelity/kraan/pkg/internal/kubectl"
 	mocks "github.com/fidelity/kraan/pkg/internal/mocks/client"
 	kubectlmocks "github.com/fidelity/kraan/pkg/internal/mocks/kubectl"
-	"github.com/fidelity/kraan/pkg/layers"
+	layermocks "github.com/fidelity/kraan/pkg/mocks/layers"
 )
 
 var (
@@ -149,7 +149,7 @@ func TODOTestBasicApply(t *testing.T) { //nolint
 	mockCommand.EXPECT().WithLogger(logger).Return(mockCommand).Times(1)
 	mockCommand.EXPECT().DryRun().Return(fakeHrJSON, nil).Times(1)
 
-	mockLayer := layers.NewMockLayer(mockCtl)
+	mockLayer := layermocks.NewMockLayer(mockCtl)
 	mockLayer.EXPECT().GetName().Return(layerName).AnyTimes()
 	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
 	mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()

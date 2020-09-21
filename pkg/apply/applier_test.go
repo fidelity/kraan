@@ -17,8 +17,8 @@ import (
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/internal/kubectl"
-	mocks "github.com/fidelity/kraan/pkg/internal/mocks/client"
 	kubectlmocks "github.com/fidelity/kraan/pkg/internal/mocks/kubectl"
+	mocks "github.com/fidelity/kraan/pkg/mocks/client"
 	layermocks "github.com/fidelity/kraan/pkg/mocks/layers"
 )
 

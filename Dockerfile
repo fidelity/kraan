@@ -11,9 +11,12 @@ RUN go mod download
 
 # Copy the go source
 COPY pkg/ pkg
+COPY main/ main
+COPY controllers/ controllers
+COPY api/ api
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o kraan-controller pkg/main/main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o kraan-controller main/main.go
 
 FROM alpine:3.12
 WORKDIR /

@@ -25,7 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/fidelity/kraan/pkg/internal/kubectl"
-	"github.com/fidelity/kraan/pkg/internal/layers"
+	"github.com/fidelity/kraan/pkg/layers"
 )
 
 var (

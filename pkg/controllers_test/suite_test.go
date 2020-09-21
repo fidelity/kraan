@@ -30,7 +30,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
+	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 	// +kubebuilder:scaffold:imports
 )
 

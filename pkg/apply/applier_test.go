@@ -17,11 +17,11 @@ import (
 	types "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	kraanv1alpha1 "github.com/fidelity/kraan/pkg/api/v1alpha1"
+	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/internal/kubectl"
-	"github.com/fidelity/kraan/pkg/internal/layers"
 	mocks "github.com/fidelity/kraan/pkg/internal/mocks/client"
 	kubectlmocks "github.com/fidelity/kraan/pkg/internal/mocks/kubectl"
+	"github.com/fidelity/kraan/pkg/layers"
 )
 
 var (

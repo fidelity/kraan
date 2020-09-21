@@ -6,8 +6,8 @@ package mocks
 
 import (
 	context "context"
-	repos "github.com/fidelity/kraan/pkg/internal/repos"
 	tarconsumer "github.com/fidelity/kraan/pkg/internal/tarconsumer"
+	repos "github.com/fidelity/kraan/pkg/repos"
 	v1alpha1 "github.com/fluxcd/source-controller/api/v1alpha1"
 	gomock "github.com/golang/mock/gomock"
 	http "net/http"

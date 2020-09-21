@@ -25,10 +25,10 @@
 
 .idea/
 build/
-pkg/**/._gometalinter
-**/pkg/**/coverage/
+**/._gometalinter
+**/**/coverage/
 #**/pkg/**/*.md
 vendor/
 .vscode/
 
-pkg/main/__debug_bin.DS_Store
+main/__debug_bin.DS_Store

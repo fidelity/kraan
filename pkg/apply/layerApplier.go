@@ -1,6 +1,5 @@
-//Package apply xxx
-// TEMP DISABLED - go:generate mockgen -destination=mockLayerApplier.go -package=apply -source=layerApplier.go . LayerApplier
-// re-enable the go:generate annotation when we're ready to write tests for the controller
+//Package apply applies Hel Releases
+//go:generate mockgen -destination=../mocks/apply/mockLayerApplier.go -package=apply -source=layerApplier.go . LayerApplier
 package apply
 
 /*

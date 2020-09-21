@@ -1,5 +1,5 @@
 //Package layers provides an interface for processing AddonsLayers.
-//go:generate mockgen -destination=mockLayers.go -package=layers -source=layers.go . Layer
+//go:generate mockgen -destination=../mocks/layers/mockLayers.go -package=layers -source=layers.go . Layer
 package layers
 
 import (

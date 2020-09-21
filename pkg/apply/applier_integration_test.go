@@ -26,7 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
-	"github.com/fidelity/kraan/pkg/layers"
+	"github.com/fidelity/kraan/pkg/mocks/layers"
 )
 
 func combinedScheme() *runtime.Scheme {

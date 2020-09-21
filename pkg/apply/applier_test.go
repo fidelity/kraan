@@ -1,7 +1,5 @@
 package apply
 
-//go:generate mockgen -destination=../mocks/client/mockClient.go -package=mocks sigs.k8s.io/controller-runtime/pkg/client Client
-
 import (
 	"context"
 	"testing"

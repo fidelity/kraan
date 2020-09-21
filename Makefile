@@ -52,7 +52,7 @@ NC:=\033[0m
 
 # Targets that do not represent filenames need to be registered as phony or
 # Make won't always rebuild them.
-.PHONY: all clean ci-check ci-gate clean-godocs \
+.PHONY: all clean ci-check ci-gate clean-godocs go-generate \
 	godocs clean-gomod gomod gomod-update \
 	clean-${PROJECT}-check ${PROJECT}-check clean-${PROJECT}-build \
 	${PROJECT}-build ${GO_CHECK_PACKAGES} clean-check check \
@@ -64,7 +64,7 @@ NC:=\033[0m
 # Allow secondary expansion of explicit rules.
 .SECONDEXPANSION: %.md %-docker.tar
 
-all: ${PROJECT}-check ${PROJECT}-build
+all: ${PROJECT}-check ${PROJECT}-build #go-generate
 build: gomod ${PROJECT}-check ${PROJECT}-build
 clean: clean-gomod clean-godocs clean-${PROJECT}-check \
 	clean-${PROJECT}-build clean-check clean-build \
@@ -115,6 +115,9 @@ ${PROJECT}-check: ${GO_CHECK_PACKAGES}
 ${GO_CHECK_PACKAGES}: go.sum
 	$(MAKE) -C $@ --makefile=${CURDIR}/makefile.mk
 
+# Generate code
+go-generate: ${PROJECT_SOURCES}
+	go generate ./...
 
 clean-${PROJECT}-build:
 	rm -f ${GO_BIN_ARTIFACT}

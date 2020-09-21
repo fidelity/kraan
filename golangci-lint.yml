@@ -244,7 +244,7 @@ issues:
 
   # Excluding configuration per-path, per-linter, per-text and per-source
   exclude-rules:
-    - path: pkg/
+    - path: .
       linters:
         - dupl
         - gochecknoglobals
@@ -258,11 +258,11 @@ issues:
         - gosimple
         - nlreturn
         - wsl
-    - path: pkg/controllers
+    - path: controllers
       linters:
         - godot
         - unparam
-    - path: pkg/api
+    - path: api
       linters:
         - godot
 

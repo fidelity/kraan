@@ -23,17 +23,16 @@ include project-name.mk
 .ONESHELL:
 
 MAKE_SOURCES:=makefile.mk project-name.mk Makefile
-PROJECT_SOURCES:=$(shell find ./pkg -regex '.*.\.\(go\|json\)$$')
+PROJECT_SOURCES:=$(shell find ./main ./controllers/ ./api/ ./pkg/ -regex '.*.\.\(go\|json\)$$')
 
 BUILD_DIR:=build/
-GOMOD_VENDOR_DIR:=vendor/
 GITHUB_USER?=$(shell git config --local  user.name)
 export VERSION?=latest
 export REPO ?=docker.pkg.github.com/${GITHUB_USER}/
 # Image URL to use all building/pushing image targets
 IMG ?= ${REPO}${ORG}/${PROJECT}:${VERSION}
 
-ALL_GO_PACKAGES:=$(shell find ${CURDIR}/pkg/ \
+ALL_GO_PACKAGES:=$(shell find ${CURDIR}/main/ ${CURDIR}/controllers/ ${CURDIR}/api/ ${CURDIR}/pkg/ \
 	-type f -name *.go -exec dirname {} \; | sort --uniq)
 GO_CHECK_PACKAGES:=$(shell echo $(subst $() $(),\\n,$(ALL_GO_PACKAGES)) | \
 	awk '{print $$0}')
@@ -42,7 +41,7 @@ CHECK_ARTIFACT:=${BUILD_DIR}${PROJECT}-check-${VERSION}-docker.tar
 BUILD_ARTIFACT:=${BUILD_DIR}${PROJECT}-build-${VERSION}-docker.tar
 
 GOMOD_CACHE_ARTIFACT:=${GOMOD_CACHE_DIR}._gomod
-GOMOD_VENDOR_ARTIFACT:=${GOMOD_VENDOR_DIR}._gomod
+GOMOD_ARTIFACT:=_gomod
 GO_BIN_ARTIFACT:=${GOBIN}/${PROJECT}
 GO_DOCS_ARTIFACTS:=$(shell echo $(subst $() $(),\\n,$(ALL_GO_PACKAGES)) | \
 	sed 's:\(.*[/\]\)\(.*\):\1\2/\2.md:')
@@ -94,24 +93,19 @@ godocs: ${GO_DOCS_ARTIFACTS}
 
 
 clean-gomod:
-	rm -rf ${GOMOD_VENDOR_DIR}
+	rm -rf ${GOMOD_ARTIFACT}
 
 go.mod:
-	rm -rf ${GOMOD_VENDOR_DIR} && \
 	go mod tidy
 
 gomod: go.sum
-go.sum:  ${GOMOD_VENDOR_ARTIFACT}
+go.sum:  ${GOMOD_ARTIFACT}
 %._gomod: go.mod
-	rm -rf ${GOMOD_VENDOR_DIR} && \
-	go mod vendor && \
-	touch  ${GOMOD_VENDOR_ARTIFACT}
+	touch  ${GOMOD_ARTIFACT}
 
+${GOMOD_ARTIFACT}: gomod-update
 gomod-update: go.mod ${PROJECT_SOURCES}
-	rm -rf ${GOMOD_VENDOR_DIR}  && \
-	go build ./... && \
-	go mod vendor  && \
-	touch ${GOMOD_VENDOR_ARTIFACT}
+	go build ./...
 
 clean-${PROJECT}-check:
 	$(foreach target,${GO_CHECK_PACKAGES},
@@ -128,10 +122,10 @@ clean-${PROJECT}-build:
 ${PROJECT}-build: ${GO_BIN_ARTIFACT}
 ${GO_BIN_ARTIFACT}: go.sum ${MAKE_SOURCES} ${PROJECT_SOURCES}
 	echo "${YELLOW}Building executable: $@${NC}" && \
-	EMBEDDED_VERSION="github.com/fidelity/kraan/pkg/main" && \
+	EMBEDDED_VERSION="github.com/fidelity/kraan/main" && \
 	CGO_ENABLED=0 go build \
 		-ldflags="-s -w -X $${EMBEDDED_VERSION}.serverVersion=${VERSION}" \
-		-o $@ pkg/main/main.go
+		-o $@ main/main.go
 
 
 clean-check:
@@ -182,7 +176,7 @@ deploy: manifests
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	$(CONTROLLER_GEN) crd:trivialVersions=true paths="./..."  rbac:roleName=manager-role paths="pkg/..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) crd:trivialVersions=true paths="./..."  rbac:roleName=manager-role paths="api/..." output:crd:artifacts:config=config/crd/bases
 
 # Generate code
 generate: controller-gen

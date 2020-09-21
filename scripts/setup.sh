@@ -9,7 +9,7 @@ set -euo pipefail
 function usage() {
     set +x
     cat <<EOF
-USAGE: ${0##*/} [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--no-kraan]
+USAGE: ${0##*/} [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--no-kraan] [--no-gitops]
        [--helm-operator-namespace <namespace>] [--install-helm-operator]
        [--kraan-image-pull-secret auto | <filename>] [--kraan-image-repo <repo-name>]
        [--gitops-image-pull-secret auto | <filename>] [--gitops-image-repo <repo-name>]
@@ -26,7 +26,7 @@ Options:
   '--gitops-image-pull-secret' as above for gitops components
   '--install-helm-operator' deploy the Helm Operator.
   '--helm-operator-namespace' set the namespace to install helm-operator in, defaults to 'helm-operator'.
-  '--kraan-image-repo' provide image repository to use for Kraan, docker.pkg.github.com/
+  '--kraan-image-repo' provide image repository to use for Kraan, defaults to docker.pkg.github.com/
   '--gitops-image-repo' provide image repository to use for gitops components, defaults to docker.io/fluxcd
   '--gitops-proxy' set to 'auto' to generate proxy setting for source controller using value of HTTPS_PROXY 
                    environment variable or supply the proxy url to use.
@@ -34,7 +34,8 @@ Options:
                   cluster. The KUBECONFIG environmental variable or ~/.kube/config should be set to a cluster 
                   admin user for the cluster you want to use. This cluster must be running API version 16 or 
                   greater.
-  '--no-kraan' do not deploy the Kraan runtime container to the target cluster.
+  '--no-kraan' do not deploy the Kraan runtime container to the target cluster. Useful when running controller out of cluster.
+  '--no-gitops' do not deploy the gitops system components to the target cluster. Useful if components are already installed"
   '--no-testdata' do not deploy addons layers and source controller custom resources to the target cluster.
   '--git-user' set (or override) the GIT_USER environment variables.
   '--git-token' set (or override) the GIT_CREDENTIALS environment variables.
@@ -103,6 +104,7 @@ function args() {
   install_helm_operator=0
   helm_operator_namespace="helm-operator"
   deploy_kraan=1
+  deploy_gitops=1
   apply_testdata=1
 
   arg_list=( "$@" )
@@ -113,6 +115,7 @@ function args() {
           "--toolkit") toolkit=1;;
           "--deploy-kind") deploy_kind=1;;
           "--no-kraan") deploy_kraan=0;;
+          "--no-gitops") deploy_gitops=0;;
           "--no-testdata") apply_testdata=0;;
           "--kraan-image-pull-secret") (( arg_index+=1 )); kraan_regcred="${arg_list[${arg_index}]}";;
           "--gitops-image-pull-secret") (( arg_index+=1 )); gitops_regcred="${arg_list[${arg_index}]}";toolkit=1;;
@@ -236,7 +239,7 @@ function create_regcred() {
 function deploy_kraan_mgr() {
   cp -rf "${base_dir}"/testdata/addons/kraan/manager "${work_dir}"
   if [ -n "${kraan_repo}" ] ; then
-    sed -i "s#image\:\ docker.pkg.github.com/addons-mgmt#image\:\ ${kraan_repo}#" "${work_dir}"/manager/deployment.yaml
+    sed -i "s#image\:\ docker.pkg.github.com#image\:\ ${kraan_repo}#" "${work_dir}"/manager/deployment.yaml
   fi
   if [ -n "${kraan_regcred}" ] ; then
     local secret_name="regcred"
@@ -278,22 +281,24 @@ if [ $deploy_kind -gt 0 ] ; then
   export KUBECONFIG=$HOME/kind-${KIND_CLUSTER_NAME}.config
 fi
 
-cp -rf "${base_dir}"/testdata/addons/gitops "${work_dir}"
+if [ $deploy_gitops -gt 0 ] ; then 
+  cp -rf "${base_dir}"/testdata/addons/gitops "${work_dir}"
 
-if [ -n "${toolkit}" ] ; then
-  toolkit_refresh
-fi
+  if [ -n "${toolkit}" ] ; then
+    toolkit_refresh
+  fi
 
-if [ -n "${dry_run}" ] ; then
-  echo "yaml for gitops toolkit is in ${work_dir}/gitops/gitops.yaml"
-fi
+  if [ -n "${dry_run}" ] ; then
+    echo "yaml for gitops toolkit is in ${work_dir}/gitops/gitops.yaml"
+  fi
 
-kubectl apply ${dry_run} -f "${work_dir}"/gitops/gitops.yaml
+  kubectl apply ${dry_run} -f "${work_dir}"/gitops/gitops.yaml
 
-create_git_credentials_secret "${base_dir}/testdata/templates/template-http.yaml" "${work_dir}/kraan-http.yaml"
+  create_git_credentials_secret "${base_dir}/testdata/templates/template-http.yaml" "${work_dir}/kraan-http.yaml"
 
-if [ -n "${gitops_regcred}" ] ; then
-  create_regcred gitops-system "${gitops_regcred}"
+  if [ -n "${gitops_regcred}" ] ; then
+    create_regcred gitops-system "${gitops_regcred}"
+  fi
 fi
 
 kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/kraan/namespace.yaml
@@ -306,6 +311,7 @@ kubectl apply ${dry_run} -k "${base_dir}"/config/crd
 kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/kraan/rbac
 
 deploy_kraan_mgr
+
 if [ $install_helm_operator -gt 0 ]; then
   install_helm
 fi

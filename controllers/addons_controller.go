@@ -63,13 +63,13 @@ func NewReconciler(config *rest.Config, client client.Client, logger logr.Logger
 	reconciler = &AddonsLayerReconciler{
 		Config: config,
 		Client: client,
-		Log:    logger,
+		Log:    logger.WithName("reconciler"),
 		Scheme: scheme,
 	}
 	reconciler.k8client = reconciler.getK8sClient()
 	reconciler.Context = context.Background()
 	var err error
-	reconciler.Applier, err = apply.NewApplier(client, logger, scheme)
+	reconciler.Applier, err = apply.NewApplier(client, logger.WithName("applier"), scheme)
 	reconciler.Repos = repos.NewRepos(reconciler.Context, reconciler.Log)
 	return reconciler, err
 }

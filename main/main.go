@@ -25,12 +25,14 @@ import (
 	// +kubebuilder:scaffold:imports
 
 	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
-	"github.com/fluxcd/pkg/runtime/logger"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	_ "sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
@@ -40,10 +42,13 @@ import (
 
 var (
 	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
+	setupLog = log.Log.WithName("kraan-setup")
 )
 
 func init() {
+	log.SetLogger(zap.New())
+	setupLog.Info("Setting up kraan")
+
 	_ = corev1.AddToScheme(scheme)        // nolint:errcheck // ok
 	_ = helmopv1.AddToScheme(scheme)      // nolint:errcheck // ok
 	_ = kraanv1alpha1.AddToScheme(scheme) // nolint:errcheck // ok
@@ -66,7 +71,30 @@ func init() {
 	}
 }
 
-func main() {
+type LogLevels struct {
+	Info    bool
+	Debug   bool
+	Trace   bool
+	Highest int
+}
+
+func CheckLogLevels(log logr.Logger) LogLevels {
+	lvl := LogLevels{
+		Info:  log.V(0).Enabled(),
+		Debug: log.V(1).Enabled(),
+		Trace: log.V(2).Enabled(),
+	}
+	for i := 0; i < 100; i++ {
+		if !log.V(i).Enabled() {
+			log.V(i).Info("log-level enabled", "level", i)
+			lvl.Highest = i - 1
+			break
+		}
+	}
+	return lvl
+}
+
+func main() { //nolint:funlen // ok
 	var (
 		metricsAddr             string
 		healthAddr              string
@@ -103,16 +131,25 @@ func main() {
 		"period between reprocessing of all AddonsLayers.",
 	)
 
+	logOpts := zap.Options{}
+	logOpts.BindFlags(flag.CommandLine)
+
 	flag.Parse()
+
+	setupLog.Info("command-line flags", "osArgs", os.Args[:1])
+	logger := zap.New(zap.UseFlagOptions(&logOpts)).WithName("kraan")
+
+	loggerType := fmt.Sprintf("%T", logger)
+	lvl := CheckLogLevels(logger)
+	setupLog.Info("logger configured", "loggerType", loggerType, "logLevels", lvl)
 
 	syncPeriod, err := time.ParseDuration(syncPeriodStr)
 	if err != nil {
 		setupLog.Error(err, "unable to parse sync period")
 		os.Exit(1)
 	}
-	ctrl.SetLogger(logger.NewLogger(logLevel, logJSON))
 
-	mgr, err := createManager(metricsAddr, healthAddr, enableLeaderElection, leaderElectionNamespace, syncPeriod)
+	mgr, err := createManager(metricsAddr, healthAddr, enableLeaderElection, leaderElectionNamespace, syncPeriod, logger)
 	if err != nil {
 		setupLog.Error(err, "problem creating manager")
 		os.Exit(1)
@@ -125,8 +162,10 @@ func main() {
 	}
 }
 
-func createManager(metricsAddr string, healthAddr string, enableLeaderElection bool, leaderElectionNamespace string, syncPeriod time.Duration) (manager.Manager, error) {
+func createManager(metricsAddr string, healthAddr string, enableLeaderElection bool,
+	leaderElectionNamespace string, syncPeriod time.Duration, logger logr.Logger) (manager.Manager, error) {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Logger:                  logger.WithName("manager"),
 		Scheme:                  scheme,
 		MetricsBindAddress:      metricsAddr,
 		HealthProbeBindAddress:  healthAddr,
@@ -140,7 +179,7 @@ func createManager(metricsAddr string, healthAddr string, enableLeaderElection b
 		return nil, fmt.Errorf("unable to start manager: %w", err)
 	}
 
-	if err := createController(mgr); err != nil {
+	if err := createController(mgr, logger); err != nil {
 		return nil, fmt.Errorf("unable to create controller: %w", err)
 	}
 
@@ -155,11 +194,11 @@ func createManager(metricsAddr string, healthAddr string, enableLeaderElection b
 	return mgr, nil
 }
 
-func createController(mgr manager.Manager) error {
+func createController(mgr manager.Manager, logger logr.Logger) error {
 	r, err := controllers.NewReconciler(
 		mgr.GetConfig(),
 		mgr.GetClient(),
-		ctrl.Log.WithName("controllers").WithName("AddonsLayer"),
+		logger.WithName("controller"),
 		mgr.GetScheme())
 	if err != nil {
 		return fmt.Errorf("unable to create Reconciler: %w", err)

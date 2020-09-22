@@ -111,7 +111,7 @@ func (r *AddonsLayerReconciler) processApply(l layers.Layer) (statusReconciled b
 	if err != nil {
 		return false, err
 	} else if applyIsRequired {
-		//utils.Log(r.Log, 1, 1, "apply required", "Name", l.GetName(), "Spec", l.GetSpec(), "Status", l.GetFullStatus())
+		r.Log.Info("apply required", "Name", l.GetName(), "Spec", l.GetSpec(), "Status", l.GetFullStatus())
 		if !l.DependenciesDeployed() {
 			l.SetDelayedRequeue()
 			return true, nil
@@ -145,7 +145,7 @@ func (r *AddonsLayerReconciler) checkSuccess(l layers.Layer) error {
 }
 
 func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error {
-	//utils.Log(r.Log, 1, 1, "processing", "Name", l.GetName(), "Status", l.GetStatus())
+	r.Log.Info("processing", "Name", l.GetName(), "Status", l.GetStatus())
 
 	if l.IsHold() {
 		l.SetHold()
@@ -279,8 +279,8 @@ func indexHelmReleaseByOwner(o runtime.Object) []string {
 	if owner.APIVersion != kraanv1alpha1.GroupVersion.String() || owner.Kind != "AddonsLayer" {
 		return nil
 	}
-	//log := ctrl.Log.WithName("hr sync")
-	//utils.Log(log, 1, 5, "HR associated with layer", "Layer Name", owner.Name, "HR", fmt.Sprintf("%s/%s", hr.GetNamespace(), hr.GetName()))
+	log := ctrl.Log.WithName("hr sync")
+	log.Info("HR associated with layer", "Layer Name", owner.Name, "HR", fmt.Sprintf("%s/%s", hr.GetNamespace(), hr.GetName()))
 
 	return []string{owner.Name}
 }

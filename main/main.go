@@ -25,12 +25,12 @@ import (
 	// +kubebuilder:scaffold:imports
 
 	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
+	"github.com/fluxcd/pkg/runtime/logger"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	_ "sigs.k8s.io/controller-runtime/pkg/healthz"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
@@ -73,6 +73,7 @@ func main() {
 		enableLeaderElection    bool
 		leaderElectionNamespace string
 		logJSON                 bool
+		logLevel                string
 		syncPeriodStr           string
 	)
 
@@ -88,7 +89,7 @@ func main() {
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.BoolVar(&logJSON, "log-json", false, "Set logging to JSON format.")
-
+	flag.StringVar(&logLevel, "log-level", "info", "Set logging level. Can be debug, info or error.")
 	flag.StringVar(&healthAddr,
 		"health-addr",
 		":9440",
@@ -109,7 +110,7 @@ func main() {
 		setupLog.Error(err, "unable to parse sync period")
 		os.Exit(1)
 	}
-	ctrl.SetLogger(zap.New(zap.UseDevMode(!logJSON)))
+	ctrl.SetLogger(logger.NewLogger(logLevel, logJSON))
 
 	mgr, err := createManager(metricsAddr, healthAddr, enableLeaderElection, leaderElectionNamespace, syncPeriod)
 	if err != nil {
@@ -172,11 +173,11 @@ func createController(mgr manager.Manager) error {
 }
 
 func readinessCheck(req *http.Request) error {
-	setupLog.Info(fmt.Sprintf("got readiness check: %s", req.Header))
+	//setupLog.Info(fmt.Sprintf("got readiness check: %s", req.Header))
 	return nil
 }
 
 func livenessCheck(req *http.Request) error {
-	setupLog.Info(fmt.Sprintf("got liveness check: %s", req.Header))
+	//setupLog.Info(fmt.Sprintf("got liveness check: %s", req.Header))
 	return nil
 }

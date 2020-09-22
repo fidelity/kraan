@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/fluxcd/helm-operator v1.0.0-rc6
+	github.com/fluxcd/pkg/runtime v0.0.4
 	github.com/fluxcd/pkg/untar v0.0.5
 	github.com/fluxcd/source-controller/api v0.0.13
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
@@ -31,7 +32,7 @@ require (
 	k8s.io/client-go v11.0.0+incompatible
 	k8s.io/klog/v2 v2.0.0 // indirect
 	k8s.io/utils v0.0.0-20200603063816-c1c6865ac451 // indirect
-	sigs.k8s.io/controller-runtime v0.6.2
+	sigs.k8s.io/controller-runtime v0.6.3
 	sigs.k8s.io/testing_frameworks v0.1.2 // indirect
 )
 

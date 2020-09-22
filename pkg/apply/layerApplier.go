@@ -81,7 +81,6 @@ func (a KubectlLayerApplier) logError(err error, msg string, layer layers.Layer,
 	a.getLog(layer).Error(err, msg, append(keysAndValues, "sourcePath", layer.GetSourcePath(), "layer", layer)...)
 }
 
-/*
 func (a KubectlLayerApplier) logInfo(msg string, layer layers.Layer, keysAndValues ...interface{}) {
 	a.log(1, msg, layer, keysAndValues...)
 }
@@ -89,7 +88,7 @@ func (a KubectlLayerApplier) logInfo(msg string, layer layers.Layer, keysAndValu
 func (a KubectlLayerApplier) logDebug(msg string, layer layers.Layer, keysAndValues ...interface{}) {
 	a.log(5, msg, layer, keysAndValues...)
 }
-*/
+
 func (a KubectlLayerApplier) logTrace(msg string, layer layers.Layer, keysAndValues ...interface{}) {
 	a.log(7, msg, layer, keysAndValues...)
 }
@@ -122,14 +121,14 @@ func (a KubectlLayerApplier) decodeAddons(layer layers.Layer,
 
 	switch obj.(type) {
 	case *corev1.List:
-		//a.logger.Info("decoded raw object List from kubectl output", "layer", layer, "groupVersionKind", gvk, "list", obj)
+		a.logDebug("decoded raw object List from kubectl output", layer, "groupVersionKind", gvk, "list", obj)
 		return a.decodeList(layer, obj.(*corev1.List), &dez)
 	case *helmopv1.HelmRelease:
 		hr, ok := obj.(*helmopv1.HelmRelease)
 		if !ok {
 			return nil, nil, fmt.Errorf("unable to cast HelmRelease typed object to a HelmRelease type")
 		}
-		a.logger.Info("decoded single HelmRelease from kubectl output", "layer", layer, "groupVersionKind", gvk, "helmRelease", hr)
+		a.logDebug("decoded single HelmRelease from kubectl output", layer, "groupVersionKind", gvk, "helmRelease", hr)
 		return []*helmopv1.HelmRelease{hr}, nil, nil
 	default:
 		msg := "decoded kubectl output was not a HelmRelease or List"
@@ -141,7 +140,7 @@ func (a KubectlLayerApplier) decodeAddons(layer layers.Layer,
 
 func (a KubectlLayerApplier) addOwnerRefs(layer layers.Layer, hrs []*helmopv1.HelmRelease) error {
 	for i, hr := range hrs {
-		a.logger.Info("Adding owner ref to HelmRelease for AddonsLayer", "layer", layer, "index", i, "helmRelease", hr)
+		a.logDebug("Adding owner ref to HelmRelease for AddonsLayer", layer, "index", i, "helmRelease", hr)
 		err := controllerutil.SetControllerReference(layer.GetAddonsLayer(), hr, a.scheme)
 		if err != nil {
 			// could not apply owner ref for object
@@ -184,7 +183,7 @@ func (a KubectlLayerApplier) getHelmRelease(ctx context.Context, hr *helmopv1.He
 
 func (a KubectlLayerApplier) applyHelmReleases(ctx context.Context, layer layers.Layer, hrs []*helmopv1.HelmRelease) error {
 	for i, hr := range hrs {
-		a.logger.Info("Applying HelmRelease for AddonsLayer", "layer", layer, "index", i, "helmRelease", hr)
+		a.logDebug("Applying HelmRelease for AddonsLayer", layer, "index", i, "helmRelease", hr)
 		foundHr, err := a.getHelmRelease(ctx, hr)
 		if err != nil || foundHr == nil {
 			// HelmRelease does not exist, create resource
@@ -207,7 +206,7 @@ func (a KubectlLayerApplier) decodeList(layer layers.Layer,
 	raws *corev1.List, dez *runtime.Decoder) (hrs []*helmopv1.HelmRelease, errz []error, err error) {
 	dec := *dez
 
-	a.logger.Info("decoding list of raw JSON items", "layer", layer, "length", len(raws.Items))
+	a.logDebug("decoding list of raw JSON items", layer, "length", len(raws.Items))
 
 	for i, raw := range raws.Items {
 		obj, gvk, err := dec.Decode(raw.Raw, nil, nil)
@@ -217,12 +216,12 @@ func (a KubectlLayerApplier) decodeList(layer layers.Layer,
 		switch obj.(type) {
 		case *helmopv1.HelmRelease:
 			hr := obj.(*helmopv1.HelmRelease) // nolint:errcheck
-			a.logger.Info("decoded HelmRelease from kubectl output list",
-				"layer", layer, "index", i, "groupVersionKind", gvk, "helmRelease", hr)
+			a.logDebug("decoded HelmRelease from kubectl output list",
+				layer, "index", i, "groupVersionKind", gvk, "helmRelease", hr)
 			hrs = append(hrs, hr)
 		default:
-			a.logger.Info("decoded Kubernetes object from kubectl output list",
-				"layer", layer, "index", i, "groupVersionKind", gvk, "object", obj)
+			a.logInfo("decoded Kubernetes object from kubectl output list",
+				layer, "index", i, "groupVersionKind", gvk, "object", obj)
 		}
 	}
 	if len(errz) > 0 {
@@ -235,12 +234,12 @@ func (a KubectlLayerApplier) checkSourcePath(layer layers.Layer) (sourceDir stri
 	sourceDir = layer.GetSourcePath()
 	info, err := os.Stat(sourceDir)
 	if os.IsNotExist(err) {
-		a.logger.Info("source directory not found", "layer", layer)
+		a.logDebug("source directory not found", layer)
 		return sourceDir, fmt.Errorf("source directory (%s) not found for AddonsLayer %s",
 			sourceDir, layer.GetName())
 	}
 	if os.IsPermission(err) {
-		a.logger.Info("source directory read permission denied", "layer", layer)
+		a.logDebug("source directory read permission denied", layer)
 		return sourceDir, fmt.Errorf("read permission denied to source directory (%s) for AddonsLayer %s",
 			sourceDir, layer.GetName())
 	}
@@ -251,7 +250,7 @@ func (a KubectlLayerApplier) checkSourcePath(layer layers.Layer) (sourceDir stri
 	}
 	if !info.IsDir() {
 		// I'm not sure if this is an error, but I thought I should detect and log it
-		a.logger.Info("source path is not a directory", "layer", layer)
+		a.logInfo("source path is not a directory", layer)
 	}
 	return sourceDir, nil
 }
@@ -286,7 +285,7 @@ func (a KubectlLayerApplier) getSourceResources(layer layers.Layer) (hrs []*helm
 
 // Apply an AddonLayer to the cluster.
 func (a KubectlLayerApplier) Apply(ctx context.Context, layer layers.Layer) (err error) {
-	a.logger.Info("Applying AddonsLayer", "layer", layer)
+	a.logInfo("Applying AddonsLayer", layer)
 
 	hrs, err := a.getSourceResources(layer)
 	if err != nil {
@@ -336,7 +335,7 @@ func (a KubectlLayerApplier) PruneIsRequired(ctx context.Context, layer layers.L
 		_, ok := hrs[getLabel(hr)]
 		if !ok {
 			// this resource exists on the cluster but not in the source directory
-			a.logger.Info("pruned HelmRelease for AddonsLayer in KubeAPI but not in source directory", "layer", layer, "pruneResource", hr)
+			a.logInfo("pruned HelmRelease for AddonsLayer in KubeAPI but not in source directory", layer, "pruneResource", hr)
 			pruneRequired = true
 			pruneHrs = append(pruneHrs, hr)
 		}
@@ -367,7 +366,7 @@ func (a KubectlLayerApplier) ApplyIsRequired(ctx context.Context, layer layers.L
 		_, ok := hrs[getLabel(source)]
 		if !ok {
 			// this resource exists in the source directory but not on the cluster
-			a.logger.Info("found new HelmRelease in AddonsLayer source directory", "layer", layer, "newHelmRelease", source.Spec)
+			a.logInfo("found new HelmRelease in AddonsLayer source directory", layer, "newHelmRelease", source.Spec)
 			return true, nil
 		}
 	}
@@ -386,14 +385,14 @@ func (a KubectlLayerApplier) sourceHasChanged(layer layers.Layer, source, found 
 	a.logTrace("comparing HelmRelease source to KubeAPI resource", layer, "source", source.Spec, "found", found.Spec)
 	if !reflect.DeepEqual(source.Spec, found.Spec) || !reflect.DeepEqual(source.ObjectMeta.Labels, found.ObjectMeta.Labels) {
 		// this resource source spec does not match the resource spec on the cluster
-		a.logger.Info("found spec change for HelmRelease in AddonsLayer source directory", "layer", layer, "resource", getLabel(source), "source", source.Spec, "found", found.Spec)
+		a.logInfo("found spec change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source), "source", source.Spec, "found", found.Spec)
 		return true
 	}
 	sourceLabels := source.ObjectMeta.Labels
 	foundLabels := found.ObjectMeta.Labels
 	if !reflect.DeepEqual(sourceLabels, foundLabels) {
 		// this resource source labels do not match the resource labels on the cluster
-		a.logger.Info("found label change for HelmRelease in AddonsLayer source directory", "layer", layer, "resource", getLabel(source), "source", sourceLabels, "found", foundLabels)
+		a.logInfo("found label change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source), "source", sourceLabels, "found", foundLabels)
 		return true
 	}
 	return false
@@ -408,7 +407,7 @@ func (a KubectlLayerApplier) ApplyWasSuccessful(ctx context.Context, layer layer
 
 	for _, hr := range clusterHrs {
 		if hr.Status.Phase != helmopv1.HelmReleasePhaseSucceeded {
-			a.logger.Info("unsuccessful HelmRelease for AddonsLayer", "layer", layer, "resource", hr)
+			a.logDebug("unsuccessful HelmRelease for AddonsLayer", layer, "resource", hr)
 			return false, nil
 		}
 	}

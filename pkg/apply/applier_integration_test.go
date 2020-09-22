@@ -26,7 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
-	"github.com/fidelity/kraan/pkg/layers"
+	mocklayers "github.com/fidelity/kraan/pkg/mocks/layers"
 )
 
 func combinedScheme() *runtime.Scheme {
@@ -262,7 +262,7 @@ func TestSingleApply(t *testing.T) {
 	layerUID := l.ObjectMeta.UID
 	addonsLayer := fakeAddonsLayer(sourcePath, layerName, layerUID)
 
-	mockLayer := layers.NewMockLayer(mockCtl)
+	mockLayer := mocklayers.NewMockLayer(mockCtl)
 	mockLayer.EXPECT().GetName().Return(layerName).AnyTimes()
 	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
 	mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()
@@ -300,7 +300,7 @@ func TestDoubleApply(t *testing.T) {
 	layerUID := l.ObjectMeta.UID
 	addonsLayer := fakeAddonsLayer(sourcePath, layerName, layerUID)
 
-	mockLayer := layers.NewMockLayer(mockCtl)
+	mockLayer := mocklayers.NewMockLayer(mockCtl)
 	mockLayer.EXPECT().GetName().Return(layerName).AnyTimes()
 	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
 	mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()
@@ -339,7 +339,7 @@ func TestPruneIsRequired(t *testing.T) {
 	layerName := "test"
 	addonsLayer := getAddonsLayer(ctx, t, client, layerName)
 
-	mockLayer := layers.NewMockLayer(mockCtl)
+	mockLayer := mocklayers.NewMockLayer(mockCtl)
 	mockLayer.EXPECT().GetName().Return(layerName).AnyTimes()
 	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
 	mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()
@@ -382,7 +382,7 @@ func TestApplyContextTimeoutIntegration(t *testing.T) {
 	layerUID := types.UID("test-UID")
 	addonsLayer := fakeAddonsLayer(sourcePath, layerName, layerUID)
 
-	mockLayer := layers.NewMockLayer(mockCtl)
+	mockLayer := mocklayers.NewMockLayer(mockCtl)
 	mockLayer.EXPECT().GetName().Return(layerName).AnyTimes()
 	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
 	mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()

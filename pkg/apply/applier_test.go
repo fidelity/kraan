@@ -1,7 +1,5 @@
 package apply
 
-//go:generate mockgen -destination=../mocks/client/mockClient.go -package=mocks sigs.k8s.io/controller-runtime/pkg/client Client
-
 import (
 	"context"
 	"testing"
@@ -19,9 +17,9 @@ import (
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/internal/kubectl"
-	mocks "github.com/fidelity/kraan/pkg/internal/mocks/client"
 	kubectlmocks "github.com/fidelity/kraan/pkg/internal/mocks/kubectl"
-	"github.com/fidelity/kraan/pkg/layers"
+	mocks "github.com/fidelity/kraan/pkg/mocks/client"
+	layermocks "github.com/fidelity/kraan/pkg/mocks/layers"
 )
 
 var (
@@ -97,7 +95,7 @@ func TestNewApplier(t *testing.T) {
 	t.Logf("NewApplier returned (%T) %#v", applier, applier)
 }
 
-func TestMockKubectl(t *testing.T) {
+func TestNewApplierWithMockKubectl(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	defer mockCtl.Finish()
 
@@ -151,7 +149,7 @@ func TODOTestBasicApply(t *testing.T) { //nolint
 	mockCommand.EXPECT().WithLogger(logger).Return(mockCommand).Times(1)
 	mockCommand.EXPECT().DryRun().Return(fakeHrJSON, nil).Times(1)
 
-	mockLayer := layers.NewMockLayer(mockCtl)
+	mockLayer := layermocks.NewMockLayer(mockCtl)
 	mockLayer.EXPECT().GetName().Return(layerName).AnyTimes()
 	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
 	mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()

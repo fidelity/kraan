@@ -84,48 +84,6 @@ func (mr *MockKubectlMockRecorder) Get(arg0 ...interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockKubectl)(nil).Get), arg0...)
 }
 
-// getExecProvider mocks base method
-func (m *MockKubectl) getExecProvider() kubectl.ExecProvider {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "getExecProvider")
-	ret0, _ := ret[0].(kubectl.ExecProvider)
-	return ret0
-}
-
-// getExecProvider indicates an expected call of getExecProvider
-func (mr *MockKubectlMockRecorder) getExecProvider() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "getExecProvider", reflect.TypeOf((*MockKubectl)(nil).getExecProvider))
-}
-
-// getLogger mocks base method
-func (m *MockKubectl) getLogger() logr.Logger {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "getLogger")
-	ret0, _ := ret[0].(logr.Logger)
-	return ret0
-}
-
-// getLogger indicates an expected call of getLogger
-func (mr *MockKubectlMockRecorder) getLogger() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "getLogger", reflect.TypeOf((*MockKubectl)(nil).getLogger))
-}
-
-// getPath mocks base method
-func (m *MockKubectl) getPath() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "getPath")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// getPath indicates an expected call of getPath
-func (mr *MockKubectlMockRecorder) getPath() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "getPath", reflect.TypeOf((*MockKubectl)(nil).getPath))
-}
-
 // MockCommand is a mock of Command interface
 type MockCommand struct {
 	ctrl     *gomock.Controller

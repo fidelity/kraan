@@ -10,7 +10,7 @@ function usage() {
     set +x
     cat <<EOF
 USAGE: ${0##*/} [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--no-kraan] [--no-gitops]
-       [--helm-operator-namespace <namespace>] [--install-helm-operator]
+       [--kraan-version] [--helm-operator-namespace <namespace>] [--install-helm-operator]
        [--kraan-image-pull-secret auto | <filename>] [--kraan-image-repo <repo-name>]
        [--gitops-image-pull-secret auto | <filename>] [--gitops-image-repo <repo-name>]
        [--gitops-proxy auto | <proxy-url>] [--git-url <git-repo-url>]
@@ -27,6 +27,7 @@ Options:
   '--install-helm-operator' deploy the Helm Operator.
   '--helm-operator-namespace' set the namespace to install helm-operator in, defaults to 'helm-operator'.
   '--kraan-image-repo' provide image repository to use for Kraan, defaults to docker.pkg.github.com/
+  '--kraan-version' the version of the kraan image to use.
   '--gitops-image-repo' provide image repository to use for gitops components, defaults to docker.io/fluxcd
   '--gitops-proxy' set to 'auto' to generate proxy setting for source controller using value of HTTPS_PROXY 
                    environment variable or supply the proxy url to use.
@@ -106,6 +107,7 @@ function args() {
   deploy_kraan=1
   deploy_gitops=1
   apply_testdata=1
+  kraan_version="latest"
 
   arg_list=( "$@" )
   arg_count=${#arg_list[@]}
@@ -117,6 +119,7 @@ function args() {
           "--no-kraan") deploy_kraan=0;;
           "--no-gitops") deploy_gitops=0;;
           "--no-testdata") apply_testdata=0;;
+          "--kraan-version") (( arg_index+=1 )); kraan_version="${arg_list[${arg_index}]}";;
           "--kraan-image-pull-secret") (( arg_index+=1 )); kraan_regcred="${arg_list[${arg_index}]}";;
           "--gitops-image-pull-secret") (( arg_index+=1 )); gitops_regcred="${arg_list[${arg_index}]}";toolkit=1;;
           "--gitops-proxy") (( arg_index+=1 )); gitops_proxy="${arg_list[${arg_index}]}";toolkit=1;;
@@ -237,9 +240,13 @@ function create_regcred() {
 }
 
 function deploy_kraan_mgr() {
+  if [ -n "${kraan_regcred}" ] ; then
+    create_regcred kraan "${kraan_regcred}"
+  fi
   cp -rf "${base_dir}"/testdata/addons/kraan/manager "${work_dir}"
   if [ -n "${kraan_repo}" ] ; then
-    sed -i "s#image\:\ docker.pkg.github.com#image\:\ ${kraan_repo}#" "${work_dir}"/manager/deployment.yaml
+    sed -i "s#image\:\ docker.pkg.github.com/fidelity/kraan#image\:\ ${kraan_repo}#" "${work_dir}"/manager/deployment.yaml
+    sed -i "s#\:latest#\:${kraan_version}#" "${work_dir}"/manager/deployment.yaml
   fi
   if [ -n "${kraan_regcred}" ] ; then
     local secret_name="regcred"
@@ -247,7 +254,8 @@ function deploy_kraan_mgr() {
       secret_name=$(basename "${kraan_regcred}" | cut -f1 -d.)
     fi
     cp "${work_dir}"/manager/deployment.yaml "${work_dir}"/deployment-orignal.yaml
-    awk '/containers:/{ print "      imagePullSecrets:\n      - name: ${secret_name}"}1'  "${work_dir}"/deployment-orignal.yaml > "${work_dir}"/manager/deployment.yaml
+    awk '/containers:/{ print "      imagePullSecrets:\n      - name: regcred"}1'  "${work_dir}"/deployment-orignal.yaml > "${work_dir}"/manager/deployment.yaml
+    sed -i "s#\:\ regcred#\:\ ${secret_name}#" "${work_dir}"/manager/deployment.yaml
   fi
   if [ $deploy_kraan -gt 0 ]; then
     echo "Deploying Kraan Manager"
@@ -303,12 +311,11 @@ fi
 
 kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/kraan/namespace.yaml
 
-if [ -n "${kraan_regcred}" ] ; then
-  create_regcred kraan "${kraan_regcred}"
-fi
-
 kubectl apply ${dry_run} -k "${base_dir}"/config/crd
-kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/kraan/rbac
+kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/kraan/rbac/leader_election_role.yaml
+kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/kraan/rbac/leader_election_role_binding.yaml
+kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/kraan/rbac/role.yaml
+kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/kraan/rbac/role_binding.yaml
 
 deploy_kraan_mgr
 

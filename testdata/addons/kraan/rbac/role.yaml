@@ -8,7 +8,7 @@ rules:
 - apiGroups:
   - kraan.io
   resources:
-  - addonsLayer
+  - addonsLayers
   verbs:
   - get
   - list
@@ -18,7 +18,7 @@ rules:
 - apiGroups:
   - kraan.io
   resources:
-  - addons/status
+  - '*'
   verbs:
   - get
   - patch
@@ -33,7 +33,7 @@ metadata:
   name: gitops-source
 rules:
 - apiGroups:
-  - source.fluxcd.io
+  - source.toolkit.fluxcd.io
   resources:
   - 'gitrepositories'
   verbs:

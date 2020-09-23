@@ -21,12 +21,18 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
       - name: manager
-        image: docker.pkg.github.com/addons-mgmt/kraan-controller:latest
+        image: docker.pkg.github.com/fidelity/kraan/kraan-controller:latest
         imagePullPolicy: Always
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
+        args:
+        - --enable-leader-election
+        - --zap-log-level=2
+        - --zap-encoder=json
         env:
+          - name: DATA_PATH
+            value: /home/controller/data
           - name: RUNTIME_NAMESPACE
             valueFrom:
               fieldRef:
@@ -39,7 +45,7 @@ spec:
           httpGet:
             path: /readyz
             port: healthz
-          initialDelaySeconds: 30
+          initialDelaySeconds: 10
           periodSeconds: 10
           failureThreshold: 5
           timeoutSeconds: 15
@@ -47,7 +53,7 @@ spec:
           httpGet:
             path: /healthz
             port: healthz
-          initialDelaySeconds: 30
+          initialDelaySeconds: 10
           periodSeconds: 10
           failureThreshold: 5
           timeoutSeconds: 15

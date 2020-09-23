@@ -27,10 +27,12 @@ PROJECT_SOURCES:=$(shell find ./main ./controllers/ ./api/ ./pkg/ -regex '.*.\.\
 
 BUILD_DIR:=build/
 GITHUB_USER?=$(shell git config --local  user.name)
+GITHUB_ORG=$(shell git config --get remote.origin.url | cut -f2 -d: | cut -f1 -d/)
+GITHUB_REPO=$(shell git config --get remote.origin.url | cut -f2 -d/ | cut -f1 -d.)
 export VERSION?=latest
-export REPO ?=ghcr.io/${GITHUB_USER}/
+export REPO ?=docker.pkg.github.com/${GITHUB_ORG}/${GITHUB_REPO}
 # Image URL to use all building/pushing image targets
-IMG ?= ${REPO}${ORG}/${PROJECT}:${VERSION}
+IMG ?= ${REPO}/${PROJECT}:${VERSION}
 
 ALL_GO_PACKAGES:=$(shell find ${CURDIR}/main/ ${CURDIR}/controllers/ ${CURDIR}/api/ ${CURDIR}/pkg/ \
 	-type f -name *.go -exec dirname {} \; | sort --uniq)
@@ -136,7 +138,7 @@ clean-check:
 
 check: DOCKER_SOURCES=Dockerfile ${MAKE_SOURCES} ${PROJECT_SOURCES}
 check: DOCKER_BUILD_OPTIONS=--target builder --build-arg VERSION
-check: TAG=${REPO}${ORG}/${PROJECT}-check:${VERSION}
+check: TAG=${REPO}/${PROJECT}-check:${VERSION}
 check: ${BUILD_DIR} ${CHECK_ARTIFACT}
 
 clean-build:
@@ -144,7 +146,7 @@ clean-build:
 
 build: DOCKER_SOURCES=Dockerfile ${MAKE_SOURCES} ${PROJECT_SOURCES}
 build: DOCKER_BUILD_OPTIONS=--build-arg VERSION
-build: IMG=${REPO}${ORG}/${PROJECT}:${VERSION}
+build: IMG=${REPO}/${PROJECT}:${VERSION}
 build: ${BUILD_DIR} ${BUILD_ARTIFACT}
 
 %-docker.tar: $${DOCKER_SOURCES}

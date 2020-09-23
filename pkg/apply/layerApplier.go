@@ -73,19 +73,19 @@ func (a KubectlLayerApplier) getLog(layer layers.Layer) (logger logr.Logger) {
 }
 
 func (a KubectlLayerApplier) log(level int, msg string, layer layers.Layer, keysAndValues ...interface{}) {
-	a.getLog(layer).V(level).Info(msg, append(keysAndValues, "sourcePath", layer.GetSourcePath(), "layer", layer)...)
+	a.getLog(layer).V(level).Info(msg, append(keysAndValues, "sourcePath", layer.GetSourcePath())...)
 }
 
 func (a KubectlLayerApplier) logError(err error, msg string, layer layers.Layer, keysAndValues ...interface{}) {
-	a.getLog(layer).Error(err, msg, append(keysAndValues, "sourcePath", layer.GetSourcePath(), "layer", layer)...)
+	a.getLog(layer).Error(err, msg, append(keysAndValues, "sourcePath", layer.GetSourcePath())...)
 }
 
 func (a KubectlLayerApplier) logInfo(msg string, layer layers.Layer, keysAndValues ...interface{}) {
-	a.log(1, msg, layer, keysAndValues...)
+	a.log(0, msg, layer, keysAndValues...)
 }
 
 func (a KubectlLayerApplier) logDebug(msg string, layer layers.Layer, keysAndValues ...interface{}) {
-	a.log(5, msg, layer, keysAndValues...)
+	a.log(1, msg, layer, keysAndValues...)
 }
 
 func (a KubectlLayerApplier) logTrace(msg string, layer layers.Layer, keysAndValues ...interface{}) {
@@ -120,7 +120,7 @@ func (a KubectlLayerApplier) decodeAddons(layer layers.Layer,
 
 	switch obj.(type) {
 	case *corev1.List:
-		a.logDebug("decoded raw object List from kubectl output", layer, "groupVersionKind", gvk, "list", obj)
+		a.logTrace("decoded raw object List from kubectl output", layer, "groupVersionKind", gvk, "list", obj)
 		return a.decodeList(layer, obj.(*corev1.List), &dez)
 	case *helmopv1.HelmRelease:
 		hr, ok := obj.(*helmopv1.HelmRelease)
@@ -230,6 +230,7 @@ func (a KubectlLayerApplier) decodeList(layer layers.Layer,
 }
 
 func (a KubectlLayerApplier) checkSourcePath(layer layers.Layer) (sourceDir string, err error) {
+	a.logTrace("Checking layer source directory", layer)
 	sourceDir = layer.GetSourcePath()
 	info, err := os.Stat(sourceDir)
 	if os.IsNotExist(err) {

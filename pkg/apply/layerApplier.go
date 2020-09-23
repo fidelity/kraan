@@ -30,7 +30,7 @@ import (
 )
 
 var (
-	ownerLabel     string                                            = "kraan/owner"
+	ownerLabel     string                                            = "kraan/layer"
 	newKubectlFunc func(logger logr.Logger) (kubectl.Kubectl, error) = kubectl.NewKubectl
 )
 
@@ -198,11 +198,11 @@ func (a KubectlLayerApplier) addOwnerRefs(layer layers.Layer, objs []runtime.Obj
 			a.logError(err, err.Error(), layer, "runtimeObject", robj)
 			return err
 		}
-		a.logTrace("Adding owner ref to resource for AddonsLayer", layer, "index", i, "obj", obj)
+		a.logDebug("Adding owner ref to resource for AddonsLayer", layer, "index", i, "obj", obj)
 		err := controllerutil.SetControllerReference(layer.GetAddonsLayer(), obj, a.scheme)
 		if err != nil {
 			// could not apply owner ref for object
-			return fmt.Errorf("unable to apply owner reference for AddonsLayer '%s' to resource '%s': %w", layer.GetName(), getObjLabel(robj), err)
+			return fmt.Errorf("unable to apply owner reference for AddonsLayer '%s' to resource '%s': %w", layer.GetName(), getObjLabel(obj), err)
 		}
 		labels := obj.GetLabels()
 		if labels == nil {
@@ -297,7 +297,7 @@ func (a KubectlLayerApplier) applyObject(ctx context.Context, layer layers.Layer
 	}
 
 	return nil
-}
+}*/
 
 func (a KubectlLayerApplier) decodeList(layer layers.Layer,
 	raws *corev1.List, dez *runtime.Decoder) (objs []runtime.Object, err error) {
@@ -394,7 +394,7 @@ func (a KubectlLayerApplier) getSourceHelmRepos(layer layers.Layer) (hrs []*sour
 		return nil, err
 	}
 
-	return hrs, nil
+	return objs, nil
 }
 
 // Apply an AddonLayer to the cluster.
@@ -422,6 +422,20 @@ func (a KubectlLayerApplier) Prune(ctx context.Context, layer layers.Layer, prun
 		}
 	}
 	return nil
+}
+
+func (a KubectlLayerApplier) getSourceHelmReleases(layer layers.Layer) (hrs []*helmopv1.HelmRelease, err error) {
+	objs, err := a.getSourceResources(layer)
+	if err != nil {
+		return nil, err
+	}
+
+	hrs, err = a.decodeHelmReleases(layer, objs)
+	if err != nil {
+		return nil, err
+	}
+
+	return hrs, nil
 }
 
 // PruneIsRequired returns true if any resources need to be pruned for this AddonsLayer

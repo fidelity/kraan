@@ -100,7 +100,6 @@ func main() { //nolint:funlen // ok
 		healthAddr              string
 		enableLeaderElection    bool
 		leaderElectionNamespace string
-		logJSON                 bool
 		logLevel                string
 		syncPeriodStr           string
 	)
@@ -116,7 +115,6 @@ func main() { //nolint:funlen // ok
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	flag.BoolVar(&logJSON, "log-json", false, "Set logging to JSON format.")
 	flag.StringVar(&logLevel, "log-level", "info", "Set logging level. Can be debug, info or error.")
 	flag.StringVar(&healthAddr,
 		"health-addr",

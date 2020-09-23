@@ -28,8 +28,8 @@ spec:
           readOnlyRootFilesystem: true
         args:
         - --enable-leader-election
-        - --log-level=debug
-        - --log-json
+        - --zap-log-level=2
+        - --zap-encoder=json
         env:
           - name: DATA_PATH
             value: /home/controller/data

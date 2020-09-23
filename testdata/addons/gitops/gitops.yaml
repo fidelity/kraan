@@ -1,5 +1,6 @@
 ---
-# GitOps Toolkit revision latest 2020-09-02T17:08:08+01:00
+# GitOps Toolkit revision latest 2020-09-23T09:49:57+01:00
+# Components: source-controller
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -120,15 +121,18 @@ spec:
               artifact:
                 description: Artifact represents the output of the last successful repository sync.
                 properties:
+                  checksum:
+                    description: Checksum is the SHA1 checksum of the artifact.
+                    type: string
                   lastUpdateTime:
                     description: LastUpdateTime is the timestamp corresponding to the last update of this artifact.
                     format: date-time
                     type: string
                   path:
-                    description: Path is the local file path of this artifact.
+                    description: Path is the relative file path of this artifact.
                     type: string
                   revision:
-                    description: Revision is a human readable identifier traceable in the origin source system. It can be a commit sha, git tag, a helm index timestamp, a helm chart version, a checksum, etc.
+                    description: Revision is a human readable identifier traceable in the origin source system. It can be a Git commit sha, Git tag, a Helm index timestamp, a Helm chart version, etc.
                     type: string
                   url:
                     description: URL is the HTTP address of this artifact.
@@ -138,6 +142,7 @@ spec:
                 - url
                 type: object
               conditions:
+                description: Conditions holds the conditions for the GitRepository.
                 items:
                   description: SourceCondition contains condition information for a source.
                   properties:
@@ -162,6 +167,10 @@ spec:
                   - type
                   type: object
                 type: array
+              observedGeneration:
+                description: ObservedGeneration is the last observed generation.
+                format: int64
+                type: integer
               url:
                 description: URL is the download link for the artifact output of the last repository sync.
                 type: string
@@ -198,14 +207,17 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.name
-      name: Name
+    - jsonPath: .spec.chart
+      name: Chart
       type: string
     - jsonPath: .spec.version
       name: Version
       type: string
-    - jsonPath: .spec.helmRepositoryRef.name
-      name: Repository
+    - jsonPath: .spec.sourceRef.kind
+      name: Source Kind
+      type: string
+    - jsonPath: .spec.sourceRef.name
+      name: Source Name
       type: string
     - jsonPath: .status.conditions[?(@.type=="Ready")].status
       name: Ready
@@ -232,26 +244,41 @@ spec:
           spec:
             description: HelmChartSpec defines the desired state of a Helm chart.
             properties:
-              helmRepositoryRef:
-                description: The name of the HelmRepository the chart is available at.
-                properties:
-                  name:
-                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
-                    type: string
-                type: object
-              interval:
-                description: The interval at which to check the Helm repository for updates.
+              chart:
+                description: The name or path the Helm chart is available at in the SourceRef.
                 type: string
-              name:
-                description: The name of the Helm chart, as made available by the referenced Helm repository.
+              interval:
+                description: The interval at which to check the Source for updates.
+                type: string
+              sourceRef:
+                description: The reference to the Source the chart is available at.
+                properties:
+                  apiVersion:
+                    description: APIVersion of the referent.
+                    type: string
+                  kind:
+                    description: Kind of the referent, valid values are ('HelmRepository', 'GitRepository').
+                    enum:
+                    - HelmRepository
+                    - GitRepository
+                    type: string
+                  name:
+                    description: Name of the referent.
+                    type: string
+                required:
+                - kind
+                - name
+                type: object
+              valuesFile:
+                description: Alternative values file to use as the default chart values, expected to be a relative path in the SourceRef. Ignored when omitted.
                 type: string
               version:
-                description: The chart version semver expression, defaults to latest when omitted.
+                description: The chart version semver expression, ignored for charts from GitRepository sources. Defaults to latest when omitted.
                 type: string
             required:
-            - helmRepositoryRef
+            - chart
             - interval
-            - name
+            - sourceRef
             type: object
           status:
             description: HelmChartStatus defines the observed state of the HelmChart.
@@ -259,15 +286,18 @@ spec:
               artifact:
                 description: Artifact represents the output of the last successful chart sync.
                 properties:
+                  checksum:
+                    description: Checksum is the SHA1 checksum of the artifact.
+                    type: string
                   lastUpdateTime:
                     description: LastUpdateTime is the timestamp corresponding to the last update of this artifact.
                     format: date-time
                     type: string
                   path:
-                    description: Path is the local file path of this artifact.
+                    description: Path is the relative file path of this artifact.
                     type: string
                   revision:
-                    description: Revision is a human readable identifier traceable in the origin source system. It can be a commit sha, git tag, a helm index timestamp, a helm chart version, a checksum, etc.
+                    description: Revision is a human readable identifier traceable in the origin source system. It can be a Git commit sha, Git tag, a Helm index timestamp, a Helm chart version, etc.
                     type: string
                   url:
                     description: URL is the HTTP address of this artifact.
@@ -277,6 +307,7 @@ spec:
                 - url
                 type: object
               conditions:
+                description: Conditions holds the conditions for the HelmChart.
                 items:
                   description: SourceCondition contains condition information for a source.
                   properties:
@@ -301,6 +332,10 @@ spec:
                   - type
                   type: object
                 type: array
+              observedGeneration:
+                description: ObservedGeneration is the last observed generation.
+                format: int64
+                type: integer
               url:
                 description: URL is the download link for the last chart pulled.
                 type: string
@@ -391,15 +426,18 @@ spec:
               artifact:
                 description: Artifact represents the output of the last successful repository sync.
                 properties:
+                  checksum:
+                    description: Checksum is the SHA1 checksum of the artifact.
+                    type: string
                   lastUpdateTime:
                     description: LastUpdateTime is the timestamp corresponding to the last update of this artifact.
                     format: date-time
                     type: string
                   path:
-                    description: Path is the local file path of this artifact.
+                    description: Path is the relative file path of this artifact.
                     type: string
                   revision:
-                    description: Revision is a human readable identifier traceable in the origin source system. It can be a commit sha, git tag, a helm index timestamp, a helm chart version, a checksum, etc.
+                    description: Revision is a human readable identifier traceable in the origin source system. It can be a Git commit sha, Git tag, a Helm index timestamp, a Helm chart version, etc.
                     type: string
                   url:
                     description: URL is the HTTP address of this artifact.
@@ -409,6 +447,7 @@ spec:
                 - url
                 type: object
               conditions:
+                description: Conditions holds the conditions for the HelmRepository.
                 items:
                   description: SourceCondition contains condition information for a source.
                   properties:
@@ -433,6 +472,10 @@ spec:
                   - type
                   type: object
                 type: array
+              observedGeneration:
+                description: ObservedGeneration is the last observed generation.
+                format: int64
+                type: integer
               url:
                 description: URL is the download link for the last index fetched.
                 type: string
@@ -495,6 +538,7 @@ rules:
   - events
   verbs:
   - create
+  - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -572,17 +616,18 @@ spec:
     spec:
       containers:
       - args:
-        - --events-addr=http://notification-controller/
+        - --events-addr=
+        - --watch-all-namespaces=true
+        - --log-level=info
+        - --log-json
         - --enable-leader-election
         - --storage-path=/data
-        - --log-level=debug
-        - --log-json
         env:
         - name: RUNTIME_NAMESPACE
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        image: fluxcd/source-controller:v0.0.10
+        image: ghcr.io/fluxcd/source-controller:v0.0.16
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -613,12 +658,13 @@ spec:
           name: data
         - mountPath: /tmp
           name: tmp
+      nodeSelector:
+        kubernetes.io/arch: amd64
+        kubernetes.io/os: linux
       terminationGracePeriodSeconds: 10
       volumes:
-      - emptyDir: {}
-        name: data
-      - emptyDir: {}
-        name: tmp
+      - name: data
+      - name: tmp
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

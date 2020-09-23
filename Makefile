@@ -28,9 +28,9 @@ PROJECT_SOURCES:=$(shell find ./main ./controllers/ ./api/ ./pkg/ -regex '.*.\.\
 BUILD_DIR:=build/
 GITHUB_USER?=$(shell git config --local  user.name)
 export VERSION?=latest
-export REPO ?=ghcr.io/${GITHUB_USER}/
+export REPO ?=ghcr.io/${GITHUB_USER}/${ORG}
 # Image URL to use all building/pushing image targets
-IMG ?= ${REPO}${ORG}/${PROJECT}:${VERSION}
+IMG ?= ${REPO}/${PROJECT}:${VERSION}
 
 ALL_GO_PACKAGES:=$(shell find ${CURDIR}/main/ ${CURDIR}/controllers/ ${CURDIR}/api/ ${CURDIR}/pkg/ \
 	-type f -name *.go -exec dirname {} \; | sort --uniq)
@@ -141,7 +141,7 @@ clean-build:
 
 build: DOCKER_SOURCES=Dockerfile ${MAKE_SOURCES} ${PROJECT_SOURCES}
 build: DOCKER_BUILD_OPTIONS=--build-arg VERSION
-build: IMG=${REPO}${ORG}/${PROJECT}:${VERSION}
+build: IMG=${REPO}/${PROJECT}:${VERSION}
 build: ${BUILD_DIR} ${BUILD_ARTIFACT}
 
 %-docker.tar: $${DOCKER_SOURCES}

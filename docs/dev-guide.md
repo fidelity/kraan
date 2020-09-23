@@ -15,11 +15,9 @@ This project requires the following software:
 
     golangci-lint --version = 1.30.0
     golang version = 1.14.6
-    godocdown version = head
 
 You can install these in the project bin directory using the 'setup.sh' script:
 
-    . bin/env.sh
     setup.sh
 
 The setup.sh script can safely be run at any time. It installs the required software in the $GOPATH/bin/`<project-org>`/`<project-name>` directory, where `<project-org>` is the git organisation name and `<project-name>` is the git respository name, i.e. `fidelity`/`kraan`

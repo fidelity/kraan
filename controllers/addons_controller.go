@@ -240,7 +240,7 @@ func repoMapperFunc(a handler.MapObject) []reconcile.Request {
 		reconciler.Log.Error(fmt.Errorf("unable to cast object to GitRepository"), "skipping processing")
 		return []reconcile.Request{}
 	}
-
+	reconciler.Log.V(2).Info("processing", "gitrepositories.source.toolkit.fluxcd.io", srcRepo)
 	repo := reconciler.Repos.Add(srcRepo)
 	if err := repo.SyncRepo(); err != nil {
 		reconciler.Log.Error(err, "unable to sync repo, not requeuing")

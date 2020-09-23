@@ -246,6 +246,8 @@ function deploy_kraan_mgr() {
   cp -rf "${base_dir}"/testdata/addons/kraan/manager "${work_dir}"
   if [ -n "${kraan_repo}" ] ; then
     sed -i "s#image\:\ docker.pkg.github.com/fidelity/kraan#image\:\ ${kraan_repo}#" "${work_dir}"/manager/deployment.yaml
+  fi
+  if [ -n "${kraan_version}" ] ; then
     sed -i "s#\:latest#\:${kraan_version}#" "${work_dir}"/manager/deployment.yaml
   fi
   if [ -n "${kraan_regcred}" ] ; then

@@ -1,28 +1,11 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  labels:
-    app.kubernetes.io/instance: kraan
-    app.kubernetes.io/version: latest
-  name: manager-role-binding
-  namespace: kraan
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: manager-role
-subjects:
-- kind: ServiceAccount
-  name: default
-  namespace: kraan
----
-apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: gitops-source
+  name: kraan-manager
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: gitops-source
+  name: kraan-manager
 subjects:
 - kind: ServiceAccount
   name: default
@@ -31,11 +14,11 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: helm-release
+  name: kraan-gitops-source
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: helm-release
+  name: kraan-gitops-source
 subjects:
 - kind: ServiceAccount
   name: default
@@ -44,7 +27,20 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: kraan-admin-rolebinding
+  name: kraan-helm-release
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kraan-helm-release
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: kraan
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kraan-deployer
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

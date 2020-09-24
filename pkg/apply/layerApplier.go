@@ -116,11 +116,11 @@ func (a KubectlLayerApplier) decodeAddons(layer layers.Layer,
 		return nil, nil, err
 	}
 
-	a.logTrace("decoded JSON output", layer, "groupVersionKind", gvk, "object", obj)
+	a.logTrace("decoded JSON output", layer, "groupVersionKind", gvk, "object", obj.GetObjectKind())
 
 	switch obj.(type) {
 	case *corev1.List:
-		a.logTrace("decoded raw object List from kubectl output", layer, "groupVersionKind", gvk, "list", obj)
+		a.logTrace("decoded raw object List from kubectl output", layer, "groupVersionKind", gvk, "list", obj.GetObjectKind())
 		return a.decodeList(layer, obj.(*corev1.List), &dez)
 	case *helmopv1.HelmRelease:
 		hr, ok := obj.(*helmopv1.HelmRelease)

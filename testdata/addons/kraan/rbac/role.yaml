@@ -1,57 +1,47 @@
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
-  name: manager-role
-  namespace: kraan
+  name: kraan-manager
 rules:
 - apiGroups:
   - kraan.io
   resources:
-  - addonsLayers
+  - addonslayers
+  - addonslayers/status
   verbs:
   - get
   - list
   - patch
   - update
+  - delete
   - watch
-- apiGroups:
-  - kraan.io
-  resources:
-  - '*'
-  verbs:
-  - get
-  - patch
-  - update
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  labels:
-    app.kubernetes.io/instance: kraan
-    app.kubernetes.io/version: latest
-  name: gitops-source
+  name: kraan-gitops-source
 rules:
 - apiGroups:
   - source.toolkit.fluxcd.io
   resources:
-  - 'gitrepositories'
+  - gitrepositories
+  - gitrepositories/status
   verbs:
   - watch
   - get
+  - list 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  labels:
-    app.kubernetes.io/instance: kraan
-    app.kubernetes.io/version: latest
-  name: helm-release
+  name: kraan-helm-release
 rules:
 - apiGroups:
-  - flux.weave.works
+  - helm.fluxcd.io
   resources:
-  - 'helmrelease'
+  - helmreleases
+  - helmreleases/status
   verbs:
   - create
   - delete

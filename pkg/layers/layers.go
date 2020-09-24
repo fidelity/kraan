@@ -9,10 +9,6 @@ import (
 	"strings"
 	"time"
 
-	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
-	"github.com/fidelity/kraan/pkg/internal/utils"
-	"github.com/fidelity/kraan/pkg/repos"
-
 	"github.com/go-logr/logr"
 	"golang.org/x/mod/semver"
 	corev1 "k8s.io/api/core/v1"
@@ -20,6 +16,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
+	"github.com/fidelity/kraan/pkg/repos"
 )
 
 // MaxConditions is the maximum number of condtions to retain.
@@ -148,11 +147,9 @@ func (l *KraanLayer) getK8sClient() kubernetes.Interface {
 
 // CheckK8sVersion checks if the cluster api server version is equal to or above the required version.
 func (l *KraanLayer) CheckK8sVersion() bool {
-	// TODO - research how to obtain this information using the generic REST client and remove the
-	//        kubernetes.Clientset management functions from the main and addons_controller go files.
 	versionInfo, err := l.getK8sClient().Discovery().ServerVersion()
 	if err != nil {
-		utils.LogError(l.GetLogger(), 2, err, "failed get server version")
+		l.GetLogger().Error(err, "failed get server version")
 		l.StatusUpdate(l.GetStatus(), "failed to obtain cluster api server version",
 			err.Error())
 		l.SetDelayedRequeue()

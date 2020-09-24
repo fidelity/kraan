@@ -30,6 +30,7 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -44,6 +45,29 @@ var (
 	hrOwnerKey = ".owner"
 	reconciler *AddonsLayerReconciler
 )
+
+type AddonsLayerReconcilerOptions struct {
+	MaxConcurrentReconciles int
+}
+
+func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opts AddonsLayerReconcilerOptions) error {
+	addonsLayer := &kraanv1alpha1.AddonsLayer{}
+	hr := &helmopv1.HelmRelease{}
+
+	if err := mgr.GetFieldIndexer().IndexField(r.Context, &helmopv1.HelmRelease{}, hrOwnerKey, indexHelmReleaseByOwner); err != nil {
+		return fmt.Errorf("failed setting up FieldIndexer for HelmRelease owner: %w", err)
+	}
+
+	repoKind := &source.Kind{Type: &sourcev1.GitRepository{}}
+	repoHandler := &handler.EnqueueRequestsFromMapFunc{ToRequests: handler.ToRequestsFunc(repoMapperFunc)}
+
+	return ctrl.NewControllerManagedBy(mgr).
+		For(addonsLayer).
+		WithOptions(controller.Options{MaxConcurrentReconciles: opts.MaxConcurrentReconciles}).
+		Owns(hr).
+		Watches(repoKind, repoHandler).
+		Complete(r)
+}
 
 // AddonsLayerReconciler reconciles a AddonsLayer object.
 type AddonsLayerReconciler struct {
@@ -240,7 +264,7 @@ func repoMapperFunc(a handler.MapObject) []reconcile.Request {
 		reconciler.Log.Error(fmt.Errorf("unable to cast object to GitRepository"), "skipping processing")
 		return []reconcile.Request{}
 	}
-
+	reconciler.Log.V(2).Info("processing", "gitrepositories.source.toolkit.fluxcd.io", srcRepo)
 	repo := reconciler.Repos.Add(srcRepo)
 	if err := repo.SyncRepo(); err != nil {
 		reconciler.Log.Error(err, "unable to sync repo, not requeuing")
@@ -283,23 +307,4 @@ func indexHelmReleaseByOwner(o runtime.Object) []string {
 	log.Info("HR associated with layer", "Layer Name", owner.Name, "HR", fmt.Sprintf("%s/%s", hr.GetNamespace(), hr.GetName()))
 
 	return []string{owner.Name}
-}
-
-// SetupWithManager is used to setup the controller
-func (r *AddonsLayerReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	addonsLayer := &kraanv1alpha1.AddonsLayer{}
-	hr := &helmopv1.HelmRelease{}
-
-	if err := mgr.GetFieldIndexer().IndexField(r.Context, &helmopv1.HelmRelease{}, hrOwnerKey, indexHelmReleaseByOwner); err != nil {
-		return fmt.Errorf("failed setting up FieldIndexer for HelmRelease owner: %w", err)
-	}
-
-	repoKind := &source.Kind{Type: &sourcev1.GitRepository{}}
-	repoHandler := &handler.EnqueueRequestsFromMapFunc{ToRequests: handler.ToRequestsFunc(repoMapperFunc)}
-
-	return ctrl.NewControllerManagedBy(mgr).
-		For(addonsLayer).
-		Owns(hr).
-		Watches(repoKind, repoHandler).
-		Complete(r)
 }

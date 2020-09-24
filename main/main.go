@@ -27,6 +27,8 @@ import (
 	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
 	"github.com/go-logr/logr"
+	uzap "go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -94,6 +96,15 @@ func CheckLogLevels(log logr.Logger) LogLevels {
 	return lvl
 }
 
+// NewLogger returns a logger configured the timestamps format is ISO8601
+func NewLogger(logOpts *zap.Options) logr.Logger {
+	encCfg := uzap.NewProductionEncoderConfig()
+	encCfg.EncodeTime = zapcore.ISO8601TimeEncoder
+	encoder := zap.Encoder(zapcore.NewJSONEncoder(encCfg))
+
+	return zap.New(zap.UseFlagOptions(logOpts), encoder).WithName("kraan")
+}
+
 func main() { //nolint:funlen // ok
 	var (
 		metricsAddr             string
@@ -101,6 +112,7 @@ func main() { //nolint:funlen // ok
 		enableLeaderElection    bool
 		leaderElectionNamespace string
 		logLevel                string
+		concurrent              int
 		syncPeriodStr           string
 	)
 
@@ -115,6 +127,7 @@ func main() { //nolint:funlen // ok
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.IntVar(&concurrent, "concurrent", 4, "The number of concurrent reconciles per controller.")
 	flag.StringVar(&logLevel, "log-level", "info", "Set logging level. Can be debug, info or error.")
 	flag.StringVar(&healthAddr,
 		"health-addr",
@@ -135,7 +148,7 @@ func main() { //nolint:funlen // ok
 	flag.Parse()
 
 	setupLog.Info("command-line flags", "osArgs", os.Args[:1])
-	logger := zap.New(zap.UseFlagOptions(&logOpts)).WithName("kraan")
+	logger := NewLogger(&logOpts)
 
 	loggerType := fmt.Sprintf("%T", logger)
 	lvl := CheckLogLevels(logger)
@@ -152,6 +165,27 @@ func main() { //nolint:funlen // ok
 		setupLog.Error(err, "problem creating manager")
 		os.Exit(1)
 	}
+
+	r, err := controllers.NewReconciler(
+		mgr.GetConfig(),
+		mgr.GetClient(),
+		logger.WithName("controller"),
+		mgr.GetScheme())
+	if err != nil {
+		setupLog.Error(err, "unable to create Reconciler")
+		os.Exit(1)
+	}
+
+	err = r.SetupWithManagerAndOptions(mgr, controllers.AddonsLayerReconcilerOptions{
+		MaxConcurrentReconciles: concurrent,
+	})
+	// +kubebuilder:scaffold:builder
+	if err != nil {
+		setupLog.Error(err, "unable to setup Reconciler with Manager")
+		os.Exit(1)
+	}
+
+	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
@@ -177,10 +211,6 @@ func createManager(metricsAddr string, healthAddr string, enableLeaderElection b
 		return nil, fmt.Errorf("unable to start manager: %w", err)
 	}
 
-	if err := createController(mgr, logger); err != nil {
-		return nil, fmt.Errorf("unable to create controller: %w", err)
-	}
-
 	if err := mgr.AddReadyzCheck("ping", readinessCheck); err != nil {
 		return nil, fmt.Errorf("unable to create ready check: %w", err)
 	}
@@ -192,29 +222,12 @@ func createManager(metricsAddr string, healthAddr string, enableLeaderElection b
 	return mgr, nil
 }
 
-func createController(mgr manager.Manager, logger logr.Logger) error {
-	r, err := controllers.NewReconciler(
-		mgr.GetConfig(),
-		mgr.GetClient(),
-		logger.WithName("controller"),
-		mgr.GetScheme())
-	if err != nil {
-		return fmt.Errorf("unable to create Reconciler: %w", err)
-	}
-	err = r.SetupWithManager(mgr)
-	// +kubebuilder:scaffold:builder
-	if err != nil {
-		return fmt.Errorf("unable to setup Reconciler with Manager: %w", err)
-	}
-	return nil
-}
-
 func readinessCheck(req *http.Request) error {
-	//setupLog.Info(fmt.Sprintf("got readiness check: %s", req.Header))
+	setupLog.V(5).Info("got readiness check", "header", req.Header)
 	return nil
 }
 
 func livenessCheck(req *http.Request) error {
-	//setupLog.Info(fmt.Sprintf("got liveness check: %s", req.Header))
+	setupLog.V(5).Info("got liveness check", "header", req.Header)
 	return nil
 }

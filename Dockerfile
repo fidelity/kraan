@@ -18,15 +18,14 @@ COPY api/ api
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o kraan-controller main/main.go
 
-FROM ubuntu:18.04
+FROM alpine:3.12
 WORKDIR /
-RUN apt-get -y update
-RUN apt-get -y install curl
+RUN apk add curl
 COPY --from=builder /workspace/kraan-controller /usr/local/bin/
 RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.17.0/bin/linux/amd64/kubectl
 RUN chmod +x ./kubectl
 RUN mv ./kubectl /usr/local/bin
-RUN useradd -ms /bin/bash controller
+RUN addgroup -S controller && adduser -S -g controller controller
 
 USER controller
 

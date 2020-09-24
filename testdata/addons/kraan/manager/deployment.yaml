@@ -28,7 +28,7 @@ spec:
           readOnlyRootFilesystem: true
         args:
         - --enable-leader-election
-        - --zap-log-level=2
+        - --zap-log-level=99
         - --zap-encoder=json
         env:
           - name: DATA_PATH

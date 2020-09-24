@@ -23,7 +23,7 @@ require (
 	github.com/prometheus/procfs v0.0.11 // indirect
 	github.com/stretchr/testify v1.4.0 // indirect
 	go.uber.org/atomic v1.4.0 // indirect
-	go.uber.org/zap v1.10.0 // indirect
+	go.uber.org/zap v1.10.0
 	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975 // indirect
 	golang.org/x/mod v0.1.1-0.20191105210325-c90efee705ee
 	golang.org/x/text v0.3.3 // indirect

@@ -49,9 +49,9 @@ metadata:
   name: helm-release
 rules:
 - apiGroups:
-  - flux.weave.works
+  - helm.fluxcd.io
   resources:
-  - 'helmrelease'
+  - 'helmreleases'
   verbs:
   - create
   - delete

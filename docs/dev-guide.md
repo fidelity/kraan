@@ -131,3 +131,23 @@ The `SC_HOST` environmental variable can be used to set the host component of th
 If you elected to use the `--no-testdata` option when setting up the cluster then you will need to apply these files. You can do this by applying `.testdata/addons/addons-source.yaml` and `.testdata/addons/addons.yaml` to deploy the source controller custom resource and AddonsLayers custom resources respectively. This will cause the kraan-controller to operate on the testdata in the `./testdata` directory of this repository using the `master` branch. If you want to test against other branches use the copy of these files the `scripts/run-controller.sh` creates. Edit then apply those files.
 
 If you want to use the kraan-controller to deploy items defined in your own repository edit the 'addons-source.yaml' file in the temporary directory to reference the repository and branch contaiining your addons definitions and apply it to the cluster. Then edit the `.testdata/addons/addons.yaml` file to define the addons layers and apply that.
+
+## Deployment Guide
+
+To deploy to a cluster build the docker image and then deploy to the cluster. Assuming you have already installed the GitOps Toolkit (see above) use the `setup.sh` script. The following will build the docker image and push it to the Github packages then deploy to your Kubernetes cluster.
+    
+    export VERSION=v0.0.14
+    make clean-build
+    make build
+    docker login docker.pkg.github.com -u <github user> -p <github token>
+    make docker-push
+    scripts/setup.sh --kraan-version $VERSION --no-gitops --kraan-image-pull-secret auto
+
+To deploy the image to your account in docker.io:
+
+    make clean-build
+    export REPO=<docker user>
+    make build
+    docker login -u <docker user> -p <docker password>
+    make docker-push
+    scripts/setup.sh --kraan-version $VERSION --no-gitops --kraan-image-repo $REPO

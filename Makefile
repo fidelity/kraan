@@ -8,13 +8,6 @@ ifeq (,$(strip ${GOBIN}))
 GOBIN := $(shell go env GOPATH)/bin
 endif
 
-TOOLS_DIR := hack/tools
-TOOLS_BIN_DIR := $(TOOLS_DIR)/bin
-BIN_DIR := bin
-
-# Binaries
-GOLANGCI_LINT := $(abspath $(TOOLS_BIN_DIR)/golangci-lint)
-
 .DEFAULT_GOAL := all
 
 include project-name.mk
@@ -157,10 +150,6 @@ build: ${BUILD_DIR} ${BUILD_ARTIFACT}
 		--file $< \
 		. && \
 	docker save --output $@ ${IMG}
-
-lint-build: 
-$(GOLANGCI_LINT): $(TOOLS_DIR)/go.mod # Build golangci-lint from tools folder
-	cd $(TOOLS_DIR); go build -tags=tools -o $(BIN_DIR)/golangci-lint github.com/golangci/golangci-lint/cmd/golangci-lint
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: ${PROJECT}-build

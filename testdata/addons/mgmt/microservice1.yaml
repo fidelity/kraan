@@ -33,5 +33,5 @@ spec:
         type: ClusterIP
       replicaCount: 1
       message: -Microservice Test 1
-  interval: 10m0s
+  interval: 1m0s
 

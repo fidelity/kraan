@@ -1,5 +1,5 @@
 apiVersion: source.toolkit.fluxcd.io/v1alpha1
-kind: 
+kind: HelmRepository
 metadata:
   name: microservice-1
   namespace: mgmt

@@ -1,20 +1,21 @@
-apiVersion: helm.fluxcd.io/v1
+apiVersion: helm.toolkit.fluxcd.io/v2alpha1
 kind: HelmRelease
 metadata:
   name: microservice-1
   namespace: base
-  annotations:
-    fluxcd.io/automated: "false"
 spec:
-  releaseName: microservice-test-1
-  test:
-    enable: true
-    ignoreFailures: true
-    timeout: 300
   chart:
-    git: https://github.com/fidelity/kraan
-    path: testdata/charts/podinfo
-    ref: master
+    spec:
+      chart: podinfo
+      sourceRef:
+        kind: HelmRepository
+        name: microservice-1
+        namespace: base
+      version: '>4.0.0'
+  test:
+    enable: false
+    ignoreFailures: false
+    timeout: "1m"
   values:
     preHookBackoffLimit: 1
     preHookActiveDeadlineSeconds: 60
@@ -32,3 +33,5 @@ spec:
         type: ClusterIP
       replicaCount: 1
       message: -Microservice Test 1
+  interval: 10m0s
+

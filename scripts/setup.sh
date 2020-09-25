@@ -10,8 +10,7 @@ function usage() {
     set +x
     cat <<EOF
 USAGE: ${0##*/} [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--no-kraan] [--no-gitops]
-       [--kraan-version] [--helm-operator-namespace <namespace>] [--install-helm-operator]
-       [--kraan-image-pull-secret auto | <filename>] [--kraan-image-repo <repo-name>]
+       [--kraan-version] [--kraan-image-pull-secret auto | <filename>] [--kraan-image-repo <repo-name>]
        [--gitops-image-pull-secret auto | <filename>] [--gitops-image-repo <repo-name>]
        [--gitops-proxy auto | <proxy-url>] [--git-url <git-repo-url>]
        [--git-user <git_username>] [--git-token <git_token_or_password>]
@@ -24,8 +23,6 @@ Options:
                               the last element of the filename should also be the secret name, e.g.
                               filename /tmp/regcred.yaml should define a secret called 'regcred'
   '--gitops-image-pull-secret' as above for gitops components
-  '--install-helm-operator' deploy the Helm Operator.
-  '--helm-operator-namespace' set the namespace to install helm-operator in, defaults to 'helm-operator'.
   '--kraan-image-repo' provide image repository to use for Kraan, defaults to docker.pkg.github.com/
   '--kraan-version' the version of the kraan image to use.
   '--gitops-image-repo' provide image repository to use for gitops components, defaults to docker.io/fluxcd
@@ -102,8 +99,6 @@ function args() {
   gitops_regcred=""
   gitops_proxy=""
   git_url
-  install_helm_operator=0
-  helm_operator_namespace="helm-operator"
   deploy_kraan=1
   deploy_gitops=1
   apply_testdata=1
@@ -128,9 +123,6 @@ function args() {
           "--git-url") (( arg_index+=1 )); GIT_URL="${arg_list[${arg_index}]}";;
           "--git-user") (( arg_index+=1 )); GIT_USER="${arg_list[${arg_index}]}";;
           "--git-token") (( arg_index+=1 )); GIT_CREDENTIALS="${arg_list[${arg_index}]}";;
-          "--gitops-image-repo") (( arg_index+=1 )); gitops_repo="${arg_list[${arg_index}]}";toolkit=1;;
-          "--install-helm-operator") install_helm_operator=1;;
-          "--helm-operator-namespace") (( arg_index+=1 )); helm_operator_namespace="${arg_list[${arg_index}]}";;
           "--dry-run") dry_run="--dry-run";;
           "--debug") set -x;;
                "-h") usage; exit;;
@@ -202,7 +194,7 @@ function toolkit_refresh() {
     fi
     gitops_regcred_arg="--image-pull-secret ${secret_name}"
   fi
-  gotk install --export --components=source-controller ${gitops_repo_arg} ${gitops_regcred_arg} > "${work_dir}"/gitops/gitops.yaml
+  gotk install --export --components=source-controller,helm-controller ${gitops_repo_arg} ${gitops_regcred_arg} > "${work_dir}"/gitops/gitops.yaml
   if [ -n "${dry_run}" ] ; then
     echo "yaml for gitops toolkit is in ${work_dir}/gitops/gitops.yaml"
   fi
@@ -265,30 +257,13 @@ function deploy_kraan_mgr() {
   fi
 }
 
-function install_helm() {
-  # Install Helm Operator
-  echo "installing helm-operator"
-  helm repo add fluxcd https://charts.fluxcd.io
-  kubectl apply ${dry_run} -f https://raw.githubusercontent.com/fluxcd/helm-operator/1.1.0/deploy/crds.yaml
-  set +e
-  kubectl get namespace $helm_operator_namespace >/dev/null
-  if [ $? -ne 0 ] ; then
-    echo "creating namespace $helm_operator_namespace for helm-operator"
-    kubectl create namespace $helm_operator_namespace
-  fi
-  set -e
-  helm upgrade ${dry_run} -i helm-operator fluxcd/helm-operator --namespace $helm_operator_namespace --set helm.versions=v3
-}
-
 args "$@"
 
 base_dir="$(git rev-parse --show-toplevel)"
 work_dir="$(mktemp -d -t kraan-XXXXXX)"
 
 if [ $deploy_kind -gt 0 ] ; then
-  KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-k8s}"
-  "${base_dir}"/scripts/kind-with-registry.sh
-  export KUBECONFIG=$HOME/kind-${KIND_CLUSTER_NAME}.config
+  "${base_dir}"/scripts/kind.sh
 fi
 
 if [ $deploy_gitops -gt 0 ] ; then 
@@ -320,10 +295,6 @@ kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/kraan/rbac/role.yaml
 kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/kraan/rbac/role_binding.yaml
 
 deploy_kraan_mgr
-
-if [ $install_helm_operator -gt 0 ]; then
-  install_helm
-fi
 
 if [ $apply_testdata -gt 0 ]; then
   create_addons_source_yaml "${base_dir}/testdata/addons/addons-source.yaml" "${work_dir}/addons-source.yaml"

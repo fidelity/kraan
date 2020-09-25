@@ -7,7 +7,7 @@ package apply
 import (
 	context "context"
 	layers "github.com/fidelity/kraan/pkg/layers"
-	v1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
+	v2alpha1 "github.com/fluxcd/helm-controller/api/v2alpha1"
 	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
 )
@@ -50,7 +50,7 @@ func (mr *MockLayerApplierMockRecorder) Apply(ctx, layer interface{}) *gomock.Ca
 }
 
 // Prune mocks base method
-func (m *MockLayerApplier) Prune(ctx context.Context, layer layers.Layer, pruneHrs []*v1.HelmRelease) error {
+func (m *MockLayerApplier) Prune(ctx context.Context, layer layers.Layer, pruneHrs []*v2alpha1.HelmRelease) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Prune", ctx, layer, pruneHrs)
 	ret0, _ := ret[0].(error)
@@ -64,11 +64,11 @@ func (mr *MockLayerApplierMockRecorder) Prune(ctx, layer, pruneHrs interface{}) 
 }
 
 // PruneIsRequired mocks base method
-func (m *MockLayerApplier) PruneIsRequired(ctx context.Context, layer layers.Layer) (bool, []*v1.HelmRelease, error) {
+func (m *MockLayerApplier) PruneIsRequired(ctx context.Context, layer layers.Layer) (bool, []*v2alpha1.HelmRelease, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PruneIsRequired", ctx, layer)
 	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].([]*v1.HelmRelease)
+	ret1, _ := ret[1].([]*v2alpha1.HelmRelease)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }

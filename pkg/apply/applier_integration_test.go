@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
+	helmopv1 "github.com/fluxcd/helm-controller/api/v2alpha1"
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"
 	corev1 "k8s.io/api/core/v1"

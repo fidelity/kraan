@@ -11,7 +11,7 @@ import (
 	"os"
 	"reflect"
 
-	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
+	helmopv1 "github.com/fluxcd/helm-controller/api/v2alpha1"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -406,7 +406,7 @@ func (a KubectlLayerApplier) ApplyWasSuccessful(ctx context.Context, layer layer
 	}
 
 	for _, hr := range clusterHrs {
-		if hr.Status.Phase != helmopv1.HelmReleasePhaseSucceeded {
+		if hr.Status.Failures != 0 { // Temp to get it to build needs work
 			a.logDebug("unsuccessful HelmRelease for AddonsLayer", layer, "resource", hr)
 			return false, nil
 		}

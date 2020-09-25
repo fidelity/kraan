@@ -406,7 +406,7 @@ func (a KubectlLayerApplier) ApplyWasSuccessful(ctx context.Context, layer layer
 	}
 
 	for _, hr := range clusterHrs {
-		if !CheckHR(*hr) {
+		if !a.CheckHR(*hr, layer) {
 			a.logDebug("unsuccessful HelmRelease for AddonsLayer", layer, "resource", hr)
 			return false, nil
 		}
@@ -415,10 +415,13 @@ func (a KubectlLayerApplier) ApplyWasSuccessful(ctx context.Context, layer layer
 	return true, nil
 }
 
-func CheckHR(hr helmopv1.HelmRelease) bool {
+func (a KubectlLayerApplier) CheckHR(hr helmopv1.HelmRelease, layer layers.Layer) bool {
+	a.logDebug("Check HelmRelease for AddonsLayer", layer, "resource", hr)
 	cond := helmopv1.GetHelmReleaseCondition(hr, "Installed")
 	if cond == nil {
+		a.logDebug("HelmRelease for AddonsLayer not installed", layer, "resource", hr)
 		return false
 	}
+	a.logDebug("HelmRelease for AddonsLayer installed", layer, "resource", hr, "condition", cond)
 	return cond.Status == "True"
 }

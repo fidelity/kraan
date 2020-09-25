@@ -13,6 +13,7 @@ import (
 
 	helmopv1 "github.com/fluxcd/helm-controller/api/v2alpha1"
 	"github.com/go-logr/logr"
+	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -383,9 +384,14 @@ func (a KubectlLayerApplier) ApplyIsRequired(ctx context.Context, layer layers.L
 
 func (a KubectlLayerApplier) sourceHasChanged(layer layers.Layer, source, found *helmopv1.HelmRelease) (changed bool) {
 	a.logTrace("comparing HelmRelease source to KubeAPI resource", layer, "source", source.Spec, "found", found.Spec)
-	if !reflect.DeepEqual(source.Spec, found.Spec) || !reflect.DeepEqual(source.ObjectMeta.Labels, found.ObjectMeta.Labels) {
+	if !cmp.Equal(source.Spec, found.Spec) {
+		a.logInfo("found spec change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source),
+			"source", source.Spec, "found", found.Spec, "diff", cmp.Diff(source.Spec, found.Spec))
+	}
+	if !reflect.DeepEqual(source.ObjectMeta.Labels, found.ObjectMeta.Labels) {
 		// this resource source spec does not match the resource spec on the cluster
-		a.logInfo("found spec change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source), "source", source.Spec, "found", found.Spec)
+		a.logInfo("found label change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source),
+			"label source", source.ObjectMeta.Labels, "label found", found.ObjectMeta.Labels)
 		return true
 	}
 	sourceLabels := source.ObjectMeta.Labels

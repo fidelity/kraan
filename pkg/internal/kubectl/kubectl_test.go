@@ -24,13 +24,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fidelity/kraan/pkg/internal/kubectl"
-	mocks "github.com/fidelity/kraan/pkg/internal/mocks/kubectl"
-	mocklogr "github.com/fidelity/kraan/pkg/internal/mocks/logr"
-
 	"github.com/go-logr/logr"
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"
+
+	"github.com/fidelity/kraan/pkg/internal/kubectl"
+	mocks "github.com/fidelity/kraan/pkg/internal/mocks/kubectl"
+	mocklogr "github.com/fidelity/kraan/pkg/internal/mocks/logr"
 )
 
 var (
@@ -101,7 +101,7 @@ func setup(t *testing.T, subCmd string, expectJSON bool, expectedArgs ...string)
 
 	cmdArgs := append([]string{subCmd}, expectedArgs...)
 	runArgs := cmdArgs
-	dryRunArgs := append(runArgs, "--dry-run")
+	dryRunArgs := append(runArgs, "--server-dry-run")
 	if expectJSON {
 		jsonArgs := []string{"-o", "json"}
 		runArgs = append(runArgs, jsonArgs...)

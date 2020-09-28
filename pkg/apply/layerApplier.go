@@ -20,6 +20,7 @@ import (
 	//"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	//"k8s.io/client-go/kubernetes/scheme"
+	"github.com/paulcarlton-ww/go-utils/pkg/goutils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -383,7 +384,10 @@ func (a KubectlLayerApplier) ApplyIsRequired(ctx context.Context, layer layers.L
 
 func (a KubectlLayerApplier) sourceHasChanged(layer layers.Layer, source, found *helmopv1.HelmRelease) (changed bool) {
 	a.logTrace("comparing HelmRelease source to KubeAPI resource", layer, "source", source.Spec, "found", found.Spec)
-	if !cmp.Equal(source.Spec, found.Spec) {
+	sourceType := fmt.Sprintf("%T %#v", source.Spec.Values, source.Spec.Values)
+	foundType := fmt.Sprintf("%T %#v", found.Spec.Values, found.Spec.Values)
+	a.logTrace("source and found types", layer, "source", sourceType, "found", foundType)
+	if !goutils.CompareAsJSON(source.Spec, found.Spec) {
 		a.logInfo("found spec change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source),
 			"source", source.Spec, "found", found.Spec, "diff", cmp.Diff(source.Spec, found.Spec))
 	}
@@ -422,11 +426,14 @@ func (a KubectlLayerApplier) ApplyWasSuccessful(ctx context.Context, layer layer
 
 func (a KubectlLayerApplier) CheckHR(hr helmopv1.HelmRelease, layer layers.Layer) bool {
 	a.logDebug("Check HelmRelease for AddonsLayer", layer, "resource", hr)
-	cond := helmopv1.GetHelmReleaseCondition(hr, "Installed")
+	cond := helmopv1.GetHelmReleaseCondition(hr, "Ready")
 	if cond == nil {
 		a.logDebug("HelmRelease for AddonsLayer not installed", layer, "resource", hr)
 		return false
 	}
+	// "reason": "ReconciliationSucceeded",
+	//       "message": "release reconciliation succeeded"
+
 	a.logDebug("HelmRelease for AddonsLayer installed", layer, "resource", hr, "condition", cond)
 	return cond.Status == "True"
 }

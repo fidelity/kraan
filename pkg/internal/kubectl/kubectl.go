@@ -144,7 +144,7 @@ func (c *abstractCommand) Run() (output []byte, err error) {
 
 // DryRun executes the Kubectl command as a dry run and returns the output without making any changes to the cluster.
 func (c *abstractCommand) DryRun() (output []byte, err error) {
-	c.args = append(c.args, "--dry-run")
+	c.args = append(c.args, "--dry-run=client")
 	return c.Run()
 }
 

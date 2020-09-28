@@ -17,7 +17,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-
 	//"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	//"k8s.io/client-go/kubernetes/scheme"
@@ -106,7 +105,7 @@ func getLabel(hr *helmopv1.HelmRelease) string {
 func (a KubectlLayerApplier) decodeAddons(layer layers.Layer,
 	json []byte) (hrs []*helmopv1.HelmRelease, errz []error, err error) {
 	// TODO - should probably trace log the json before we try to decode it.
-	a.logTrace("decoding JSON output from kubectl", layer, "output", json)
+	//a.logTrace("decoding JSON output from kubectl", layer, "output", json)
 
 	// dez := a.scheme.Codecs.UniversalDeserializer()
 	dez := serializer.NewCodecFactory(a.scheme).UniversalDeserializer()

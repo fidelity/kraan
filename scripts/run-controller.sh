@@ -56,4 +56,4 @@ read -p "Pausing to allow user to make manual changes to testdata in ${work_dir}
 
 kubectl -n gitops-system port-forward svc/source-controller 8090:80 &
 export SC_HOST=localhost:8090
-kraan-controller -zap-encoder=json -zap-log-level=99 2>&1 | tee ${work_dir}/kraan.log | grep "^{" | jq -r
+kraan-controller -zap-encoder=json -zap-log-level=1 2>&1 | tee ${work_dir}/kraan.log | grep "^{" | jq -r

@@ -16,6 +16,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -114,7 +115,7 @@ func (a KubectlLayerApplier) decodeHelmReleases(layer layers.Layer, objs []runti
 		case *helmctlv2.HelmRelease:
 			hr, ok := obj.(*helmctlv2.HelmRelease)
 			if ok {
-				a.logDebug("found HelmRelease in Object list", layer, "index", i, "helmRelease", hr)
+				a.logTrace("found HelmRelease in Object list", layer, "index", i, "helmRelease", hr)
 				hrs = append(hrs, hr)
 			} else {
 				err = fmt.Errorf("unable to convert runtime.Object to HelmRelease")
@@ -134,7 +135,7 @@ func (a KubectlLayerApplier) decodeHelmRepos(layer layers.Layer, objs []runtime.
 		case *sourcev1.HelmRepository:
 			hr, ok := obj.(*sourcev1.HelmRepository)
 			if ok {
-				a.logDebug("found HelmRelease in Object list", layer, "index", i, "helmRelease", hr)
+				a.logTrace("found HelmRelease in Object list", layer, "index", i, "helmRelease", hr)
 				hrs = append(hrs, hr)
 			} else {
 				err = fmt.Errorf("unable to convert runtime.Object to HelmRelease")
@@ -183,7 +184,7 @@ func (a KubectlLayerApplier) addOwnerRefs(layer layers.Layer, objs []runtime.Obj
 			a.logError(err, err.Error(), layer, "runtimeObject", robj)
 			return err
 		}
-		a.logDebug("Adding owner ref to resource for AddonsLayer", layer, "index", i, "obj", obj)
+		a.logTrace("Adding owner ref to resource for AddonsLayer", layer, "index", i, "obj", obj)
 		err := controllerutil.SetControllerReference(layer.GetAddonsLayer(), obj, a.scheme)
 		if err != nil {
 			// could not apply owner ref for object
@@ -211,12 +212,29 @@ func (a KubectlLayerApplier) getHelmReleases(ctx context.Context, layer layers.L
 	return foundHrs, nil
 }
 
-
 func (a KubectlLayerApplier) applyObjects(ctx context.Context, layer layers.Layer, objs []runtime.Object) error {
 	a.logDebug("To be applied resources for AddonsLayer", layer, "objects", utils.LogJSON(objs))
 	for i, hr := range objs {
-		a.logDebug("Applying resources for AddonsLayer", layer, "index", i, "object", hr)
+		a.logDebug("Applying resources for AddonsLayer", layer, "index", i, "object", utils.LogJSON(hr))
+		key, e := client.ObjectKeyFromObject(hr)
+		if e != nil {
+			a.logDebug("error getting key", layer, "error", e)
+			return e
+		}
+		a.logDebug("existing resource key for AddonsLayer", layer, "key", key)
+		existing := hr.DeepCopyObject()
+		if e := a.client.Get(ctx, key, existing); e != nil {
+			if !errors.IsNotFound(e) {
+				a.logDebug("error getting existing object", layer, "error", e)
+				return fmt.Errorf("unable to get existing object: %w", e)
+			}
+			a.logDebug("no existing resource for AddonsLayer", layer, "key", key)
+		} else {
+			a.logDebug("existing resource for AddonsLayer", layer, "key", key, "objects", utils.LogJSON(existing))
+		}
+
 		res, err := controllerutil.CreateOrUpdate(ctx, a.client, hr, func() error {
+			fmt.Fprintln(os.Stderr, "mutate")
 			return nil
 		})
 		if err != nil {
@@ -278,7 +296,7 @@ func (a KubectlLayerApplier) decodeList(layer layers.Layer,
 	raws *corev1.List, dez *runtime.Decoder) (objs []runtime.Object, err error) {
 	dec := *dez
 
-	a.logDebug("decoding list of raw JSON items", layer, "length", len(raws.Items))
+	a.logTrace("decoding list of raw JSON items", layer, "length", len(raws.Items))
 
 	for i, raw := range raws.Items {
 		obj, gvk, decodeErr := dec.Decode(raw.Raw, nil, nil)

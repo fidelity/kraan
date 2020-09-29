@@ -53,9 +53,14 @@ type AddonsLayerReconcilerOptions struct {
 func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opts AddonsLayerReconcilerOptions) error {
 	addonsLayer := &kraanv1alpha1.AddonsLayer{}
 	hr := &helmctlv2.HelmRelease{}
+	hrepo := &sourcev1.HelmRepository{}
 
 	if err := mgr.GetFieldIndexer().IndexField(r.Context, &helmctlv2.HelmRelease{}, hrOwnerKey, indexHelmReleaseByOwner); err != nil {
 		return fmt.Errorf("failed setting up FieldIndexer for HelmRelease owner: %w", err)
+	}
+
+	if err := mgr.GetFieldIndexer().IndexField(r.Context, &sourcev1.HelmRepository{}, hrOwnerKey, indexHelmRepoByOwner); err != nil {
+		return fmt.Errorf("failed setting up FieldIndexer for HelmRepository owner: %w", err)
 	}
 
 	repoKind := &source.Kind{Type: &sourcev1.GitRepository{}}
@@ -65,6 +70,7 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 		For(addonsLayer).
 		WithOptions(controller.Options{MaxConcurrentReconciles: opts.MaxConcurrentReconciles}).
 		Owns(hr).
+		Owns(hrepo).
 		Watches(repoKind, repoHandler).
 		Complete(r)
 }
@@ -133,6 +139,7 @@ func (r *AddonsLayerReconciler) processApply(l layers.Layer) (statusReconciled b
 
 	applyIsRequired, err := applier.ApplyIsRequired(ctx, l)
 	if err != nil {
+		r.Log.Error(err, "check for apply required failed")
 		return false, err
 	} else if applyIsRequired {
 		r.Log.Info("apply required", "Name", l.GetName(), "Spec", l.GetSpec(), "Status", l.GetFullStatus())
@@ -305,6 +312,24 @@ func indexHelmReleaseByOwner(o runtime.Object) []string {
 	}
 	log := ctrl.Log.WithName("hr sync")
 	log.Info("HR associated with layer", "Layer Name", owner.Name, "HR", fmt.Sprintf("%s/%s", hr.GetNamespace(), hr.GetName()))
+
+	return []string{owner.Name}
+}
+
+func indexHelmRepoByOwner(o runtime.Object) []string {
+	hr, ok := o.(*sourcev1.HelmRepository)
+	if !ok {
+		return nil
+	}
+	owner := metav1.GetControllerOf(hr)
+	if owner == nil {
+		return nil
+	}
+	if owner.APIVersion != kraanv1alpha1.GroupVersion.String() || owner.Kind != "AddonsLayer" {
+		return nil
+	}
+	log := ctrl.Log.WithName("hr sync")
+	log.Info("Helm Repository associated with layer", "Layer Name", owner.Name, "HR", fmt.Sprintf("%s/%s", hr.GetNamespace(), hr.GetName()))
 
 	return []string{owner.Name}
 }

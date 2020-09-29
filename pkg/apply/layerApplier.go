@@ -229,7 +229,7 @@ func (a KubectlLayerApplier) getHelmRepos(ctx context.Context, layer layers.Laye
 	hrList := &sourcev1.HelmRepositoryList{}
 	err = a.client.List(ctx, hrList, client.MatchingFields{".owner": layer.GetName()})
 	if err != nil {
-		return nil, fmt.Errorf("unable to list HelmRelease resources owned by '%s': %w", layer.GetName(), err)
+		return nil, fmt.Errorf("unable to list HelmRepos resources owned by '%s': %w", layer.GetName(), err)
 	}
 	for _, hr := range hrList.Items {
 		foundHrs = append(foundHrs, hr.DeepCopy())
@@ -490,7 +490,7 @@ func (a KubectlLayerApplier) helmReposApplyRequired(ctx context.Context, layer l
 		_, ok := hrs[getLabel(source.ObjectMeta)]
 		if !ok {
 			// this resource exists in the source directory but not on the cluster
-			a.logInfo("found new HelmRelease in AddonsLayer source directory", layer, "newHelmRelease", source.Spec)
+			a.logInfo("found new HelmRepository in AddonsLayer source directory", layer, "new HelmRepository", source.Spec)
 			return true, nil
 		}
 	}
@@ -506,10 +506,6 @@ func (a KubectlLayerApplier) helmReposApplyRequired(ctx context.Context, layer l
 }
 
 func (a KubectlLayerApplier) sourceHasReleaseChanged(layer layers.Layer, source, found *helmctlv2.HelmRelease) (changed bool) {
-	a.logTrace("comparing HelmRelease source to KubeAPI resource", layer, "source", source.Spec, "found", found.Spec)
-	sourceType := fmt.Sprintf("%T %#v", source.Spec.Values, source.Spec.Values)
-	foundType := fmt.Sprintf("%T %#v", found.Spec.Values, found.Spec.Values)
-	a.logTrace("source and found types", layer, "source", sourceType, "found", foundType)
 	if !utils.CompareAsJSON(source.Spec, found.Spec) {
 		a.logInfo("found spec change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta),
 			"source", source.Spec, "found", found.Spec, "diff", cmp.Diff(source.Spec, found.Spec))
@@ -520,34 +516,22 @@ func (a KubectlLayerApplier) sourceHasReleaseChanged(layer layers.Layer, source,
 			"label source", source.ObjectMeta.Labels, "label found", found.ObjectMeta.Labels)
 		return true
 	}
-	sourceLabels := source.ObjectMeta.Labels
-	foundLabels := found.ObjectMeta.Labels
-	if !reflect.DeepEqual(sourceLabels, foundLabels) {
-		// this resource source labels do not match the resource labels on the cluster
-		a.logInfo("found label change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta), "source", sourceLabels, "found", foundLabels)
-		return true
-	}
+	a.logTrace("found no changes for HelmRelease in AddonsLayer source directory", layer)
 	return false
 }
 
 func (a KubectlLayerApplier) sourceHasRepoChanged(layer layers.Layer, source, found *sourcev1.HelmRepository) (changed bool) {
 	if !utils.CompareAsJSON(source.Spec, found.Spec) {
-		a.logInfo("found spec change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta),
+		a.logInfo("found spec change for HelmRepository in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta),
 			"source", source.Spec, "found", found.Spec, "diff", cmp.Diff(source.Spec, found.Spec))
 	}
 	if !reflect.DeepEqual(source.ObjectMeta.Labels, found.ObjectMeta.Labels) {
 		// this resource source spec does not match the resource spec on the cluster
-		a.logInfo("found label change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta),
+		a.logInfo("found label change for HelmRepository in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta),
 			"label source", source.ObjectMeta.Labels, "label found", found.ObjectMeta.Labels)
 		return true
 	}
-	sourceLabels := source.ObjectMeta.Labels
-	foundLabels := found.ObjectMeta.Labels
-	if !reflect.DeepEqual(sourceLabels, foundLabels) {
-		// this resource source labels do not match the resource labels on the cluster
-		a.logInfo("found label change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta), "source", sourceLabels, "found", foundLabels)
-		return true
-	}
+	a.logTrace("found no change for HelmRepositories in AddonsLayer source directory", layer)
 	return false
 }
 

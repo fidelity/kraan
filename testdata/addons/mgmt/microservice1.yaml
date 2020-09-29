@@ -9,8 +9,8 @@ spec:
       chart: podinfo
       sourceRef:
         kind: HelmRepository
-        name: podinfo
-        namespace: gitops-system
+        name: microservice-1
+        namespace: mgmt
       version: '>4.0.0'
   test:
     enable: false

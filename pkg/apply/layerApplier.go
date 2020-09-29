@@ -165,7 +165,7 @@ func (a KubectlLayerApplier) decodeAddons(layer layers.Layer,
 
 	switch obj.(type) {
 	case *corev1.List:
-		a.logTrace("decoded raw object List from kubectl output", layer, "groupVersionKind", gvk, "list", obj)
+		a.logTrace("decoded raw object List from kubectl output", layer, "groupVersionKind", gvk, "list", utils.LogJSON(obj))
 		return a.decodeList(layer, obj.(*corev1.List), &dez)
 	default:
 		/*msg := "decoded kubectl output was not a HelmRelease or List"

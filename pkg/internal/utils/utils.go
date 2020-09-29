@@ -60,7 +60,7 @@ func LogJSON(data interface{}) string {
 		return err.Error()
 	}
 	var prettyJSON bytes.Buffer
-	err = json.Indent(&prettyJSON, jsonData, "", "\t")
+	err = json.Indent(&prettyJSON, jsonData, "", "  ")
 	if err != nil {
 		return err.Error()
 	}

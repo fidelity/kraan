@@ -220,7 +220,7 @@ func TestConnectToCluster(t *testing.T) {
 	}
 }
 
-func getAddonsLayer(ctx context.Context, t *testing.T, c client.Client, name string) *kraanv1alpha1.AddonsLayer {
+func getAddonsLayer(ctx context.Context, t *testing.T, c client.Client, name string) *kraanv1alpha1.AddonsLayer { // nolint:unparam //ok
 	addonsLayer := &kraanv1alpha1.AddonsLayer{}
 	key := client.ObjectKey{Name: name}
 	if err := c.Get(ctx, key, addonsLayer); err != nil {
@@ -237,6 +237,29 @@ func getHR(ctx context.Context, t *testing.T, c client.Client, namespace string,
 	}
 	return hr
 }
+
+func getNs(ctx context.Context, t *testing.T, c client.Client, name string) *corev1.Namespace {
+	obj := &corev1.Namespace{}
+	//key := client.ObjectKey{Namespace: namespace}
+	key := client.ObjectKey{Name: name}
+	if err := c.Get(ctx, key, obj); err != nil {
+		t.Fatalf("unable to retrieve Namespace '%s'", name)
+	}
+	return obj
+}
+
+/*func getObj(ctx context.Context, t *testing.T, c client.Client, namespace string, name string) *metav1.Object {
+	obj := &unstructured.Unstructured{}
+	//key := client.ObjectKey{Namespace: namespace, Name: name}
+	key := client.ObjectKey{Namespace: namespace}
+	if len(name) > 0 {
+		key.Name = name
+	}
+	if err := c.Get(ctx, key, obj); err != nil {
+		t.Fatalf("unable to retrieve Object '%s/%s'", namespace, name)
+	}
+	return obj
+}*/
 
 func TestSingleApply(t *testing.T) {
 	mockCtl := gomock.NewController(t)
@@ -315,6 +338,46 @@ func TestDoubleApply(t *testing.T) {
 	t.Logf("Found HelmRelease '%s/%s'", hr1.GetNamespace(), hr1.GetName())
 	hr2 := getHR(ctx, t, client, "simple", "microservice-two")
 	t.Logf("Found HelmRelease '%s/%s'", hr2.GetNamespace(), hr2.GetName())
+}
+
+func TestApplySimpleNamespace(t *testing.T) {
+	mockCtl := gomock.NewController(t)
+	defer mockCtl.Finish()
+
+	ctx := context.Background()
+
+	logger := testlogr.TestLogger{T: t}
+	scheme := combinedScheme()
+	client := managerClient(ctx, t, scheme, "simple")
+
+	applier, err := NewApplier(client, logger, scheme)
+	if err != nil {
+		t.Fatalf("The NewApplier constructor returned an error: %s", err)
+	}
+	t.Logf("NewApplier returned (%T) %#v", applier, applier)
+
+	// This integration test can be forced to pass or fail at different stages by altering the
+	// Values section of the microservice.yaml HelmRelease in the directory below.
+	sourcePath := "testdata/apply/simple_ns"
+	layerName := "test"
+	l := getAddonsLayer(ctx, t, client, layerName)
+	layerUID := l.ObjectMeta.UID
+	addonsLayer := fakeAddonsLayer(sourcePath, layerName, layerUID)
+
+	mockLayer := mocklayers.NewMockLayer(mockCtl)
+	mockLayer.EXPECT().GetName().Return(layerName).AnyTimes()
+	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
+	mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()
+	mockLayer.EXPECT().GetAddonsLayer().Return(addonsLayer).Times(1)
+
+	err = applier.Apply(ctx, mockLayer)
+	if err != nil {
+		t.Fatalf("LayerApplier.Apply returned an error: %s", err)
+	}
+	time.Sleep(5 * time.Second)
+
+	obj := getNs(ctx, t, client, "simple")
+	t.Logf("Found simple : %#v", obj)
 }
 
 func TestPruneIsRequired(t *testing.T) {

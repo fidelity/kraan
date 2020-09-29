@@ -18,15 +18,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-
-	//"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	//"k8s.io/client-go/kubernetes/scheme"
-	"github.com/paulcarlton-ww/go-utils/pkg/goutils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/fidelity/kraan/pkg/internal/kubectl"
+	"github.com/fidelity/kraan/pkg/internal/utils"
 	"github.com/fidelity/kraan/pkg/layers"
 )
 
@@ -153,18 +150,18 @@ func (a KubectlLayerApplier) decodeHelmRepos(layer layers.Layer, objs []runtime.
 func (a KubectlLayerApplier) decodeAddons(layer layers.Layer,
 	json []byte) (objs []runtime.Object, err error) {
 	// TODO - should probably trace log the json before we try to decode it.
-	a.logTrace("decoding JSON output from kubectl", layer, "output", json)
+	a.logTrace("decoding JSON output from kubectl", layer, "output", string(json))
 
 	// dez := a.scheme.Codecs.UniversalDeserializer()
 	dez := serializer.NewCodecFactory(a.scheme).UniversalDeserializer()
 
 	obj, gvk, err := dez.Decode(json, nil, nil)
 	if err != nil {
-		a.logError(err, "unable to parse JSON output from kubectl", layer, "output", json)
+		a.logError(err, "unable to parse JSON output from kubectl", layer, "output", string(json))
 		return nil, err
 	}
 
-	a.logTrace("decoded JSON output", layer, "groupVersionKind", gvk, "object", obj)
+	a.logTrace("decoded JSON output", layer, "groupVersionKind", gvk, "object", utils.LogJSON(obj))
 
 	switch obj.(type) {
 	case *corev1.List:
@@ -513,7 +510,7 @@ func (a KubectlLayerApplier) sourceHasReleaseChanged(layer layers.Layer, source,
 	sourceType := fmt.Sprintf("%T %#v", source.Spec.Values, source.Spec.Values)
 	foundType := fmt.Sprintf("%T %#v", found.Spec.Values, found.Spec.Values)
 	a.logTrace("source and found types", layer, "source", sourceType, "found", foundType)
-	if !goutils.CompareAsJSON(source.Spec, found.Spec) {
+	if !utils.CompareAsJSON(source.Spec, found.Spec) {
 		a.logInfo("found spec change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta),
 			"source", source.Spec, "found", found.Spec, "diff", cmp.Diff(source.Spec, found.Spec))
 	}
@@ -534,7 +531,7 @@ func (a KubectlLayerApplier) sourceHasReleaseChanged(layer layers.Layer, source,
 }
 
 func (a KubectlLayerApplier) sourceHasRepoChanged(layer layers.Layer, source, found *sourcev1.HelmRepository) (changed bool) {
-	if !goutils.CompareAsJSON(source.Spec, found.Spec) {
+	if !utils.CompareAsJSON(source.Spec, found.Spec) {
 		a.logInfo("found spec change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta),
 			"source", source.Spec, "found", found.Spec, "diff", cmp.Diff(source.Spec, found.Spec))
 	}

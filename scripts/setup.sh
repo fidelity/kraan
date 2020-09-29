@@ -308,6 +308,7 @@ fi
 
 if [ $integration_testdata -gt 0 ]; then
   kubectl apply ${dry_run} -f "${base_dir}"/pkg/apply/testdata/apply/single_layer/addons.yaml
+  kubectl apply ${dry_run} -f "${base_dir}"/pkg/apply/testdata/apply/simple_ns/namespace.yaml
 fi
 
 if [ -z "${dry_run}" ] ; then

@@ -17,7 +17,7 @@ spec:
   test:
     enable: true
     ignoreFailures: false
-    timeout: 300
+    timeout: "5m""
   values:
     preHookBackoffLimit: 1
     preHookActiveDeadlineSeconds: 60

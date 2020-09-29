@@ -48,10 +48,9 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
     scripts/setup.sh --help
 
     USAGE: setup.sh [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--no-kraan] [--no-gitops]
-        [--kraan-version] [--helm-operator-namespace <namespace>] [--install-helm-operator]
-        [--kraan-image-pull-secret auto | <filename>] [--kraan-image-repo <repo-name>]
+        [--kraan-version] [--kraan-image-pull-secret auto | <filename>] [--kraan-image-repo <repo-name>]
         [--gitops-image-pull-secret auto | <filename>] [--gitops-image-repo <repo-name>]
-        [--gitops-proxy auto | <proxy-url>] [--git-url <git-repo-url>]
+        [--gitops-proxy auto | <proxy-url>] [--git-url <git-repo-url>] [--integration-test-data]
         [--git-user <git_username>] [--git-token <git_token_or_password>]
 
     Install the Kraan Addon Manager and gitops source controller to a Kubernetes cluster
@@ -62,8 +61,6 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
                                 the last element of the filename should also be the secret name, e.g.
                                 filename /tmp/regcred.yaml should define a secret called 'regcred'
     '--gitops-image-pull-secret' as above for gitops components
-    '--install-helm-operator' deploy the Helm Operator.
-    '--helm-operator-namespace' set the namespace to install helm-operator in, defaults to 'helm-operator'.
     '--kraan-image-repo' provide image repository to use for Kraan, defaults to docker.pkg.github.com/
     '--kraan-version' the version of the kraan image to use.
     '--gitops-image-repo' provide image repository to use for gitops components, defaults to docker.io/fluxcd
@@ -76,12 +73,14 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
     '--no-kraan' do not deploy the Kraan runtime container to the target cluster. Useful when running controller out of cluster.
     '--no-gitops' do not deploy the gitops system components to the target cluster. Useful if components are already installed"
     '--no-testdata' do not deploy addons layers and source controller custom resources to the target cluster.
+    '--integration-testdata' add testdata required by integration tests to the target cluster.
     '--git-user' set (or override) the GIT_USER environment variables.
     '--git-token' set (or override) the GIT_CREDENTIALS environment variables.
     '--git-url' set the URL for the git repository from which Kraan should pull AddonsLayer configs.
     '--toolkit' to generate GitOps toolkit components.
     '--debug' for verbose output.
     '--dry-run' to generate yaml but not deploy to cluster. This option will retain temporary work directory.
+
 
 ## Testing
 
@@ -151,3 +150,6 @@ To deploy the image to your account in docker.io:
     docker login -u <docker user> -p <docker password>
     make docker-push
     scripts/setup.sh --kraan-version $VERSION --no-gitops --kraan-image-repo $REPO
+
+### Integration Tests
+

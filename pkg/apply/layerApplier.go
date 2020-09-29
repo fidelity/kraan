@@ -211,9 +211,11 @@ func (a KubectlLayerApplier) getHelmReleases(ctx context.Context, layer layers.L
 	return foundHrs, nil
 }
 
+
 func (a KubectlLayerApplier) applyObjects(ctx context.Context, layer layers.Layer, objs []runtime.Object) error {
+	a.logDebug("To be applied resources for AddonsLayer", layer, "objects", utils.LogJSON(objs))
 	for i, hr := range objs {
-		a.logDebug("Applying resources for AddonsLayer", layer, "index", i, "helmRelease", hr)
+		a.logDebug("Applying resources for AddonsLayer", layer, "index", i, "object", hr)
 		res, err := controllerutil.CreateOrUpdate(ctx, a.client, hr, func() error {
 			return nil
 		})
@@ -509,6 +511,7 @@ func (a KubectlLayerApplier) sourceHasReleaseChanged(layer layers.Layer, source,
 	if !utils.CompareAsJSON(source.Spec, found.Spec) {
 		a.logInfo("found spec change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta),
 			"source", source.Spec, "found", found.Spec, "diff", cmp.Diff(source.Spec, found.Spec))
+		return true
 	}
 	if !reflect.DeepEqual(source.ObjectMeta.Labels, found.ObjectMeta.Labels) {
 		// this resource source spec does not match the resource spec on the cluster
@@ -524,6 +527,7 @@ func (a KubectlLayerApplier) sourceHasRepoChanged(layer layers.Layer, source, fo
 	if !utils.CompareAsJSON(source.Spec, found.Spec) {
 		a.logInfo("found spec change for HelmRepository in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta),
 			"source", source.Spec, "found", found.Spec, "diff", cmp.Diff(source.Spec, found.Spec))
+		return true
 	}
 	if !reflect.DeepEqual(source.ObjectMeta.Labels, found.ObjectMeta.Labels) {
 		// this resource source spec does not match the resource spec on the cluster

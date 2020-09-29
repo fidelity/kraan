@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	helmopv1 "github.com/fluxcd/helm-controller/api/v2alpha1"
+	helmctlv2 "github.com/fluxcd/helm-controller/api/v2alpha1"
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
@@ -33,7 +33,7 @@ func combinedScheme() *runtime.Scheme {
 	intScheme := runtime.NewScheme()
 	_ = k8sscheme.AddToScheme(intScheme)     // nolint:errcheck // ok
 	_ = kraanv1alpha1.AddToScheme(intScheme) // nolint:errcheck // ok
-	_ = helmopv1.AddToScheme(intScheme)      // nolint:errcheck // ok
+	_ = helmctlv2.AddToScheme(intScheme)     // nolint:errcheck // ok
 	return intScheme
 }
 
@@ -142,7 +142,7 @@ func (r *fakeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 }
 
 func indexHelmReleaseByOwner(o runtime.Object) []string {
-	hr, ok := o.(*helmopv1.HelmRelease)
+	hr, ok := o.(*helmctlv2.HelmRelease)
 	if !ok {
 		return nil
 	}
@@ -158,7 +158,7 @@ func indexHelmReleaseByOwner(o runtime.Object) []string {
 
 func (r *fakeReconciler) setupWithManager(mgr ctrl.Manager) error {
 	addonsLayer := &kraanv1alpha1.AddonsLayer{}
-	hr := &helmopv1.HelmRelease{}
+	hr := &helmctlv2.HelmRelease{}
 	if err := mgr.GetFieldIndexer().IndexField(r.Context, hr, ".owner", indexHelmReleaseByOwner); err != nil {
 		return fmt.Errorf("failed setting up FieldIndexer for HelmRelease owner: %w", err)
 	}
@@ -229,8 +229,8 @@ func getAddonsLayer(ctx context.Context, t *testing.T, c client.Client, name str
 	return addonsLayer
 }
 
-func getHR(ctx context.Context, t *testing.T, c client.Client, namespace string, name string) *helmopv1.HelmRelease {
-	hr := &helmopv1.HelmRelease{}
+func getHR(ctx context.Context, t *testing.T, c client.Client, namespace string, name string) *helmctlv2.HelmRelease {
+	hr := &helmctlv2.HelmRelease{}
 	key := client.ObjectKey{Namespace: namespace, Name: name}
 	if err := c.Get(ctx, key, hr); err != nil {
 		t.Fatalf("unable to retrieve HelmRelease '%s/%s'", namespace, name)
@@ -352,7 +352,7 @@ func TestPruneIsRequired(t *testing.T) {
 	t.Logf("LayerApplier.PruneIsRequired returned %v", pruneRequired)
 	t.Logf("LayerApplier.PruneIsRequired returned %d hrs to prune", len(pruneHrs))
 	for _, hr := range pruneHrs {
-		t.Logf("LayerApplier.PruneIsRequired - '%s'", getLabel(hr))
+		t.Logf("LayerApplier.PruneIsRequired - '%s'", getLabel(hr.ObjectMeta))
 	}
 	if pruneRequired {
 		t.Fatalf("LayerApplier.PruneIsRequired returned %v when false was expected", pruneRequired)

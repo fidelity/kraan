@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	helmopv1 "github.com/fluxcd/helm-controller/api/v2alpha1"
+	helmctlv2 "github.com/fluxcd/helm-controller/api/v2alpha1"
 	"github.com/go-logr/logr"
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"
@@ -29,7 +29,7 @@ var (
 func init() {
 	_ = corev1.AddToScheme(testScheme)        // nolint:errcheck // ok
 	_ = kraanv1alpha1.AddToScheme(testScheme) // nolint:errcheck // ok
-	_ = helmopv1.AddToScheme(testScheme)      // nolint:errcheck // ok
+	_ = helmctlv2.AddToScheme(testScheme)     // nolint:errcheck // ok
 }
 
 func fakeAddonsLayer(sourcePath, layerName string, layerUID types.UID) *kraanv1alpha1.AddonsLayer { //nolint
@@ -140,7 +140,7 @@ func TODOTestBasicApply(t *testing.T) { //nolint
 	var layerUID types.UID = "01234567-89ab-cdef-0123-456789abcdef"
 	addonsLayer := fakeAddonsLayer(sourcePath, layerName, layerUID)
 
-	//fakeHr := &helmopv1.HelmRelease{}
+	//fakeHr := &helmctlv2.HelmRelease{}
 	// TODO - serailize a fake HelmRelease
 	//sez := serializer.NewCodecFactory(testScheme).Co
 	fakeHrJSON := "fakeHrJson"

@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	helmopv1 "github.com/fluxcd/helm-controller/api/v2alpha1"
+	helmctlv2 "github.com/fluxcd/helm-controller/api/v2alpha1"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,9 +52,9 @@ type AddonsLayerReconcilerOptions struct {
 
 func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opts AddonsLayerReconcilerOptions) error {
 	addonsLayer := &kraanv1alpha1.AddonsLayer{}
-	hr := &helmopv1.HelmRelease{}
+	hr := &helmctlv2.HelmRelease{}
 
-	if err := mgr.GetFieldIndexer().IndexField(r.Context, &helmopv1.HelmRelease{}, hrOwnerKey, indexHelmReleaseByOwner); err != nil {
+	if err := mgr.GetFieldIndexer().IndexField(r.Context, &helmctlv2.HelmRelease{}, hrOwnerKey, indexHelmReleaseByOwner); err != nil {
 		return fmt.Errorf("failed setting up FieldIndexer for HelmRelease owner: %w", err)
 	}
 
@@ -292,7 +292,7 @@ func repoMapperFunc(a handler.MapObject) []reconcile.Request {
 }
 
 func indexHelmReleaseByOwner(o runtime.Object) []string {
-	hr, ok := o.(*helmopv1.HelmRelease)
+	hr, ok := o.(*helmctlv2.HelmRelease)
 	if !ok {
 		return nil
 	}

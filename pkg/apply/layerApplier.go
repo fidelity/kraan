@@ -11,12 +11,14 @@ import (
 	"os"
 	"reflect"
 
-	helmopv1 "github.com/fluxcd/helm-controller/api/v2alpha1"
+	helmctlv2 "github.com/fluxcd/helm-controller/api/v2alpha1"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+
 	//"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	//"k8s.io/client-go/kubernetes/scheme"
@@ -36,8 +38,8 @@ var (
 // LayerApplier defines methods for managing the Addons within an AddonLayer in a cluster.
 type LayerApplier interface {
 	Apply(ctx context.Context, layer layers.Layer) (err error)
-	Prune(ctx context.Context, layer layers.Layer, pruneHrs []*helmopv1.HelmRelease) (err error)
-	PruneIsRequired(ctx context.Context, layer layers.Layer) (pruneRequired bool, pruneHrs []*helmopv1.HelmRelease, err error)
+	Prune(ctx context.Context, layer layers.Layer, pruneHrs []*helmctlv2.HelmRelease) (err error)
+	PruneIsRequired(ctx context.Context, layer layers.Layer) (pruneRequired bool, pruneHrs []*helmctlv2.HelmRelease, err error)
 	ApplyIsRequired(ctx context.Context, layer layers.Layer) (applyIsRequired bool, err error)
 	ApplyWasSuccessful(ctx context.Context, layer layers.Layer) (applyIsRequired bool, err error)
 }
@@ -93,20 +95,65 @@ func (a KubectlLayerApplier) logTrace(msg string, layer layers.Layer, keysAndVal
 	a.log(7, msg, layer, keysAndValues...)
 }
 
+/*
 func (a KubectlLayerApplier) logErrors(errz []error, layer layers.Layer) {
 	for _, err := range errz {
 		a.logError(err, "error while applying layer", layer)
 	}
 }
-
-func getLabel(hr *helmopv1.HelmRelease) string {
+*/
+func getLabel(hr metav1.ObjectMeta) string {
 	return fmt.Sprintf("%s/%s", hr.GetNamespace(), hr.GetName())
 }
 
+func getObjLabel(obj metav1.Object) string {
+	return fmt.Sprintf("%s/%s", obj.GetNamespace(), obj.GetName())
+}
+
+func (a KubectlLayerApplier) decodeHelmReleases(layer layers.Layer, objs []runtime.Object) (hrs []*helmctlv2.HelmRelease, err error) {
+	for i, obj := range objs {
+		a.logTrace("checking for HelmRelease type", layer, "object", obj)
+		switch obj.(type) {
+		case *helmctlv2.HelmRelease:
+			hr, ok := obj.(*helmctlv2.HelmRelease)
+			if ok {
+				a.logDebug("found HelmRelease in Object list", layer, "index", i, "helmRelease", hr)
+				hrs = append(hrs, hr)
+			} else {
+				err = fmt.Errorf("unable to convert runtime.Object to HelmRelease")
+				a.logError(err, err.Error(), layer, "runtimeObject", obj)
+			}
+		default:
+			a.logInfo("found Kubernetes object in Object list", layer, "index", i, "object", obj)
+		}
+	}
+	return hrs, err
+}
+
+func (a KubectlLayerApplier) decodeHelmRepos(layer layers.Layer, objs []runtime.Object) (hrs []*sourcev1.HelmRepository, err error) {
+	for i, obj := range objs {
+		a.logTrace("checking for HelmRepository type", layer, "object", obj)
+		switch obj.(type) {
+		case *sourcev1.HelmRepository:
+			hr, ok := obj.(*sourcev1.HelmRepository)
+			if ok {
+				a.logDebug("found HelmRelease in Object list", layer, "index", i, "helmRelease", hr)
+				hrs = append(hrs, hr)
+			} else {
+				err = fmt.Errorf("unable to convert runtime.Object to HelmRelease")
+				a.logError(err, err.Error(), layer, "runtimeObject", obj)
+			}
+		default:
+			a.logInfo("found Kubernetes object in Object list", layer, "index", i, "object", obj)
+		}
+	}
+	return hrs, err
+}
+
 func (a KubectlLayerApplier) decodeAddons(layer layers.Layer,
-	json []byte) (hrs []*helmopv1.HelmRelease, errz []error, err error) {
+	json []byte) (objs []runtime.Object, err error) {
 	// TODO - should probably trace log the json before we try to decode it.
-	//a.logTrace("decoding JSON output from kubectl", layer, "output", json)
+	a.logTrace("decoding JSON output from kubectl", layer, "output", json)
 
 	// dez := a.scheme.Codecs.UniversalDeserializer()
 	dez := serializer.NewCodecFactory(a.scheme).UniversalDeserializer()
@@ -114,50 +161,49 @@ func (a KubectlLayerApplier) decodeAddons(layer layers.Layer,
 	obj, gvk, err := dez.Decode(json, nil, nil)
 	if err != nil {
 		a.logError(err, "unable to parse JSON output from kubectl", layer, "output", json)
-		return nil, nil, err
+		return nil, err
 	}
 
-	a.logTrace("decoded JSON output", layer, "groupVersionKind", gvk, "object", obj.GetObjectKind())
+	a.logTrace("decoded JSON output", layer, "groupVersionKind", gvk, "object", obj)
 
 	switch obj.(type) {
 	case *corev1.List:
-		a.logTrace("decoded raw object List from kubectl output", layer, "groupVersionKind", gvk, "list", obj.GetObjectKind())
+		a.logTrace("decoded raw object List from kubectl output", layer, "groupVersionKind", gvk, "list", obj)
 		return a.decodeList(layer, obj.(*corev1.List), &dez)
-	case *helmopv1.HelmRelease:
-		hr, ok := obj.(*helmopv1.HelmRelease)
-		if !ok {
-			return nil, nil, fmt.Errorf("unable to cast HelmRelease typed object to a HelmRelease type")
-		}
-		a.logDebug("decoded single HelmRelease from kubectl output", layer, "groupVersionKind", gvk, "helmRelease", hr)
-		return []*helmopv1.HelmRelease{hr}, nil, nil
 	default:
-		msg := "decoded kubectl output was not a HelmRelease or List"
+		/*msg := "decoded kubectl output was not a HelmRelease or List"
 		err = fmt.Errorf(msg)
-		a.logError(err, msg, layer, "output", json, "groupVersionKind", gvk, "object", obj)
-		return nil, nil, err
+		a.logError(err, msg, layer, "output", string(json), "groupVersionKind", gvk, "object", obj)*/
+		return []runtime.Object{obj}, nil
 	}
 }
 
-func (a KubectlLayerApplier) addOwnerRefs(layer layers.Layer, hrs []*helmopv1.HelmRelease) error {
-	for i, hr := range hrs {
-		a.logDebug("Adding owner ref to HelmRelease for AddonsLayer", layer, "index", i, "helmRelease", hr)
-		err := controllerutil.SetControllerReference(layer.GetAddonsLayer(), hr, a.scheme)
+func (a KubectlLayerApplier) addOwnerRefs(layer layers.Layer, objs []runtime.Object) error {
+	for i, robj := range objs {
+		obj, ok := robj.(metav1.Object)
+		if !ok {
+			err := fmt.Errorf("unable to convert runtime.Object to meta.Object")
+			a.logError(err, err.Error(), layer, "runtimeObject", robj)
+			return err
+		}
+		a.logDebug("Adding owner ref to resource for AddonsLayer", layer, "index", i, "obj", obj)
+		err := controllerutil.SetControllerReference(layer.GetAddonsLayer(), obj, a.scheme)
 		if err != nil {
 			// could not apply owner ref for object
-			return fmt.Errorf("unable to apply owner reference for AddonsLayer '%s' to HelmRelease '%s': %w", layer.GetName(), getLabel(hr), err)
+			return fmt.Errorf("unable to apply owner reference for AddonsLayer '%s' to resource '%s': %w", layer.GetName(), getObjLabel(obj), err)
 		}
-		labels := hr.GetObjectMeta().GetLabels()
+		labels := obj.GetLabels()
 		if labels == nil {
 			labels = map[string]string{}
 		}
 		labels[ownerLabel] = layer.GetName()
-		hr.ObjectMeta.Labels = labels
+		obj.SetLabels(labels)
 	}
 	return nil
 }
 
-func (a KubectlLayerApplier) getHelmReleases(ctx context.Context, layer layers.Layer) (foundHrs []*helmopv1.HelmRelease, err error) {
-	hrList := &helmopv1.HelmReleaseList{}
+func (a KubectlLayerApplier) getHelmReleases(ctx context.Context, layer layers.Layer) (foundHrs []*helmctlv2.HelmRelease, err error) {
+	hrList := &helmctlv2.HelmReleaseList{}
 	err = a.client.List(ctx, hrList, client.MatchingFields{".owner": layer.GetName()})
 	if err != nil {
 		return nil, fmt.Errorf("unable to list HelmRelease resources owned by '%s': %w", layer.GetName(), err)
@@ -168,66 +214,84 @@ func (a KubectlLayerApplier) getHelmReleases(ctx context.Context, layer layers.L
 	return foundHrs, nil
 }
 
-func (a KubectlLayerApplier) getHelmRelease(ctx context.Context, hr *helmopv1.HelmRelease) (*helmopv1.HelmRelease, error) {
+func (a KubectlLayerApplier) applyObjects(ctx context.Context, layer layers.Layer, objs []runtime.Object) error {
+	for i, hr := range objs {
+		a.logDebug("Applying resources for AddonsLayer", layer, "index", i, "helmRelease", hr)
+		res, err := controllerutil.CreateOrUpdate(ctx, a.client, hr, func() error {
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("unable to apply layer resource: %w", err)
+		}
+		a.logInfo("resource successfully applied", layer, "operationResult", res)
+	}
+	return nil
+}
+
+func (a KubectlLayerApplier) getHelmRepos(ctx context.Context, layer layers.Layer) (foundHrs []*sourcev1.HelmRepository, err error) {
+	hrList := &sourcev1.HelmRepositoryList{}
+	err = a.client.List(ctx, hrList, client.MatchingFields{".owner": layer.GetName()})
+	if err != nil {
+		return nil, fmt.Errorf("unable to list HelmRelease resources owned by '%s': %w", layer.GetName(), err)
+	}
+	for _, hr := range hrList.Items {
+		foundHrs = append(foundHrs, hr.DeepCopy())
+	}
+	return foundHrs, nil
+}
+
+/*
+func (a KubectlLayerApplier) getHelmRepo(ctx context.Context, hr *sourcev1.HelmRepository) (*sourcev1.HelmRepository, error) {
 	key, err := client.ObjectKeyFromObject(hr)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get an ObjectKey from HelmRelease '%s': %w", getLabel(hr), err)
+		return nil, fmt.Errorf("unable to get an ObjectKey from HelmRepository '%s': %w", getLabel(hr.ObjectMeta), err)
 	}
-	foundHr := &helmopv1.HelmRelease{}
+	foundHr := &sourcev1.HelmRepository{}
 	err = a.client.Get(ctx, key, foundHr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to Get HelmRelease '%s': %w", getLabel(hr), err)
+		return nil, fmt.Errorf("failed to Get HelmRepo '%s': %w", getLabel(hr.ObjectMeta), err)
 	}
 	return foundHr, nil
 }
 
-func (a KubectlLayerApplier) applyHelmReleases(ctx context.Context, layer layers.Layer, hrs []*helmopv1.HelmRelease) error {
+func (a KubectlLayerApplier) applyHelmRepo(ctx context.Context, layer layers.Layer, hrs []*sourcev1.HelmRepository) error {
 	for i, hr := range hrs {
-		a.logDebug("Applying HelmRelease for AddonsLayer", layer, "index", i, "helmRelease", hr)
-		foundHr, err := a.getHelmRelease(ctx, hr)
+		a.logDebug("Applying HelmRepos for AddonsLayer", layer, "index", i, "helmRepo", hr)
+		foundHr, err := a.getHelmRepo(ctx, hr)
 		if err != nil || foundHr == nil {
 			// HelmRelease does not exist, create resource
 			err = a.client.Create(ctx, hr, &client.CreateOptions{})
 			if err != nil {
-				return fmt.Errorf("unable to Create HelmRelease '%s' on the target cluster: %w", getLabel(hr), err)
+				return fmt.Errorf("unable to Create HelmRepository '%s' on the target cluster: %w", getLabel(hr.ObjectMeta), err)
 			}
 		} else {
 			// HelmRelease exists, update resource
 			err = a.client.Update(ctx, hr, &client.UpdateOptions{})
 			if err != nil {
-				return fmt.Errorf("unable to Update HelmRelease '%s' on the target cluster: %w", getLabel(hr), err)
+				return fmt.Errorf("unable to Update HelmRepository '%s' on the target cluster: %w", getLabel(hr.ObjectMeta), err)
 			}
 		}
 	}
 	return nil
 }
-
+*/
 func (a KubectlLayerApplier) decodeList(layer layers.Layer,
-	raws *corev1.List, dez *runtime.Decoder) (hrs []*helmopv1.HelmRelease, errz []error, err error) {
+	raws *corev1.List, dez *runtime.Decoder) (objs []runtime.Object, err error) {
 	dec := *dez
 
 	a.logDebug("decoding list of raw JSON items", layer, "length", len(raws.Items))
 
 	for i, raw := range raws.Items {
-		obj, gvk, err := dec.Decode(raw.Raw, nil, nil)
-		if err != nil {
-			errz = append(errz, err)
+		obj, gvk, decodeErr := dec.Decode(raw.Raw, nil, nil)
+		if decodeErr != nil {
+			err = fmt.Errorf("could not decode JSON to a runtime.Object: %w", decodeErr)
+			a.logError(err, err.Error(), layer, "rawJSON", string(raw.Raw))
 		}
-		switch obj.(type) {
-		case *helmopv1.HelmRelease:
-			hr := obj.(*helmopv1.HelmRelease) // nolint:errcheck
-			a.logDebug("decoded HelmRelease from kubectl output list",
-				layer, "index", i, "groupVersionKind", gvk, "helmRelease", hr)
-			hrs = append(hrs, hr)
-		default:
-			a.logInfo("decoded Kubernetes object from kubectl output list",
-				layer, "index", i, "groupVersionKind", gvk, "object", obj)
-		}
+		a.logInfo("decoded Kubernetes object from kubectl output list",
+			layer, "index", i, "groupVersionKind", gvk, "object", obj)
+		objs = append(objs, obj)
 	}
-	if len(errz) > 0 {
-		return hrs, errz, errz[0]
-	}
-	return hrs, nil, nil
+	return objs, err
 }
 
 func (a KubectlLayerApplier) checkSourcePath(layer layers.Layer) (sourceDir string, err error) {
@@ -256,7 +320,7 @@ func (a KubectlLayerApplier) checkSourcePath(layer layers.Layer) (sourceDir stri
 	return sourceDir, nil
 }
 
-func (a KubectlLayerApplier) getSourceResources(layer layers.Layer) (hrs []*helmopv1.HelmRelease, err error) {
+func (a KubectlLayerApplier) getSourceResources(layer layers.Layer) (objs []runtime.Object, err error) {
 	sourceDir, err := a.checkSourcePath(layer)
 	if err != nil {
 		return nil, err
@@ -268,15 +332,40 @@ func (a KubectlLayerApplier) getSourceResources(layer layers.Layer) (hrs []*helm
 			sourceDir, layer.GetName(), err)
 	}
 
-	hrs, errz, err := a.decodeAddons(layer, output)
+	objs, err = a.decodeAddons(layer, output)
 	if err != nil {
-		if errz != nil && len(errz) > 0 {
-			a.logErrors(errz, layer)
-		}
 		return nil, err
 	}
 
-	err = a.addOwnerRefs(layer, hrs)
+	err = a.addOwnerRefs(layer, objs)
+	if err != nil {
+		return nil, err
+	}
+
+	return objs, nil
+}
+
+func (a KubectlLayerApplier) getSourceHelmReleases(layer layers.Layer) (hrs []*helmctlv2.HelmRelease, err error) {
+	objs, err := a.getSourceResources(layer)
+	if err != nil {
+		return nil, err
+	}
+
+	hrs, err = a.decodeHelmReleases(layer, objs)
+	if err != nil {
+		return nil, err
+	}
+
+	return hrs, nil
+}
+
+func (a KubectlLayerApplier) getSourceHelmRepos(layer layers.Layer) (hrs []*sourcev1.HelmRepository, err error) {
+	objs, err := a.getSourceResources(layer)
+	if err != nil {
+		return nil, err
+	}
+
+	hrs, err = a.decodeHelmRepos(layer, objs)
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +382,7 @@ func (a KubectlLayerApplier) Apply(ctx context.Context, layer layers.Layer) (err
 		return err
 	}
 
-	err = a.applyHelmReleases(ctx, layer, hrs)
+	err = a.applyObjects(ctx, layer, hrs)
 	if err != nil {
 		return err
 	}
@@ -302,26 +391,26 @@ func (a KubectlLayerApplier) Apply(ctx context.Context, layer layers.Layer) (err
 }
 
 // Prune the AddonsLayer by removing the Addons found in the cluster that have since been removed from the Layer.
-func (a KubectlLayerApplier) Prune(ctx context.Context, layer layers.Layer, pruneHrs []*helmopv1.HelmRelease) (err error) {
+func (a KubectlLayerApplier) Prune(ctx context.Context, layer layers.Layer, pruneHrs []*helmctlv2.HelmRelease) (err error) {
 	for _, hr := range pruneHrs {
 		err := a.client.Delete(ctx, hr, client.PropagationPolicy(metav1.DeletePropagationBackground))
 		if err != nil {
-			return fmt.Errorf("unable to delete HelmRelease '%s' for AddonsLayer '%s': %w", getLabel(hr), layer.GetName(), err)
+			return fmt.Errorf("unable to delete HelmRelease '%s' for AddonsLayer '%s': %w", getLabel(hr.ObjectMeta), layer.GetName(), err)
 		}
 	}
 	return nil
 }
 
 // PruneIsRequired returns true if any resources need to be pruned for this AddonsLayer
-func (a KubectlLayerApplier) PruneIsRequired(ctx context.Context, layer layers.Layer) (pruneRequired bool, pruneHrs []*helmopv1.HelmRelease, err error) {
-	sourceHrs, err := a.getSourceResources(layer)
+func (a KubectlLayerApplier) PruneIsRequired(ctx context.Context, layer layers.Layer) (pruneRequired bool, pruneHrs []*helmctlv2.HelmRelease, err error) {
+	sourceHrs, err := a.getSourceHelmReleases(layer)
 	if err != nil {
 		return false, nil, err
 	}
 
-	hrs := map[string]*helmopv1.HelmRelease{}
+	hrs := map[string]*helmctlv2.HelmRelease{}
 	for _, hr := range sourceHrs {
-		hrs[getLabel(hr)] = hr
+		hrs[getLabel(hr.ObjectMeta)] = hr
 	}
 
 	clusterHrs, err := a.getHelmReleases(ctx, layer)
@@ -330,10 +419,10 @@ func (a KubectlLayerApplier) PruneIsRequired(ctx context.Context, layer layers.L
 	}
 
 	pruneRequired = false
-	pruneHrs = []*helmopv1.HelmRelease{}
+	pruneHrs = []*helmctlv2.HelmRelease{}
 
 	for _, hr := range clusterHrs {
-		_, ok := hrs[getLabel(hr)]
+		_, ok := hrs[getLabel(hr.ObjectMeta)]
 		if !ok {
 			// this resource exists on the cluster but not in the source directory
 			a.logInfo("pruned HelmRelease for AddonsLayer in KubeAPI but not in source directory", layer, "pruneResource", hr)
@@ -347,7 +436,7 @@ func (a KubectlLayerApplier) PruneIsRequired(ctx context.Context, layer layers.L
 
 // ApplyIsRequired returns true if any resources need to be applied for this AddonsLayer
 func (a KubectlLayerApplier) ApplyIsRequired(ctx context.Context, layer layers.Layer) (applyIsRequired bool, err error) {
-	sourceHrs, err := a.getSourceResources(layer)
+	sourceHrs, err := a.getSourceHelmReleases(layer)
 	if err != nil {
 		return false, err
 	}
@@ -357,14 +446,14 @@ func (a KubectlLayerApplier) ApplyIsRequired(ctx context.Context, layer layers.L
 		return false, err
 	}
 
-	hrs := map[string]*helmopv1.HelmRelease{}
+	hrs := map[string]*helmctlv2.HelmRelease{}
 	for _, hr := range clusterHrs {
-		hrs[getLabel(hr)] = hr
+		hrs[getLabel(hr.ObjectMeta)] = hr
 	}
 
 	// Check for any missing resources first.  This is the fastest and easiest check.
 	for _, source := range sourceHrs {
-		_, ok := hrs[getLabel(source)]
+		_, ok := hrs[getLabel(source.ObjectMeta)]
 		if !ok {
 			// this resource exists in the source directory but not on the cluster
 			a.logInfo("found new HelmRelease in AddonsLayer source directory", layer, "newHelmRelease", source.Spec)
@@ -374,26 +463,63 @@ func (a KubectlLayerApplier) ApplyIsRequired(ctx context.Context, layer layers.L
 
 	// Compare each HelmRelease source spec to the spec of the found HelmRelease on the cluster
 	for _, source := range sourceHrs {
-		found := hrs[getLabel(source)]
-		if a.sourceHasChanged(layer, source, found) {
+		found := hrs[getLabel(source.ObjectMeta)]
+		if a.sourceHasReleaseChanged(layer, source, found) {
+			return true, nil
+		}
+	}
+	return a.helmReposApplyRequired(ctx, layer)
+}
+
+// ApplyIsRequired returns true if any resources need to be applied for this AddonsLayer
+func (a KubectlLayerApplier) helmReposApplyRequired(ctx context.Context, layer layers.Layer) (applyIsRequired bool, err error) {
+	sourceHrs, err := a.getSourceHelmRepos(layer)
+	if err != nil {
+		return false, err
+	}
+
+	clusterHrs, err := a.getHelmRepos(ctx, layer)
+	if err != nil {
+		return false, err
+	}
+
+	hrs := map[string]*sourcev1.HelmRepository{}
+	for _, hr := range clusterHrs {
+		hrs[getLabel(hr.ObjectMeta)] = hr
+	}
+
+	// Check for any missing resources first.  This is the fastest and easiest check.
+	for _, source := range sourceHrs {
+		_, ok := hrs[getLabel(source.ObjectMeta)]
+		if !ok {
+			// this resource exists in the source directory but not on the cluster
+			a.logInfo("found new HelmRelease in AddonsLayer source directory", layer, "newHelmRelease", source.Spec)
+			return true, nil
+		}
+	}
+
+	// Compare each HelmRelease source spec to the spec of the found HelmRelease on the cluster
+	for _, source := range sourceHrs {
+		found := hrs[getLabel(source.ObjectMeta)]
+		if a.sourceHasRepoChanged(layer, source, found) {
 			return true, nil
 		}
 	}
 	return false, nil
 }
 
-func (a KubectlLayerApplier) sourceHasChanged(layer layers.Layer, source, found *helmopv1.HelmRelease) (changed bool) {
+func (a KubectlLayerApplier) sourceHasReleaseChanged(layer layers.Layer, source, found *helmctlv2.HelmRelease) (changed bool) {
 	a.logTrace("comparing HelmRelease source to KubeAPI resource", layer, "source", source.Spec, "found", found.Spec)
 	sourceType := fmt.Sprintf("%T %#v", source.Spec.Values, source.Spec.Values)
 	foundType := fmt.Sprintf("%T %#v", found.Spec.Values, found.Spec.Values)
 	a.logTrace("source and found types", layer, "source", sourceType, "found", foundType)
 	if !goutils.CompareAsJSON(source.Spec, found.Spec) {
-		a.logInfo("found spec change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source),
+		a.logInfo("found spec change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta),
 			"source", source.Spec, "found", found.Spec, "diff", cmp.Diff(source.Spec, found.Spec))
 	}
 	if !reflect.DeepEqual(source.ObjectMeta.Labels, found.ObjectMeta.Labels) {
 		// this resource source spec does not match the resource spec on the cluster
-		a.logInfo("found label change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source),
+		a.logInfo("found label change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta),
 			"label source", source.ObjectMeta.Labels, "label found", found.ObjectMeta.Labels)
 		return true
 	}
@@ -401,7 +527,28 @@ func (a KubectlLayerApplier) sourceHasChanged(layer layers.Layer, source, found 
 	foundLabels := found.ObjectMeta.Labels
 	if !reflect.DeepEqual(sourceLabels, foundLabels) {
 		// this resource source labels do not match the resource labels on the cluster
-		a.logInfo("found label change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source), "source", sourceLabels, "found", foundLabels)
+		a.logInfo("found label change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta), "source", sourceLabels, "found", foundLabels)
+		return true
+	}
+	return false
+}
+
+func (a KubectlLayerApplier) sourceHasRepoChanged(layer layers.Layer, source, found *sourcev1.HelmRepository) (changed bool) {
+	if !goutils.CompareAsJSON(source.Spec, found.Spec) {
+		a.logInfo("found spec change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta),
+			"source", source.Spec, "found", found.Spec, "diff", cmp.Diff(source.Spec, found.Spec))
+	}
+	if !reflect.DeepEqual(source.ObjectMeta.Labels, found.ObjectMeta.Labels) {
+		// this resource source spec does not match the resource spec on the cluster
+		a.logInfo("found label change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta),
+			"label source", source.ObjectMeta.Labels, "label found", found.ObjectMeta.Labels)
+		return true
+	}
+	sourceLabels := source.ObjectMeta.Labels
+	foundLabels := found.ObjectMeta.Labels
+	if !reflect.DeepEqual(sourceLabels, foundLabels) {
+		// this resource source labels do not match the resource labels on the cluster
+		a.logInfo("found label change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta), "source", sourceLabels, "found", foundLabels)
 		return true
 	}
 	return false
@@ -424,9 +571,9 @@ func (a KubectlLayerApplier) ApplyWasSuccessful(ctx context.Context, layer layer
 	return true, nil
 }
 
-func (a KubectlLayerApplier) CheckHR(hr helmopv1.HelmRelease, layer layers.Layer) bool {
+func (a KubectlLayerApplier) CheckHR(hr helmctlv2.HelmRelease, layer layers.Layer) bool {
 	a.logDebug("Check HelmRelease for AddonsLayer", layer, "resource", hr)
-	cond := helmopv1.GetHelmReleaseCondition(hr, "Ready")
+	cond := helmctlv2.GetHelmReleaseCondition(hr, "Ready")
 	if cond == nil {
 		a.logDebug("HelmRelease for AddonsLayer not installed", layer, "resource", hr)
 		return false

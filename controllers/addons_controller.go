@@ -39,6 +39,7 @@ import (
 	"github.com/fidelity/kraan/pkg/apply"
 	layers "github.com/fidelity/kraan/pkg/layers"
 	"github.com/fidelity/kraan/pkg/repos"
+	"github.com/fidelity/kraan/pkg/utils"
 )
 
 var (
@@ -68,10 +69,10 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(addonsLayer).
-		WithOptions(controller.Options{MaxConcurrentReconciles: opts.MaxConcurrentReconciles}).
+		Watches(repoKind, repoHandler).
 		Owns(hr).
 		Owns(hrepo).
-		Watches(repoKind, repoHandler).
+		WithOptions(controller.Options{MaxConcurrentReconciles: opts.MaxConcurrentReconciles}).
 		Complete(r)
 }
 
@@ -96,23 +97,28 @@ func NewReconciler(config *rest.Config, client client.Client, logger logr.Logger
 		Log:    logger.WithName("reconciler"),
 		Scheme: scheme,
 	}
-	reconciler.k8client = reconciler.getK8sClient()
-	reconciler.Context = context.Background()
 	var err error
+	reconciler.k8client, err = reconciler.getK8sClient()
+	if err != nil {
+		return nil, err
+	}
+	reconciler.Context = context.Background()
 	reconciler.Applier, err = apply.NewApplier(client, logger.WithName("applier"), scheme)
+	if err != nil {
+		return nil, err
+	}
 	reconciler.Repos = repos.NewRepos(reconciler.Context, reconciler.Log)
 	return reconciler, err
 }
 
-func (r *AddonsLayerReconciler) getK8sClient() kubernetes.Interface {
+func (r *AddonsLayerReconciler) getK8sClient() (kubernetes.Interface, error) {
 	// creates the clientset
 	clientset, err := kubernetes.NewForConfig(r.Config)
 	if err != nil {
-		//TODO - Adjust error handling?
-		panic(err.Error())
+		return nil, err
 	}
 
-	return clientset
+	return clientset, nil
 }
 
 func (r *AddonsLayerReconciler) processPrune(l layers.Layer) (statusReconciled bool, err error) {
@@ -121,10 +127,12 @@ func (r *AddonsLayerReconciler) processPrune(l layers.Layer) (statusReconciled b
 
 	pruneIsRequired, hrs, err := applier.PruneIsRequired(ctx, l)
 	if err != nil {
+		r.Log.Error(err, "check for apply required failed", "requestName", l.GetName())
 		return false, err
 	} else if pruneIsRequired {
 		l.SetStatusPruning()
-		if pruneErr := applier.Prune(ctx, l, hrs); err != nil {
+		if pruneErr := applier.Prune(ctx, l, hrs); pruneErr != nil {
+			r.Log.Error(pruneErr, "prune failed", "requestName", l.GetName())
 			return true, pruneErr
 		}
 		l.SetDelayedRequeue()
@@ -139,17 +147,18 @@ func (r *AddonsLayerReconciler) processApply(l layers.Layer) (statusReconciled b
 
 	applyIsRequired, err := applier.ApplyIsRequired(ctx, l)
 	if err != nil {
-		r.Log.Error(err, "check for apply required failed")
+		r.Log.Error(err, "check for apply required failed", "requestName", l.GetName())
 		return false, err
 	} else if applyIsRequired {
-		r.Log.Info("apply required", "Name", l.GetName(), "Spec", l.GetSpec(), "Status", l.GetFullStatus())
+		r.Log.Info("apply required", "requestName", l.GetName(), "Spec", l.GetSpec(), "Status", l.GetFullStatus())
 		if !l.DependenciesDeployed() {
 			l.SetDelayedRequeue()
 			return true, nil
 		}
 
 		l.SetStatusApplying()
-		if applyErr := applier.Apply(ctx, l); err != nil {
+		if applyErr := applier.Apply(ctx, l); applyErr != nil {
+			r.Log.Error(applyErr, "check for apply required failed", "requestName", l.GetName())
 			return true, applyErr
 		}
 		l.SetDelayedRequeue()
@@ -164,7 +173,7 @@ func (r *AddonsLayerReconciler) checkSuccess(l layers.Layer) error {
 
 	applyWasSuccessful, err := applier.ApplyWasSuccessful(ctx, l)
 	if err != nil {
-		// TODO - we might want to add some sort of error handling here
+		r.Log.Error(err, "check for apply required failed", "requestName", l.GetName())
 		return err
 	}
 	if !applyWasSuccessful {
@@ -176,7 +185,7 @@ func (r *AddonsLayerReconciler) checkSuccess(l layers.Layer) error {
 }
 
 func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error {
-	r.Log.Info("processing", "Name", l.GetName(), "Status", l.GetStatus())
+	r.Log.Info("processing", "requestName", l.GetName(), "Status", l.GetStatus())
 
 	if l.IsHold() {
 		l.SetHold()
@@ -271,7 +280,7 @@ func repoMapperFunc(a handler.MapObject) []reconcile.Request {
 		reconciler.Log.Error(fmt.Errorf("unable to cast object to GitRepository"), "skipping processing")
 		return []reconcile.Request{}
 	}
-	reconciler.Log.V(2).Info("processing", "gitrepositories.source.toolkit.fluxcd.io", srcRepo)
+	reconciler.Log.V(1).Info("processing", "gitrepositories.source.toolkit.fluxcd.io", srcRepo)
 	repo := reconciler.Repos.Add(srcRepo)
 	if err := repo.SyncRepo(); err != nil {
 		reconciler.Log.Error(err, "unable to sync repo, not requeuing")
@@ -299,6 +308,7 @@ func repoMapperFunc(a handler.MapObject) []reconcile.Request {
 }
 
 func indexHelmReleaseByOwner(o runtime.Object) []string {
+	reconciler.Log.V(1).Info("processing", "helmreleases.helm.toolkit.fluxcd.io", utils.LogJSON(o))
 	hr, ok := o.(*helmctlv2.HelmRelease)
 	if !ok {
 		return nil
@@ -317,6 +327,7 @@ func indexHelmReleaseByOwner(o runtime.Object) []string {
 }
 
 func indexHelmRepoByOwner(o runtime.Object) []string {
+	reconciler.Log.V(1).Info("processing", "helmrepositories.source.toolkit.fluxcd.io", utils.LogJSON(o))
 	hr, ok := o.(*sourcev1.HelmRepository)
 	if !ok {
 		return nil

@@ -15,7 +15,7 @@ import (
 	"github.com/go-logr/logr"
 
 	"github.com/fidelity/kraan/pkg/internal/tarconsumer"
-	"github.com/fidelity/kraan/pkg/internal/utils"
+	"github.com/fidelity/kraan/pkg/utils"
 )
 
 var (

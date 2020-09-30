@@ -24,8 +24,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/fidelity/kraan/pkg/internal/kubectl"
-	"github.com/fidelity/kraan/pkg/internal/utils"
 	"github.com/fidelity/kraan/pkg/layers"
+	"github.com/fidelity/kraan/pkg/utils"
 )
 
 var (
@@ -104,8 +104,21 @@ func getLabel(hr metav1.ObjectMeta) string {
 	return fmt.Sprintf("%s/%s", hr.GetNamespace(), hr.GetName())
 }
 
-func getObjLabel(obj metav1.Object) string {
-	return fmt.Sprintf("%s/%s", obj.GetNamespace(), obj.GetName())
+func removeResourceVersion(obj runtime.Object) string {
+	mobj, ok := (obj).(metav1.Object)
+	if !ok {
+		return fmt.Sprintf("unable to convert runtime.Object to meta.Object")
+	}
+	mobj.SetResourceVersion("")
+	return fmt.Sprintf("%s/%s", mobj.GetNamespace(), mobj.GetName())
+}
+
+func getObjLabel(obj runtime.Object) string {
+	mobj, ok := (obj).(metav1.Object)
+	if !ok {
+		return fmt.Sprintf("unable to convert runtime.Object to meta.Object")
+	}
+	return fmt.Sprintf("%s/%s", mobj.GetNamespace(), mobj.GetName())
 }
 
 func (a KubectlLayerApplier) decodeHelmReleases(layer layers.Layer, objs []runtime.Object) (hrs []*helmctlv2.HelmRelease, err error) {
@@ -188,7 +201,7 @@ func (a KubectlLayerApplier) addOwnerRefs(layer layers.Layer, objs []runtime.Obj
 		err := controllerutil.SetControllerReference(layer.GetAddonsLayer(), obj, a.scheme)
 		if err != nil {
 			// could not apply owner ref for object
-			return fmt.Errorf("unable to apply owner reference for AddonsLayer '%s' to resource '%s': %w", layer.GetName(), getObjLabel(obj), err)
+			return fmt.Errorf("unable to apply owner reference for AddonsLayer '%s' to resource '%s': %w", layer.GetName(), getObjLabel(robj), err)
 		}
 		labels := obj.GetLabels()
 		if labels == nil {
@@ -214,33 +227,19 @@ func (a KubectlLayerApplier) getHelmReleases(ctx context.Context, layer layers.L
 
 func (a KubectlLayerApplier) applyObjects(ctx context.Context, layer layers.Layer, objs []runtime.Object) error {
 	a.logDebug("To be applied resources for AddonsLayer", layer, "objects", utils.LogJSON(objs))
-	for i, hr := range objs {
-		a.logDebug("Applying resources for AddonsLayer", layer, "index", i, "object", utils.LogJSON(hr))
-		key, e := client.ObjectKeyFromObject(hr)
-		if e != nil {
-			a.logDebug("error getting key", layer, "error", e)
-			return e
-		}
-		a.logDebug("existing resource key for AddonsLayer", layer, "key", key)
-		existing := hr.DeepCopyObject()
-		if e := a.client.Get(ctx, key, existing); e != nil {
-			if !errors.IsNotFound(e) {
-				a.logDebug("error getting existing object", layer, "error", e)
-				return fmt.Errorf("unable to get existing object: %w", e)
-			}
-			a.logDebug("no existing resource for AddonsLayer", layer, "key", key)
-		} else {
-			a.logDebug("existing resource for AddonsLayer", layer, "key", key, "objects", utils.LogJSON(existing))
-		}
-
-		res, err := controllerutil.CreateOrUpdate(ctx, a.client, hr, func() error {
-			fmt.Fprintln(os.Stderr, "mutate")
-			return nil
-		})
+	for i, obj := range objs {
+		a.logDebug("Applying resources for AddonsLayer", layer, "index", i, "object", utils.LogJSON(obj))
+		/*
+			res, err := controllerutil.CreateOrUpdate(ctx, a.client, obj, func() error {
+				fmt.Fprintln(os.Stderr, "mutate")
+				return nil
+			})
+		*/
+		err := a.applyObject(ctx, layer, obj)
 		if err != nil {
 			return fmt.Errorf("unable to apply layer resource: %w", err)
 		}
-		a.logInfo("resource successfully applied", layer, "operationResult", res)
+		a.logInfo("resource successfully applied", layer, "resource", getObjLabel(obj))
 	}
 	return nil
 }
@@ -257,41 +256,48 @@ func (a KubectlLayerApplier) getHelmRepos(ctx context.Context, layer layers.Laye
 	return foundHrs, nil
 }
 
-/*
-func (a KubectlLayerApplier) getHelmRepo(ctx context.Context, hr *sourcev1.HelmRepository) (*sourcev1.HelmRepository, error) {
-	key, err := client.ObjectKeyFromObject(hr)
+func (a KubectlLayerApplier) isObjectPresent(ctx context.Context, layer layers.Layer, obj runtime.Object) (bool, error) {
+	key, err := client.ObjectKeyFromObject(obj)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get an ObjectKey from HelmRepository '%s': %w", getLabel(hr.ObjectMeta), err)
+		return false, fmt.Errorf("unable to get an ObjectKey '%s': %w", getObjLabel(obj), err)
 	}
-	foundHr := &sourcev1.HelmRepository{}
-	err = a.client.Get(ctx, key, foundHr)
+	//existing := obj.DeepCopyObject()
+	err = a.client.Get(ctx, key, obj)
 	if err != nil {
-		return nil, fmt.Errorf("failed to Get HelmRepo '%s': %w", getLabel(hr.ObjectMeta), err)
+		if errors.IsNotFound(err) {
+			removeResourceVersion(obj)
+			a.logDebug("existing object not found", layer, "key", key)
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to Get object '%s': %w", key, err)
 	}
-	return foundHr, nil
+	a.logDebug("existing object found", layer, "key", key)
+	return true, nil
 }
 
-func (a KubectlLayerApplier) applyHelmRepo(ctx context.Context, layer layers.Layer, hrs []*sourcev1.HelmRepository) error {
-	for i, hr := range hrs {
-		a.logDebug("Applying HelmRepos for AddonsLayer", layer, "index", i, "helmRepo", hr)
-		foundHr, err := a.getHelmRepo(ctx, hr)
-		if err != nil || foundHr == nil {
-			// HelmRelease does not exist, create resource
-			err = a.client.Create(ctx, hr, &client.CreateOptions{})
-			if err != nil {
-				return fmt.Errorf("unable to Create HelmRepository '%s' on the target cluster: %w", getLabel(hr.ObjectMeta), err)
-			}
-		} else {
-			// HelmRelease exists, update resource
-			err = a.client.Update(ctx, hr, &client.UpdateOptions{})
-			if err != nil {
-				return fmt.Errorf("unable to Update HelmRepository '%s' on the target cluster: %w", getLabel(hr.ObjectMeta), err)
-			}
+func (a KubectlLayerApplier) applyObject(ctx context.Context, layer layers.Layer, obj runtime.Object) error {
+	a.logDebug("Applying object for AddonsLayer", layer, "object", obj)
+	present, err := a.isObjectPresent(ctx, layer, obj)
+	if err != nil {
+		return fmt.Errorf("unable to determine if object '%s' is present on the target cluster: %w", getObjLabel(obj), err)
+	}
+	if !present {
+		// object does not exist, create resource
+		err = a.client.Create(ctx, obj, &client.CreateOptions{})
+		if err != nil {
+			return fmt.Errorf("unable to Create Object '%s' on the target cluster: %w", getObjLabel(obj), err)
+		}
+	} else {
+		// Object exists, update resource
+		err = a.client.Update(ctx, obj, &client.UpdateOptions{})
+		if err != nil {
+			return fmt.Errorf("unable to Update object '%s' on the target cluster: %w", getObjLabel(obj), err)
 		}
 	}
+
 	return nil
 }
-*/
+
 func (a KubectlLayerApplier) decodeList(layer layers.Layer,
 	raws *corev1.List, dez *runtime.Decoder) (objs []runtime.Object, err error) {
 	dec := *dez
@@ -403,7 +409,6 @@ func (a KubectlLayerApplier) Apply(ctx context.Context, layer layers.Layer) (err
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 

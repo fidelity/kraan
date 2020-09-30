@@ -13,9 +13,9 @@ spec:
         namespace: bootstrap
       version: '>4.0.0'
   test:
-    enable: true
+    enable: false
     ignoreFailures: true
-    timeout: "1m"
+    timeout: "10m"
   values:
     preHookBackoffLimit: 1
     preHookActiveDeadlineSeconds: 60

@@ -84,11 +84,12 @@ func startManager(t *testing.T, mgr ctrl.Manager) {
 
 func createManager(ctx context.Context, t *testing.T, config *rest.Config, scheme *runtime.Scheme, namespace string) ctrl.Manager {
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
-		Scheme:    scheme,
-		Namespace: namespace,
+		Scheme:             scheme,
+		Namespace:          namespace,
+		MetricsBindAddress: "0",
 	})
 	if err != nil {
-		t.Fatalf("unable to start manager: %s", err)
+		t.Fatalf("unable to create manager: %s", err)
 	}
 
 	createController(ctx, t, mgr)
@@ -224,7 +225,7 @@ func getAddonsLayer(ctx context.Context, t *testing.T, c client.Client, name str
 	addonsLayer := &kraanv1alpha1.AddonsLayer{}
 	key := client.ObjectKey{Name: name}
 	if err := c.Get(ctx, key, addonsLayer); err != nil {
-		t.Fatalf("unable to retrieve AddonsLayer '%s'", name)
+		t.Fatalf("unable to retrieve AddonsLayer '%s', error: %s", name, err)
 	}
 	return addonsLayer
 }

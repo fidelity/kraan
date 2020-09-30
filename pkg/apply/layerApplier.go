@@ -261,8 +261,8 @@ func (a KubectlLayerApplier) isObjectPresent(ctx context.Context, layer layers.L
 	if err != nil {
 		return false, fmt.Errorf("unable to get an ObjectKey '%s': %w", getObjLabel(obj), err)
 	}
-	//existing := obj.DeepCopyObject()
-	err = a.client.Get(ctx, key, obj)
+	existing := obj.DeepCopyObject()
+	err = a.client.Get(ctx, key, existing)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			removeResourceVersion(obj)

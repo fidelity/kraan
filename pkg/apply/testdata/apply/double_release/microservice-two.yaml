@@ -4,12 +4,12 @@ metadata:
   name: microservice-two
   namespace: simple
 spec:
+  interval: 1m0s
   releaseName: double-test
   test:
     enable: true
     ignoreFailures: false
-    timeout: "5m""
-    interval: 1m0s
+    timeout: "5m"
   chart:
     spec:
       chart: single-test

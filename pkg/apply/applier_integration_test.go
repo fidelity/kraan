@@ -11,6 +11,7 @@ import (
 	"time"
 
 	helmctlv2 "github.com/fluxcd/helm-controller/api/v2alpha1"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
@@ -34,6 +35,7 @@ func combinedScheme() *runtime.Scheme {
 	_ = k8sscheme.AddToScheme(intScheme)     // nolint:errcheck // ok
 	_ = kraanv1alpha1.AddToScheme(intScheme) // nolint:errcheck // ok
 	_ = helmctlv2.AddToScheme(intScheme)     // nolint:errcheck // ok
+	_ = sourcev1.AddToScheme(intScheme)      // nolint:errcheck // ok
 	return intScheme
 }
 
@@ -95,6 +97,7 @@ func createManager(ctx context.Context, t *testing.T, config *rest.Config, schem
 	createController(ctx, t, mgr)
 
 	go startManager(t, mgr)
+	time.Sleep(time.Second * 10)
 
 	return mgr
 }
@@ -171,9 +174,14 @@ func (r *fakeReconciler) setupWithManager(mgr ctrl.Manager) error {
 	return nil
 }
 
+var mgr ctrl.Manager = nil
+
 func managerClient(ctx context.Context, t *testing.T, scheme *runtime.Scheme, namespace string) client.Client {
+	if mgr != nil {
+		return mgr.GetClient()
+	}
 	config := kubeConfig(t)
-	mgr := createManager(ctx, t, config, scheme, namespace)
+	mgr = createManager(ctx, t, config, scheme, namespace)
 	return mgr.GetClient()
 }
 
@@ -328,7 +336,7 @@ func TestDoubleApply(t *testing.T) {
 	mockLayer.EXPECT().GetName().Return(layerName).AnyTimes()
 	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
 	mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()
-	mockLayer.EXPECT().GetAddonsLayer().Return(addonsLayer).Times(2)
+	mockLayer.EXPECT().GetAddonsLayer().Return(addonsLayer).AnyTimes()
 
 	err = applier.Apply(ctx, mockLayer)
 	if err != nil {
@@ -369,7 +377,7 @@ func TestApplySimpleNamespace(t *testing.T) {
 	mockLayer.EXPECT().GetName().Return(layerName).AnyTimes()
 	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
 	mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()
-	mockLayer.EXPECT().GetAddonsLayer().Return(addonsLayer).Times(1)
+	mockLayer.EXPECT().GetAddonsLayer().Return(addonsLayer).AnyTimes()
 
 	err = applier.Apply(ctx, mockLayer)
 	if err != nil {
@@ -418,7 +426,7 @@ func TestPruneIsRequired(t *testing.T) {
 	for _, hr := range pruneHrs {
 		t.Logf("LayerApplier.PruneIsRequired - '%s'", getLabel(hr.ObjectMeta))
 	}
-	if pruneRequired {
+	if !pruneRequired {
 		t.Fatalf("LayerApplier.PruneIsRequired returned %v when false was expected", pruneRequired)
 	}
 }

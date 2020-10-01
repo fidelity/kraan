@@ -32,7 +32,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -64,16 +66,39 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 		return fmt.Errorf("failed setting up FieldIndexer for HelmRepository owner: %w", err)
 	}
 
-	repoKind := &source.Kind{Type: &sourcev1.GitRepository{}}
-	repoHandler := &handler.EnqueueRequestsFromMapFunc{ToRequests: handler.ToRequestsFunc(repoMapperFunc)}
-
-	return ctrl.NewControllerManagedBy(mgr).
+	ctl, err := ctrl.NewControllerManagedBy(mgr).
 		For(addonsLayer).
-		Watches(repoKind, repoHandler).
+		//Watch(repoKind, repoHandler).
 		Owns(hr).
 		Owns(hrepo).
 		WithOptions(controller.Options{MaxConcurrentReconciles: opts.MaxConcurrentReconciles}).
-		Complete(r)
+		Build(r)
+	if err != nil {
+		return errors.Wrap(err, "error creating controller")
+	}
+	return ctl.Watch(
+		&source.Kind{Type: &sourcev1.GitRepository{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: handler.ToRequestsFunc(r.repoMapperFunc),
+		},
+		predicate.Funcs{CreateFunc: func(e event.CreateEvent) bool {
+			r.Log.V(3).Info("create event for GitRepository", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(e))
+			return true
+		},
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				r.Log.V(3).Info("update event for GitRepository", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(e))
+				return true
+			},
+			DeleteFunc: func(e event.DeleteEvent) bool {
+				r.Log.V(3).Info("delete event for GitRepository", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(e))
+				return true
+			},
+			GenericFunc: func(e event.GenericEvent) bool {
+				r.Log.V(3).Info("generic event for GitRepository", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(e))
+				return true
+			},
+		},
+	)
 }
 
 // AddonsLayerReconciler reconciles a AddonsLayer object.
@@ -266,40 +291,41 @@ func (r *AddonsLayerReconciler) update(ctx context.Context, log logr.Logger,
 	return nil
 }
 
-func repoMapperFunc(a handler.MapObject) []reconcile.Request {
+func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.Request {
 	kind := a.Object.GetObjectKind().GroupVersionKind()
 	repoKind := sourcev1.GitRepositoryKind
 	if kind.Kind != repoKind {
 		// If this isn't a GitRepository object, return an empty list of requests
-		reconciler.Log.Error(fmt.Errorf("unexpected object kind: %s, only %s supported", kind, sourcev1.GitRepositoryKind),
-			"unexpected kind, continuing")
+		r.Log.Error(fmt.Errorf("unexpected object kind: %s, only %s supported", kind, sourcev1.GitRepositoryKind),
+			"unexpected kind, continuing", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(kind))
 		//return []reconcile.Request{}
 	}
 	srcRepo, ok := a.Object.(*sourcev1.GitRepository)
 	if !ok {
-		reconciler.Log.Error(fmt.Errorf("unable to cast object to GitRepository"), "skipping processing")
+		r.Log.Error(fmt.Errorf("unable to cast object to GitRepository"), "skipping processing", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(srcRepo))
 		return []reconcile.Request{}
 	}
-	reconciler.Log.V(1).Info("processing", "gitrepositories.source.toolkit.fluxcd.io", srcRepo)
-	repo := reconciler.Repos.Add(srcRepo)
+	r.Log.V(1).Info("monitoring", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(srcRepo))
+	repo := r.Repos.Add(srcRepo)
 	if err := repo.SyncRepo(); err != nil {
-		reconciler.Log.Error(err, "unable to sync repo, not requeuing")
+		r.Log.Error(err, "unable to sync repo, not requeuing", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(srcRepo))
 		return []reconcile.Request{}
 	}
 	addonsList := &kraanv1alpha1.AddonsLayerList{}
-	if err := reconciler.List(reconciler.Context, addonsList); err != nil {
-		reconciler.Log.Error(err, "unable to list AddonsLayers")
+	if err := r.List(r.Context, addonsList); err != nil {
+		r.Log.Error(err, "unable to list AddonsLayers", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(srcRepo))
 		return []reconcile.Request{}
 	}
 	addons := []reconcile.Request{}
 	for _, addon := range addonsList.Items {
-		layer := layers.CreateLayer(reconciler.Context, reconciler.Client, reconciler.k8client, reconciler.Log, &addon) //nolint:scopelint // ok
+		layer := layers.CreateLayer(r.Context, r.Client, r.k8client, r.Log, &addon) //nolint:scopelint // ok
 		if err := repo.LinkData(layer.GetSourcePath(), layer.GetSpec().Source.Path); err != nil {
-			reconciler.Log.Error(err, "unable to link AddonsLayer directory to repository data")
+			r.Log.Error(err, "unable to link AddonsLayer directory to repository data",
+				"kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(srcRepo), "layer", addon.Name)
 			continue
 		}
 
-		reconciler.Log.Info("adding layer to list", "layer", addon.Name)
+		r.Log.Info("adding layer to list", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(srcRepo), "layer", addon.Name)
 		if layer.GetSpec().Source.Name == repo.GetSourceName() && layer.GetSpec().Source.NameSpace == repo.GetSourceNameSpace() {
 			addons = append(addons, reconcile.Request{NamespacedName: types.NamespacedName{Name: layer.GetName(), Namespace: ""}})
 		}

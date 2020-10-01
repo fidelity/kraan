@@ -7,7 +7,7 @@ rules:
 - apiGroups:
   - kraan.io
   resources:
-  - addons
+  - addonslayers
   verbs:
   - create
   - delete

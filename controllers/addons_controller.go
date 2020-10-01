@@ -23,6 +23,7 @@ import (
 	helmctlv2 "github.com/fluxcd/helm-controller/api/v2alpha1"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -39,7 +40,6 @@ import (
 	"github.com/fidelity/kraan/pkg/apply"
 	layers "github.com/fidelity/kraan/pkg/layers"
 	"github.com/fidelity/kraan/pkg/repos"
-	"github.com/fidelity/kraan/pkg/utils"
 )
 
 var (
@@ -105,7 +105,7 @@ func NewReconciler(config *rest.Config, client client.Client, logger logr.Logger
 	reconciler.Context = context.Background()
 	reconciler.Applier, err = apply.NewApplier(client, logger.WithName("applier"), scheme)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to create applier")
 	}
 	reconciler.Repos = repos.NewRepos(reconciler.Context, reconciler.Log)
 	return reconciler, err
@@ -158,7 +158,7 @@ func (r *AddonsLayerReconciler) processApply(l layers.Layer) (statusReconciled b
 
 		l.SetStatusApplying()
 		if applyErr := applier.Apply(ctx, l); applyErr != nil {
-			r.Log.Error(applyErr, "check for apply required failed", "requestName", l.GetName())
+			r.Log.Error(applyErr, "check for apply failed", "requestName", l.GetName())
 			return true, applyErr
 		}
 		l.SetDelayedRequeue()
@@ -308,7 +308,8 @@ func repoMapperFunc(a handler.MapObject) []reconcile.Request {
 }
 
 func indexHelmReleaseByOwner(o runtime.Object) []string {
-	reconciler.Log.V(1).Info("processing", "helmreleases.helm.toolkit.fluxcd.io", utils.LogJSON(o))
+	log := ctrl.Log.WithName("HelmRelease sync")
+	log.V(3).Info("indexing", "helmreleases.helm.toolkit.fluxcd.io", apply.LogJSON(o))
 	hr, ok := o.(*helmctlv2.HelmRelease)
 	if !ok {
 		return nil
@@ -320,14 +321,14 @@ func indexHelmReleaseByOwner(o runtime.Object) []string {
 	if owner.APIVersion != kraanv1alpha1.GroupVersion.String() || owner.Kind != "AddonsLayer" {
 		return nil
 	}
-	log := ctrl.Log.WithName("hr sync")
-	log.Info("HR associated with layer", "Layer Name", owner.Name, "HR", fmt.Sprintf("%s/%s", hr.GetNamespace(), hr.GetName()))
+	log.V(1).Info("HR associated with layer", "Layer Name", owner.Name, "HR", fmt.Sprintf("%s/%s", hr.GetNamespace(), hr.GetName()))
 
 	return []string{owner.Name}
 }
 
 func indexHelmRepoByOwner(o runtime.Object) []string {
-	reconciler.Log.V(1).Info("processing", "helmrepositories.source.toolkit.fluxcd.io", utils.LogJSON(o))
+	log := ctrl.Log.WithName("HelmRepo sync")
+	log.V(3).Info("indexing", "helmrepositories.source.toolkit.fluxcd.io", apply.LogJSON(o))
 	hr, ok := o.(*sourcev1.HelmRepository)
 	if !ok {
 		return nil
@@ -339,8 +340,6 @@ func indexHelmRepoByOwner(o runtime.Object) []string {
 	if owner.APIVersion != kraanv1alpha1.GroupVersion.String() || owner.Kind != "AddonsLayer" {
 		return nil
 	}
-	log := ctrl.Log.WithName("hr sync")
-	log.Info("Helm Repository associated with layer", "Layer Name", owner.Name, "HR", fmt.Sprintf("%s/%s", hr.GetNamespace(), hr.GetName()))
-
+	log.V(1).Info("Helm Repository associated with layer", "Layer Name", owner.Name, "HR", fmt.Sprintf("%s/%s", hr.GetNamespace(), hr.GetName()))
 	return []string{owner.Name}
 }

@@ -97,7 +97,7 @@ func createManager(ctx context.Context, t *testing.T, config *rest.Config, schem
 	createController(ctx, t, mgr)
 
 	go startManager(t, mgr)
-	time.Sleep(time.Second * 10)
+	time.Sleep(time.Second * 1)
 
 	return mgr
 }

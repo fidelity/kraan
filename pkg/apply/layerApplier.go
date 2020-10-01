@@ -6,7 +6,9 @@ package apply
 To generate mock code for the LayerApplier run 'go generate ./...' from the project root directory.
 */
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"reflect"
@@ -25,7 +27,6 @@ import (
 
 	"github.com/fidelity/kraan/pkg/internal/kubectl"
 	"github.com/fidelity/kraan/pkg/layers"
-	"github.com/fidelity/kraan/pkg/utils"
 )
 
 var (
@@ -175,11 +176,11 @@ func (a KubectlLayerApplier) decodeAddons(layer layers.Layer,
 		return nil, err
 	}
 
-	a.logTrace("decoded JSON output", layer, "groupVersionKind", gvk, "object", utils.LogJSON(obj))
+	a.logTrace("decoded JSON output", layer, "groupVersionKind", gvk, "object", LogJSON(obj))
 
 	switch obj.(type) {
 	case *corev1.List:
-		a.logTrace("decoded raw object List from kubectl output", layer, "groupVersionKind", gvk, "list", utils.LogJSON(obj))
+		a.logTrace("decoded raw object List from kubectl output", layer, "groupVersionKind", gvk, "list", LogJSON(obj))
 		return a.decodeList(layer, obj.(*corev1.List), &dez)
 	default:
 		/*msg := "decoded kubectl output was not a HelmRelease or List"
@@ -226,9 +227,9 @@ func (a KubectlLayerApplier) getHelmReleases(ctx context.Context, layer layers.L
 }
 
 func (a KubectlLayerApplier) applyObjects(ctx context.Context, layer layers.Layer, objs []runtime.Object) error {
-	a.logDebug("To be applied resources for AddonsLayer", layer, "objects", utils.LogJSON(objs))
+	a.logDebug("To be applied resources for AddonsLayer", layer, "objects", LogJSON(objs))
 	for i, obj := range objs {
-		a.logDebug("Applying resources for AddonsLayer", layer, "index", i, "object", utils.LogJSON(obj))
+		a.logDebug("Applying resources for AddonsLayer", layer, "index", i, "object", LogJSON(obj))
 		/*
 			res, err := controllerutil.CreateOrUpdate(ctx, a.client, obj, func() error {
 				fmt.Fprintln(os.Stderr, "mutate")
@@ -531,7 +532,7 @@ func (a KubectlLayerApplier) helmReposApplyRequired(ctx context.Context, layer l
 }
 
 func (a KubectlLayerApplier) sourceHasReleaseChanged(layer layers.Layer, source, found *helmctlv2.HelmRelease) (changed bool) {
-	if !utils.CompareAsJSON(source.Spec, found.Spec) {
+	if !CompareAsJSON(source.Spec, found.Spec) {
 		a.logInfo("found spec change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta),
 			"source", source.Spec, "found", found.Spec, "diff", cmp.Diff(source.Spec, found.Spec))
 		return true
@@ -547,7 +548,7 @@ func (a KubectlLayerApplier) sourceHasReleaseChanged(layer layers.Layer, source,
 }
 
 func (a KubectlLayerApplier) sourceHasRepoChanged(layer layers.Layer, source, found *sourcev1.HelmRepository) (changed bool) {
-	if !utils.CompareAsJSON(source.Spec, found.Spec) {
+	if !CompareAsJSON(source.Spec, found.Spec) {
 		a.logInfo("found spec change for HelmRepository in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta),
 			"source", source.Spec, "found", found.Spec, "diff", cmp.Diff(source.Spec, found.Spec))
 		return true
@@ -591,4 +592,49 @@ func (a KubectlLayerApplier) CheckHR(hr helmctlv2.HelmRelease, layer layers.Laye
 
 	a.logDebug("HelmRelease for AddonsLayer installed", layer, "resource", hr, "condition", cond)
 	return cond.Status == "True"
+}
+
+// CompareAsJSON compares two interfaces by converting them to json and comparing json text
+func CompareAsJSON(one, two interface{}) bool {
+	if one == nil && two == nil {
+		return true
+	}
+	jsonOne, err := ToJSON(one)
+	if err != nil {
+		return false
+	}
+
+	jsonTwo, err := ToJSON(two)
+	if err != nil {
+		return false
+	}
+	return jsonOne == jsonTwo
+}
+
+// LogJSON is used log an item in JSON format.
+func LogJSON(data interface{}) string {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return err.Error()
+	}
+	var prettyJSON bytes.Buffer
+	err = json.Indent(&prettyJSON, jsonData, "", "  ")
+	if err != nil {
+		return err.Error()
+	}
+	return prettyJSON.String()
+}
+
+// ToJSON is used to convert a data structure into JSON format.
+func ToJSON(data interface{}) (string, error) {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return "", err
+	}
+	var prettyJSON bytes.Buffer
+	err = json.Indent(&prettyJSON, jsonData, "", "\t")
+	if err != nil {
+		return "", err
+	}
+	return prettyJSON.String(), nil
 }

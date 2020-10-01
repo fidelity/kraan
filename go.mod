@@ -12,8 +12,11 @@ require (
 	github.com/onsi/ginkgo v1.12.1
 	github.com/onsi/gomega v1.10.1
 	github.com/paulcarlton-ww/go-utils v0.0.0-20200729094929-4657992b390c
+	github.com/pkg/errors v0.9.1
 	go.uber.org/zap v1.16.0
-	golang.org/x/mod v0.1.1-0.20191105210325-c90efee705ee
+	golang.org/x/mod v0.3.0
+	golang.org/x/tools v0.0.0-20200930213115-e57f6d466a48 // indirect
+	google.golang.org/protobuf v1.24.0
 	k8s.io/api v0.19.2
 	k8s.io/apimachinery v0.19.2
 	k8s.io/client-go v0.19.2
@@ -21,8 +24,8 @@ require (
 )
 
 replace (
+	github.com/go-logr/zapr => github.com/go-logr/zapr v0.2.0
 	k8s.io/api => k8s.io/api v0.19.2
 	k8s.io/apimachinery => k8s.io/apimachinery v0.19.2
 	k8s.io/client-go => k8s.io/client-go v0.19.2
-	github.com/go-logr/zapr => github.com/go-logr/zapr v0.2.0
 )

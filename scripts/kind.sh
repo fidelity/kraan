@@ -1,15 +1,14 @@
 #!/bin/bash
 set -o errexit
-export MY_IP=$(ip -o route get to 8.8.8.8 | sed -n 's/.*src \([0-9.]\+\).*/\1/p')
 # desired cluster name; default is "kind"
 KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-k8s}"
-
+KIND_PORT=${KIND_CLUSTER_PORT:-16443}
 cat <<EOF | kind create cluster --name "${KIND_CLUSTER_NAME}" --config=-
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 networking:
-  apiServerAddress: "$MY_IP"
-  apiServerPort: 16443
+  apiServerAddress: "127.0.0.1"
+  apiServerPort: ${KIND_PORT}
 kubeadmConfigPatches:
 - |-
 nodes:

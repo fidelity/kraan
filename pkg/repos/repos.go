@@ -15,7 +15,6 @@ import (
 	"github.com/go-logr/logr"
 
 	"github.com/fidelity/kraan/pkg/internal/tarconsumer"
-	"github.com/fidelity/kraan/pkg/utils"
 )
 
 var (
@@ -203,7 +202,7 @@ func (r *repoData) LinkData(layerPath, sourcePath string) error {
 	r.Lock()
 	defer r.Unlock()
 	addonsPath := fmt.Sprintf("%s/%s", r.GetDataPath(), sourcePath)
-	if err := utils.IsExistingDir(addonsPath); err != nil {
+	if err := isExistingDir(addonsPath); err != nil {
 		return fmt.Errorf("failed, target directory does not exist: %w", err)
 	}
 	layerPathParts := strings.Split(layerPath, "/")
@@ -286,6 +285,21 @@ func (r *repoData) fetchArtifact(ctx context.Context) error {
 
 	if err := tarconsumer.UnpackTar(tar, r.GetDataPath()); err != nil {
 		return fmt.Errorf("faild to untar artifact, error: %w", err)
+	}
+
+	return nil
+}
+
+func isExistingDir(dataPath string) error {
+	info, err := os.Stat(dataPath)
+	if os.IsNotExist(err) {
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("addons Data path: %s, is not a directory", dataPath)
 	}
 
 	return nil

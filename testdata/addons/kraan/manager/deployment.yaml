@@ -26,6 +26,11 @@ spec:
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /home/controller/data
+          name: data
+        - mountPath: /tmp
+          name: tmp
         args:
         - --enable-leader-election
         - --zap-log-level=99
@@ -33,10 +38,6 @@ spec:
         env:
           - name: DATA_PATH
             value: /home/controller/data
-          - name: RUNTIME_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
         ports:
         - containerPort: 9440
           name: healthz
@@ -64,4 +65,6 @@ spec:
           requests:
             cpu: 500m
             memory: 128Mi
-
+      volumes:
+      - name: data
+      - name: tmp

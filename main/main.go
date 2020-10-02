@@ -204,7 +204,7 @@ func createManager(metricsAddr string, healthAddr string, enableLeaderElection b
 		LeaderElection:          enableLeaderElection,
 		LeaderElectionNamespace: leaderElectionNamespace,
 		LeaderElectionID:        "925331a6.kraan.io",
-		Namespace:               os.Getenv("RUNTIME_NAMESPACE"),
+		Namespace:               "",
 		SyncPeriod:              &syncPeriod,
 	})
 	if err != nil {

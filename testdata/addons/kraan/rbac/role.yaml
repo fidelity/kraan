@@ -7,14 +7,15 @@ rules:
 - apiGroups:
   - kraan.io
   resources:
-  - addonslayer
-  - addonslayer/status
+  - addonslayers
+  - addonslayers/status
   verbs:
+  - create
+  - delete
   - get
   - list
   - patch
   - update
-  - delete
   - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -25,14 +26,14 @@ rules:
 - apiGroups:
   - source.toolkit.fluxcd.io
   resources:
-  - gitrepository
-  - gitrepository/status
-  - helmrepository
-  - helmrepository/status
+  - gitrepositories
+  - gitrepositories/status
+  - helmrepositories
+  - helmrepositories/status
   verbs:
   - watch
   - get
-  - list 
+  - list
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -42,8 +43,8 @@ rules:
 - apiGroups:
   - helm.toolkit.fluxcd.io
   resources:
-  - helmrelease
-  - helmrelease/status
+  - helmreleases
+  - helmreleases/status
   verbs:
   - create
   - delete

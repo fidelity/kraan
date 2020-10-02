@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kraan-controller
+  namespace: kraan
   labels:
     control-plane: controller
 spec:
@@ -20,37 +21,47 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
       - name: manager
-        image: fluxcd/kraan-controller
-        imagePullPolicy: IfNotPresent
+        image: docker.pkg.github.com/fidelity/kraan/kraan-controller:latest
+        imagePullPolicy: Always
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
-        ports:
-          - containerPort: 8080
-            name: http
-          - containerPort: 9090
-            name: http-prom
         args:
-          - --enable-leader-election
-          - --log-json
+        - --enable-leader-election
+        - --zap-log-level=99
+        - --zap-encoder=json
         env:
+          - name: DATA_PATH
+            value: /home/controller/data
           - name: RUNTIME_NAMESPACE
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
-        livenessProbe:
-          httpGet:
-            port: http
-            path: /
+        ports:
+        - containerPort: 9440
+          name: healthz
+          protocol: TCP
         readinessProbe:
           httpGet:
-            port: http
-            path: /
+            path: /readyz
+            port: healthz
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+          timeoutSeconds: 15
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: healthz
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+          timeoutSeconds: 15
         resources:
           limits:
             cpu: 1000m
             memory: 1Gi
           requests:
-            cpu: 50m
-            memory: 64Mi
+            cpu: 500m
+            memory: 128Mi
 

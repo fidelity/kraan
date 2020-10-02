@@ -52,15 +52,16 @@ NC:=\033[0m
 	clean-${PROJECT}-check ${PROJECT}-check clean-${PROJECT}-build \
 	${PROJECT}-build ${GO_CHECK_PACKAGES} clean-check check \
 	clean-build build generate manifests deploy docker-push controller-gen \
-	install uninstall lint-build run
+	install uninstall lint-build run ${PROJECT}-integration integration
 # Stop prints each line of the recipe.
 .SILENT:
 
 # Allow secondary expansion of explicit rules.
 .SECONDEXPANSION: %.md %-docker.tar
 
-all: ${PROJECT}-check ${PROJECT}-build #go-generate
+all: ${PROJECT}-check ${PROJECT}-build go-generate
 build: gomod ${PROJECT}-check ${PROJECT}-build
+integration: gomod ${PROJECT}-integration
 clean: clean-gomod clean-godocs clean-${PROJECT}-check \
 	clean-${PROJECT}-build clean-check clean-build \
 	clean-${BUILD_DIR}
@@ -109,6 +110,11 @@ clean-${PROJECT}-check:
 ${PROJECT}-check: ${GO_CHECK_PACKAGES}
 ${GO_CHECK_PACKAGES}: go.sum
 	$(MAKE) -C $@ --makefile=${CURDIR}/makefile.mk
+
+${PROJECT}-integration: ${GO_CHECK_PACKAGES}
+	$(foreach target,${GO_CHECK_PACKAGES}, \
+		$(MAKE) -C ${target} \
+			--makefile=${CURDIR}/makefile.mk integration || exit;)
 
 # Generate code
 go-generate: ${PROJECT_SOURCES}

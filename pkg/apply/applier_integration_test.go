@@ -10,7 +10,8 @@ import (
 	"testing"
 	"time"
 
-	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
+	helmctlv2 "github.com/fluxcd/helm-controller/api/v2alpha1"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
@@ -33,7 +34,8 @@ func combinedScheme() *runtime.Scheme {
 	intScheme := runtime.NewScheme()
 	_ = k8sscheme.AddToScheme(intScheme)     // nolint:errcheck // ok
 	_ = kraanv1alpha1.AddToScheme(intScheme) // nolint:errcheck // ok
-	_ = helmopv1.AddToScheme(intScheme)      // nolint:errcheck // ok
+	_ = helmctlv2.AddToScheme(intScheme)     // nolint:errcheck // ok
+	_ = sourcev1.AddToScheme(intScheme)      // nolint:errcheck // ok
 	return intScheme
 }
 
@@ -84,16 +86,18 @@ func startManager(t *testing.T, mgr ctrl.Manager) {
 
 func createManager(ctx context.Context, t *testing.T, config *rest.Config, scheme *runtime.Scheme, namespace string) ctrl.Manager {
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
-		Scheme:    scheme,
-		Namespace: namespace,
+		Scheme:             scheme,
+		Namespace:          namespace,
+		MetricsBindAddress: "0",
 	})
 	if err != nil {
-		t.Fatalf("unable to start manager: %s", err)
+		t.Fatalf("unable to create manager: %s", err)
 	}
 
 	createController(ctx, t, mgr)
 
 	go startManager(t, mgr)
+	time.Sleep(time.Second * 1)
 
 	return mgr
 }
@@ -142,7 +146,7 @@ func (r *fakeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 }
 
 func indexHelmReleaseByOwner(o runtime.Object) []string {
-	hr, ok := o.(*helmopv1.HelmRelease)
+	hr, ok := o.(*helmctlv2.HelmRelease)
 	if !ok {
 		return nil
 	}
@@ -158,7 +162,7 @@ func indexHelmReleaseByOwner(o runtime.Object) []string {
 
 func (r *fakeReconciler) setupWithManager(mgr ctrl.Manager) error {
 	addonsLayer := &kraanv1alpha1.AddonsLayer{}
-	hr := &helmopv1.HelmRelease{}
+	hr := &helmctlv2.HelmRelease{}
 	if err := mgr.GetFieldIndexer().IndexField(r.Context, hr, ".owner", indexHelmReleaseByOwner); err != nil {
 		return fmt.Errorf("failed setting up FieldIndexer for HelmRelease owner: %w", err)
 	}
@@ -170,9 +174,14 @@ func (r *fakeReconciler) setupWithManager(mgr ctrl.Manager) error {
 	return nil
 }
 
+var mgr ctrl.Manager = nil
+
 func managerClient(ctx context.Context, t *testing.T, scheme *runtime.Scheme, namespace string) client.Client {
+	if mgr != nil {
+		return mgr.GetClient()
+	}
 	config := kubeConfig(t)
-	mgr := createManager(ctx, t, config, scheme, namespace)
+	mgr = createManager(ctx, t, config, scheme, namespace)
 	return mgr.GetClient()
 }
 
@@ -220,23 +229,46 @@ func TestConnectToCluster(t *testing.T) {
 	}
 }
 
-func getAddonsLayer(ctx context.Context, t *testing.T, c client.Client, name string) *kraanv1alpha1.AddonsLayer {
+func getAddonsLayer(ctx context.Context, t *testing.T, c client.Client, name string) *kraanv1alpha1.AddonsLayer { // nolint:unparam //ok
 	addonsLayer := &kraanv1alpha1.AddonsLayer{}
 	key := client.ObjectKey{Name: name}
 	if err := c.Get(ctx, key, addonsLayer); err != nil {
-		t.Fatalf("unable to retrieve AddonsLayer '%s'", name)
+		t.Fatalf("unable to retrieve AddonsLayer '%s', error: %s", name, err)
 	}
 	return addonsLayer
 }
 
-func getHR(ctx context.Context, t *testing.T, c client.Client, namespace string, name string) *helmopv1.HelmRelease {
-	hr := &helmopv1.HelmRelease{}
+func getHR(ctx context.Context, t *testing.T, c client.Client, namespace string, name string) *helmctlv2.HelmRelease {
+	hr := &helmctlv2.HelmRelease{}
 	key := client.ObjectKey{Namespace: namespace, Name: name}
 	if err := c.Get(ctx, key, hr); err != nil {
 		t.Fatalf("unable to retrieve HelmRelease '%s/%s'", namespace, name)
 	}
 	return hr
 }
+
+func getNs(ctx context.Context, t *testing.T, c client.Client, name string) *corev1.Namespace {
+	obj := &corev1.Namespace{}
+	//key := client.ObjectKey{Namespace: namespace}
+	key := client.ObjectKey{Name: name}
+	if err := c.Get(ctx, key, obj); err != nil {
+		t.Fatalf("unable to retrieve Namespace '%s'", name)
+	}
+	return obj
+}
+
+/*func getObj(ctx context.Context, t *testing.T, c client.Client, namespace string, name string) *metav1.Object {
+	obj := &unstructured.Unstructured{}
+	//key := client.ObjectKey{Namespace: namespace, Name: name}
+	key := client.ObjectKey{Namespace: namespace}
+	if len(name) > 0 {
+		key.Name = name
+	}
+	if err := c.Get(ctx, key, obj); err != nil {
+		t.Fatalf("unable to retrieve Object '%s/%s'", namespace, name)
+	}
+	return obj
+}*/
 
 func TestSingleApply(t *testing.T) {
 	mockCtl := gomock.NewController(t)
@@ -304,7 +336,7 @@ func TestDoubleApply(t *testing.T) {
 	mockLayer.EXPECT().GetName().Return(layerName).AnyTimes()
 	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
 	mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()
-	mockLayer.EXPECT().GetAddonsLayer().Return(addonsLayer).Times(2)
+	mockLayer.EXPECT().GetAddonsLayer().Return(addonsLayer).AnyTimes()
 
 	err = applier.Apply(ctx, mockLayer)
 	if err != nil {
@@ -315,6 +347,46 @@ func TestDoubleApply(t *testing.T) {
 	t.Logf("Found HelmRelease '%s/%s'", hr1.GetNamespace(), hr1.GetName())
 	hr2 := getHR(ctx, t, client, "simple", "microservice-two")
 	t.Logf("Found HelmRelease '%s/%s'", hr2.GetNamespace(), hr2.GetName())
+}
+
+func TestApplySimpleNamespace(t *testing.T) {
+	mockCtl := gomock.NewController(t)
+	defer mockCtl.Finish()
+
+	ctx := context.Background()
+
+	logger := testlogr.TestLogger{T: t}
+	scheme := combinedScheme()
+	client := managerClient(ctx, t, scheme, "simple")
+
+	applier, err := NewApplier(client, logger, scheme)
+	if err != nil {
+		t.Fatalf("The NewApplier constructor returned an error: %s", err)
+	}
+	t.Logf("NewApplier returned (%T) %#v", applier, applier)
+
+	// This integration test can be forced to pass or fail at different stages by altering the
+	// Values section of the microservice.yaml HelmRelease in the directory below.
+	sourcePath := "testdata/apply/simple_ns"
+	layerName := "test"
+	l := getAddonsLayer(ctx, t, client, layerName)
+	layerUID := l.ObjectMeta.UID
+	addonsLayer := fakeAddonsLayer(sourcePath, layerName, layerUID)
+
+	mockLayer := mocklayers.NewMockLayer(mockCtl)
+	mockLayer.EXPECT().GetName().Return(layerName).AnyTimes()
+	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
+	mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()
+	mockLayer.EXPECT().GetAddonsLayer().Return(addonsLayer).AnyTimes()
+
+	err = applier.Apply(ctx, mockLayer)
+	if err != nil {
+		t.Fatalf("LayerApplier.Apply returned an error: %s", err)
+	}
+	time.Sleep(5 * time.Second)
+
+	obj := getNs(ctx, t, client, "simple")
+	t.Logf("Found simple : %#v", obj)
 }
 
 func TestPruneIsRequired(t *testing.T) {
@@ -352,9 +424,9 @@ func TestPruneIsRequired(t *testing.T) {
 	t.Logf("LayerApplier.PruneIsRequired returned %v", pruneRequired)
 	t.Logf("LayerApplier.PruneIsRequired returned %d hrs to prune", len(pruneHrs))
 	for _, hr := range pruneHrs {
-		t.Logf("LayerApplier.PruneIsRequired - '%s'", getLabel(hr))
+		t.Logf("LayerApplier.PruneIsRequired - '%s'", getLabel(hr.ObjectMeta))
 	}
-	if pruneRequired {
+	if !pruneRequired {
 		t.Fatalf("LayerApplier.PruneIsRequired returned %v when false was expected", pruneRequired)
 	}
 }

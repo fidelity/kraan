@@ -20,9 +20,10 @@ import (
 	"context"
 	"fmt"
 
-	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
+	helmctlv2 "github.com/fluxcd/helm-controller/api/v2alpha1"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -52,10 +53,15 @@ type AddonsLayerReconcilerOptions struct {
 
 func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opts AddonsLayerReconcilerOptions) error {
 	addonsLayer := &kraanv1alpha1.AddonsLayer{}
-	hr := &helmopv1.HelmRelease{}
+	hr := &helmctlv2.HelmRelease{}
+	hrepo := &sourcev1.HelmRepository{}
 
-	if err := mgr.GetFieldIndexer().IndexField(r.Context, &helmopv1.HelmRelease{}, hrOwnerKey, indexHelmReleaseByOwner); err != nil {
+	if err := mgr.GetFieldIndexer().IndexField(r.Context, &helmctlv2.HelmRelease{}, hrOwnerKey, indexHelmReleaseByOwner); err != nil {
 		return fmt.Errorf("failed setting up FieldIndexer for HelmRelease owner: %w", err)
+	}
+
+	if err := mgr.GetFieldIndexer().IndexField(r.Context, &sourcev1.HelmRepository{}, hrOwnerKey, indexHelmRepoByOwner); err != nil {
+		return fmt.Errorf("failed setting up FieldIndexer for HelmRepository owner: %w", err)
 	}
 
 	repoKind := &source.Kind{Type: &sourcev1.GitRepository{}}
@@ -63,9 +69,10 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(addonsLayer).
-		WithOptions(controller.Options{MaxConcurrentReconciles: opts.MaxConcurrentReconciles}).
-		Owns(hr).
 		Watches(repoKind, repoHandler).
+		Owns(hr).
+		Owns(hrepo).
+		WithOptions(controller.Options{MaxConcurrentReconciles: opts.MaxConcurrentReconciles}).
 		Complete(r)
 }
 
@@ -90,23 +97,28 @@ func NewReconciler(config *rest.Config, client client.Client, logger logr.Logger
 		Log:    logger.WithName("reconciler"),
 		Scheme: scheme,
 	}
-	reconciler.k8client = reconciler.getK8sClient()
-	reconciler.Context = context.Background()
 	var err error
+	reconciler.k8client, err = reconciler.getK8sClient()
+	if err != nil {
+		return nil, err
+	}
+	reconciler.Context = context.Background()
 	reconciler.Applier, err = apply.NewApplier(client, logger.WithName("applier"), scheme)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create applier")
+	}
 	reconciler.Repos = repos.NewRepos(reconciler.Context, reconciler.Log)
 	return reconciler, err
 }
 
-func (r *AddonsLayerReconciler) getK8sClient() kubernetes.Interface {
+func (r *AddonsLayerReconciler) getK8sClient() (kubernetes.Interface, error) {
 	// creates the clientset
 	clientset, err := kubernetes.NewForConfig(r.Config)
 	if err != nil {
-		//TODO - Adjust error handling?
-		panic(err.Error())
+		return nil, err
 	}
 
-	return clientset
+	return clientset, nil
 }
 
 func (r *AddonsLayerReconciler) processPrune(l layers.Layer) (statusReconciled bool, err error) {
@@ -115,10 +127,12 @@ func (r *AddonsLayerReconciler) processPrune(l layers.Layer) (statusReconciled b
 
 	pruneIsRequired, hrs, err := applier.PruneIsRequired(ctx, l)
 	if err != nil {
+		r.Log.Error(err, "check for apply required failed", "requestName", l.GetName())
 		return false, err
 	} else if pruneIsRequired {
 		l.SetStatusPruning()
-		if pruneErr := applier.Prune(ctx, l, hrs); err != nil {
+		if pruneErr := applier.Prune(ctx, l, hrs); pruneErr != nil {
+			r.Log.Error(pruneErr, "prune failed", "requestName", l.GetName())
 			return true, pruneErr
 		}
 		l.SetDelayedRequeue()
@@ -133,16 +147,18 @@ func (r *AddonsLayerReconciler) processApply(l layers.Layer) (statusReconciled b
 
 	applyIsRequired, err := applier.ApplyIsRequired(ctx, l)
 	if err != nil {
+		r.Log.Error(err, "check for apply required failed", "requestName", l.GetName())
 		return false, err
 	} else if applyIsRequired {
-		r.Log.Info("apply required", "Name", l.GetName(), "Spec", l.GetSpec(), "Status", l.GetFullStatus())
+		r.Log.Info("apply required", "requestName", l.GetName(), "Spec", l.GetSpec(), "Status", l.GetFullStatus())
 		if !l.DependenciesDeployed() {
 			l.SetDelayedRequeue()
 			return true, nil
 		}
 
 		l.SetStatusApplying()
-		if applyErr := applier.Apply(ctx, l); err != nil {
+		if applyErr := applier.Apply(ctx, l); applyErr != nil {
+			r.Log.Error(applyErr, "check for apply failed", "requestName", l.GetName())
 			return true, applyErr
 		}
 		l.SetDelayedRequeue()
@@ -157,7 +173,7 @@ func (r *AddonsLayerReconciler) checkSuccess(l layers.Layer) error {
 
 	applyWasSuccessful, err := applier.ApplyWasSuccessful(ctx, l)
 	if err != nil {
-		// TODO - we might want to add some sort of error handling here
+		r.Log.Error(err, "check for apply required failed", "requestName", l.GetName())
 		return err
 	}
 	if !applyWasSuccessful {
@@ -169,7 +185,7 @@ func (r *AddonsLayerReconciler) checkSuccess(l layers.Layer) error {
 }
 
 func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error {
-	r.Log.Info("processing", "Name", l.GetName(), "Status", l.GetStatus())
+	r.Log.Info("processing", "requestName", l.GetName(), "Status", l.GetStatus())
 
 	if l.IsHold() {
 		l.SetHold()
@@ -264,7 +280,7 @@ func repoMapperFunc(a handler.MapObject) []reconcile.Request {
 		reconciler.Log.Error(fmt.Errorf("unable to cast object to GitRepository"), "skipping processing")
 		return []reconcile.Request{}
 	}
-	reconciler.Log.V(2).Info("processing", "gitrepositories.source.toolkit.fluxcd.io", srcRepo)
+	reconciler.Log.V(1).Info("processing", "gitrepositories.source.toolkit.fluxcd.io", srcRepo)
 	repo := reconciler.Repos.Add(srcRepo)
 	if err := repo.SyncRepo(); err != nil {
 		reconciler.Log.Error(err, "unable to sync repo, not requeuing")
@@ -292,7 +308,9 @@ func repoMapperFunc(a handler.MapObject) []reconcile.Request {
 }
 
 func indexHelmReleaseByOwner(o runtime.Object) []string {
-	hr, ok := o.(*helmopv1.HelmRelease)
+	log := ctrl.Log.WithName("HelmRelease sync")
+	log.V(3).Info("indexing", "helmreleases.helm.toolkit.fluxcd.io", apply.LogJSON(o))
+	hr, ok := o.(*helmctlv2.HelmRelease)
 	if !ok {
 		return nil
 	}
@@ -303,8 +321,25 @@ func indexHelmReleaseByOwner(o runtime.Object) []string {
 	if owner.APIVersion != kraanv1alpha1.GroupVersion.String() || owner.Kind != "AddonsLayer" {
 		return nil
 	}
-	log := ctrl.Log.WithName("hr sync")
-	log.Info("HR associated with layer", "Layer Name", owner.Name, "HR", fmt.Sprintf("%s/%s", hr.GetNamespace(), hr.GetName()))
+	log.V(1).Info("HR associated with layer", "Layer Name", owner.Name, "HR", fmt.Sprintf("%s/%s", hr.GetNamespace(), hr.GetName()))
 
+	return []string{owner.Name}
+}
+
+func indexHelmRepoByOwner(o runtime.Object) []string {
+	log := ctrl.Log.WithName("HelmRepo sync")
+	log.V(3).Info("indexing", "helmrepositories.source.toolkit.fluxcd.io", apply.LogJSON(o))
+	hr, ok := o.(*sourcev1.HelmRepository)
+	if !ok {
+		return nil
+	}
+	owner := metav1.GetControllerOf(hr)
+	if owner == nil {
+		return nil
+	}
+	if owner.APIVersion != kraanv1alpha1.GroupVersion.String() || owner.Kind != "AddonsLayer" {
+		return nil
+	}
+	log.V(1).Info("Helm Repository associated with layer", "Layer Name", owner.Name, "HR", fmt.Sprintf("%s/%s", hr.GetNamespace(), hr.GetName()))
 	return []string{owner.Name}
 }

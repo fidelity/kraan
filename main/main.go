@@ -24,7 +24,7 @@ import (
 
 	// +kubebuilder:scaffold:imports
 
-	helmopv1 "github.com/fluxcd/helm-operator/pkg/apis/helm.fluxcd.io/v1"
+	helmctlv2 "github.com/fluxcd/helm-controller/api/v2alpha1"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
 	"github.com/go-logr/logr"
 	uzap "go.uber.org/zap"
@@ -52,7 +52,7 @@ func init() {
 	setupLog.Info("Setting up kraan")
 
 	_ = corev1.AddToScheme(scheme)        // nolint:errcheck // ok
-	_ = helmopv1.AddToScheme(scheme)      // nolint:errcheck // ok
+	_ = helmctlv2.AddToScheme(scheme)     // nolint:errcheck // ok
 	_ = kraanv1alpha1.AddToScheme(scheme) // nolint:errcheck // ok
 	_ = sourcev1.AddToScheme(scheme)      // nolint:errcheck // ok
 	// +kubebuilder:scaffold:scheme

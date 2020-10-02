@@ -7,12 +7,8 @@ import (
 	"io/ioutil"
 	"testing"
 
-	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
-	"github.com/fidelity/kraan/pkg/layers"
-
 	"github.com/go-logr/logr"
 	testlogr "github.com/go-logr/logr/testing"
-	"github.com/paulcarlton-ww/go-utils/pkg/goutils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/version"
@@ -22,6 +18,10 @@ import (
 
 	//k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
+	"github.com/fidelity/kraan/pkg/internal/testutils"
+	"github.com/fidelity/kraan/pkg/layers"
 )
 
 var (
@@ -234,7 +234,7 @@ func resetConditions(l layers.Layer) {
 }
 
 func displayStatus(status *kraanv1alpha1.AddonsLayerStatus) string {
-	statusJSON, err := goutils.ToJSON(status)
+	statusJSON, err := testutils.ToJSON(status)
 	if err != nil {
 		return fmt.Sprintf("failed to generate json output for actual result, error: %s", err.Error())
 	}

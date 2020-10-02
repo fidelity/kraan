@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"io"
 	"net"
 	"net/http"
@@ -13,6 +14,20 @@ import (
 	"path/filepath"
 	"testing"
 )
+
+// ToJSON is used to convert a data structure into JSON format.
+func ToJSON(data interface{}) (string, error) {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return "", err
+	}
+	var prettyJSON bytes.Buffer
+	err = json.Indent(&prettyJSON, jsonData, "", "\t")
+	if err != nil {
+		return "", err
+	}
+	return prettyJSON.String(), nil
+}
 
 func Compress(t *testing.T, srcDir string) []byte {
 	var buf bytes.Buffer

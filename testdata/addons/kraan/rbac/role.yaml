@@ -7,8 +7,8 @@ rules:
 - apiGroups:
   - kraan.io
   resources:
-  - addonslayers
-  - addonslayers/status
+  - addonslayer
+  - addonslayer/status
   verbs:
   - get
   - list
@@ -25,8 +25,10 @@ rules:
 - apiGroups:
   - source.toolkit.fluxcd.io
   resources:
-  - gitrepositories
-  - gitrepositories/status
+  - gitrepository
+  - gitrepository/status
+  - helmrepository
+  - helmrepository/status
   verbs:
   - watch
   - get
@@ -38,10 +40,10 @@ metadata:
   name: kraan-helm-release
 rules:
 - apiGroups:
-  - helm.fluxcd.io
+  - helm.toolkit.fluxcd.io
   resources:
-  - helmreleases
-  - helmreleases/status
+  - helmrelease
+  - helmrelease/status
   verbs:
   - create
   - delete

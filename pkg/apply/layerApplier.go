@@ -13,7 +13,8 @@ import (
 	"os"
 	"reflect"
 
-	helmctlv2 "github.com/fluxcd/helm-controller/api/v2alpha1"
+	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta1"
+	fluxmeta "github.com/fluxcd/pkg/apis/meta"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
@@ -202,7 +203,7 @@ func (a KubectlLayerApplier) addOwnerRefs(layer layers.Layer, objs []runtime.Obj
 		err := controllerutil.SetControllerReference(layer.GetAddonsLayer(), obj, a.scheme)
 		if err != nil {
 			// could not apply owner ref for object
-			return fmt.Errorf("unable to apply owner reference for AddonsLayer '%s' to resource '%s': %w", layer.GetName(), getObjLabel(obj), err)
+			return fmt.Errorf("unable to apply owner reference for AddonsLayer '%s' to resource '%s': %w", layer.GetName(), getObjLabel(robj), err)
 		}
 		labels := obj.GetLabels()
 		if labels == nil {
@@ -297,7 +298,7 @@ func (a KubectlLayerApplier) applyObject(ctx context.Context, layer layers.Layer
 	}
 
 	return nil
-}*/
+}
 
 func (a KubectlLayerApplier) decodeList(layer layers.Layer,
 	raws *corev1.List, dez *runtime.Decoder) (objs []runtime.Object, err error) {
@@ -395,7 +396,7 @@ func (a KubectlLayerApplier) getSourceHelmRepos(layer layers.Layer) (hrs []*sour
 		return nil, err
 	}
 
-	return objs, nil
+	return hrs, nil
 }
 
 // Apply an AddonLayer to the cluster.
@@ -423,20 +424,6 @@ func (a KubectlLayerApplier) Prune(ctx context.Context, layer layers.Layer, prun
 		}
 	}
 	return nil
-}
-
-func (a KubectlLayerApplier) getSourceHelmReleases(layer layers.Layer) (hrs []*helmopv1.HelmRelease, err error) {
-	objs, err := a.getSourceResources(layer)
-	if err != nil {
-		return nil, err
-	}
-
-	hrs, err = a.decodeHelmReleases(layer, objs)
-	if err != nil {
-		return nil, err
-	}
-
-	return hrs, nil
 }
 
 // PruneIsRequired returns true if any resources need to be pruned for this AddonsLayer
@@ -600,16 +587,16 @@ func (a KubectlLayerApplier) ApplyWasSuccessful(ctx context.Context, layer layer
 
 func (a KubectlLayerApplier) CheckHR(hr helmctlv2.HelmRelease, layer layers.Layer) bool {
 	a.logDebug("Check HelmRelease for AddonsLayer", layer, "resource", hr)
-	cond := helmctlv2.GetHelmReleaseCondition(hr, "Ready")
-	if cond == nil {
+	// TODO - We could replace this entire function with a single call to fluxmeta.HasReadyCondition,
+	//        except for the logging.  This adapts CheckHR to the v2beta1 HelmController
+	//        api to preserve pre-existing log messages.
+	if !fluxmeta.HasReadyCondition(hr.Status.Conditions) {
 		a.logDebug("HelmRelease for AddonsLayer not installed", layer, "resource", hr)
 		return false
 	}
-	// "reason": "ReconciliationSucceeded",
-	//       "message": "release reconciliation succeeded"
-
+	cond := fluxmeta.GetCondition(hr.Status.Conditions, fluxmeta.ReadyCondition)
 	a.logDebug("HelmRelease for AddonsLayer installed", layer, "resource", hr, "condition", cond)
-	return cond.Status == "True"
+	return cond.Status == corev1.ConditionTrue
 }
 
 // CompareAsJSON compares two interfaces by converting them to json and comparing json text

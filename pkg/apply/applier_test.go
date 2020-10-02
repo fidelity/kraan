@@ -1,4 +1,4 @@
-package apply
+package apply_test
 
 import (
 	"context"
@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
+	"github.com/fidelity/kraan/pkg/apply"
 	"github.com/fidelity/kraan/pkg/internal/kubectl"
 	kubectlmocks "github.com/fidelity/kraan/pkg/internal/mocks/kubectl"
 	mocks "github.com/fidelity/kraan/pkg/mocks/client"
@@ -88,7 +89,7 @@ func fakeAddonsLayer(sourcePath, layerName string, layerUID types.UID) *kraanv1a
 func TestNewApplier(t *testing.T) {
 	logger := testlogr.TestLogger{T: t}
 	client := fake.NewFakeClientWithScheme(testScheme)
-	applier, err := NewApplier(client, logger, testScheme)
+	applier, err := apply.NewApplier(client, logger, testScheme)
 	if err != nil {
 		t.Fatalf("The NewApplier constructor returned an error: %s", err)
 	}
@@ -100,13 +101,14 @@ func TestNewApplierWithMockKubectl(t *testing.T) {
 	defer mockCtl.Finish()
 
 	mockKubectl := kubectlmocks.NewMockKubectl(mockCtl)
-	newKubectlFunc = func(logger logr.Logger) (kubectl.Kubectl, error) {
+	newKFunc := func(logger logr.Logger) (kubectl.Kubectl, error) {
 		return mockKubectl, nil
 	}
+	apply.SetNewKubectlFunc(newKFunc)
 
 	logger := testlogr.TestLogger{T: t}
 	client := fake.NewFakeClientWithScheme(testScheme)
-	applier, err := NewApplier(client, logger, testScheme)
+	applier, err := apply.NewApplier(client, logger, testScheme)
 	if err != nil {
 		t.Fatalf("The NewApplier constructor returned an error: %s", err)
 	}
@@ -119,15 +121,16 @@ func TODOTestBasicApply(t *testing.T) { //nolint
 
 	mockCommand := kubectlmocks.NewMockCommand(mockCtl)
 	mockKubectl := kubectlmocks.NewMockKubectl(mockCtl)
-	newKubectlFunc = func(logger logr.Logger) (kubectl.Kubectl, error) {
+	newKFunc := func(logger logr.Logger) (kubectl.Kubectl, error) {
 		return mockKubectl, nil
 	}
+	apply.SetNewKubectlFunc(newKFunc)
 
 	ctx := context.Background()
 	logger := testlogr.TestLogger{T: t}
 	client := mocks.NewMockClient(mockCtl)
 
-	applier, err := NewApplier(client, logger, testScheme)
+	applier, err := apply.NewApplier(client, logger, testScheme)
 	if err != nil {
 		t.Fatalf("The NewApplier constructor returned an error: %s", err)
 	}

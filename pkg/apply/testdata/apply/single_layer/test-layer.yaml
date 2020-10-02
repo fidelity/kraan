@@ -7,7 +7,7 @@ spec:
   hold: true
   source:
     name: test
-    namespace: simple
+    namespace: kraan-test
     path: ./addons/bootstrap
   prereqs:
       k8sVersion: "1.16"

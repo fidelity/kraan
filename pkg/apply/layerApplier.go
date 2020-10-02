@@ -1,5 +1,5 @@
 //Package apply applies Hel Releases
-//go:generate mockgen -destination=../mocks/apply/mockLayerApplier.go -package=apply -source=layerApplier.go . LayerApplier
+//go:generate mockgen -destination=../mocks/apply/mockLayerApplier.go -package=mocks -source=layerApplier.go . LayerApplier
 package apply
 
 /*
@@ -18,7 +18,12 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
+<<<<<<< HEAD
 	"k8s.io/apimachinery/pkg/api/errors"
+=======
+
+	//extv1b1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+>>>>>>> Resolving LayerApplier tests
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -337,7 +342,9 @@ func (a KubectlLayerApplier) checkSourcePath(layer layers.Layer) (sourceDir stri
 		return sourceDir, fmt.Errorf("error while checking source directory (%s) for AddonsLayer %s: %w",
 			sourceDir, layer.GetName(), err)
 	}
-	if !info.IsDir() {
+	if info.IsDir() {
+		sourceDir = sourceDir + string(os.PathSeparator)
+	} else {
 		// I'm not sure if this is an error, but I thought I should detect and log it
 		a.logInfo("source path is not a directory", layer)
 	}
@@ -349,8 +356,7 @@ func (a KubectlLayerApplier) getSourceResources(layer layers.Layer) (objs []runt
 	if err != nil {
 		return nil, err
 	}
-	dirSlash := fmt.Sprintf("%s/", sourceDir)
-	output, err := a.kubectl.Apply(dirSlash).WithLogger(layer.GetLogger()).DryRun()
+	output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).DryRun()
 	if err != nil {
 		return nil, fmt.Errorf("error from kubectl while parsing source directory (%s) for AddonsLayer %s: %w",
 			sourceDir, layer.GetName(), err)
@@ -473,17 +479,24 @@ func (a KubectlLayerApplier) PruneIsRequired(ctx context.Context, layer layers.L
 
 // ApplyIsRequired returns true if any resources need to be applied for this AddonsLayer
 func (a KubectlLayerApplier) ApplyIsRequired(ctx context.Context, layer layers.Layer) (applyIsRequired bool, err error) {
+	// TODO - get all resources defined in the YAML regardless of type
 	sourceHrs, err := a.getSourceHelmReleases(layer)
 	if err != nil {
 		return false, err
 	}
 
+	// TODO - get all resources owned by the layer regardless of type
 	clusterHrs, err := a.getHelmReleases(ctx, layer)
 	if err != nil {
 		return false, err
 	}
 
+<<<<<<< HEAD
 	hrs := map[string]*helmctlv2.HelmRelease{}
+=======
+	// TODO map all resources by a label that includes the type as well as the name and namespace
+	hrs := map[string]*helmopv1.HelmRelease{}
+>>>>>>> Resolving LayerApplier tests
 	for _, hr := range clusterHrs {
 		hrs[getLabel(hr.ObjectMeta)] = hr
 	}
@@ -498,6 +511,7 @@ func (a KubectlLayerApplier) ApplyIsRequired(ctx context.Context, layer layers.L
 		}
 	}
 
+	// TODO - Compare each reource (regardless of type) source spec to the spec of the found resource on the cluster
 	// Compare each HelmRelease source spec to the spec of the found HelmRelease on the cluster
 	for _, source := range sourceHrs {
 		found := hrs[getLabel(source.ObjectMeta)]
@@ -545,6 +559,7 @@ func (a KubectlLayerApplier) helmReposApplyRequired(ctx context.Context, layer l
 	return false, nil
 }
 
+<<<<<<< HEAD
 func (a KubectlLayerApplier) sourceHasReleaseChanged(layer layers.Layer, source, found *helmctlv2.HelmRelease) (changed bool) {
 	if !CompareAsJSON(source.Spec, found.Spec) {
 		a.logInfo("found spec change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta),
@@ -565,6 +580,25 @@ func (a KubectlLayerApplier) sourceHasRepoChanged(layer layers.Layer, source, fo
 	if !CompareAsJSON(source.Spec, found.Spec) {
 		a.logInfo("found spec change for HelmRepository in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta),
 			"source", source.Spec, "found", found.Spec, "diff", cmp.Diff(source.Spec, found.Spec))
+=======
+func (a KubectlLayerApplier) marsh(obj interface{}, objName string, layer layers.Layer) string {
+	jsonBytes, err := json.Marshal(obj)
+	if err != nil {
+		a.logError(err, "unable to marshall object to JSON", layer, objName, obj)
+		return ""
+	}
+	return string(jsonBytes)
+}
+
+func (a KubectlLayerApplier) sourceHasChanged(layer layers.Layer, source, found *helmopv1.HelmRelease) (changed bool) {
+	a.logTrace("comparing HelmRelease source to KubeAPI resource", layer, "source", source.Spec, "found", found.Spec)
+	sourceSpecJSON := a.marsh(source.Spec, "sourceSpec", layer)
+	foundSpecJSON := a.marsh(found.Spec, "foundSpec", layer)
+	//if !reflect.DeepEqual(source.Spec, found.Spec) || !reflect.DeepEqual(source.ObjectMeta.Labels, found.ObjectMeta.Labels) {
+	if !reflect.DeepEqual(sourceSpecJSON, foundSpecJSON) || !reflect.DeepEqual(source.ObjectMeta.Labels, found.ObjectMeta.Labels) {
+		// this resource source spec does not match the resource spec on the cluster
+		a.logInfo("found spec change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source), "source", sourceSpecJSON, "found", foundSpecJSON)
+>>>>>>> Resolving LayerApplier tests
 		return true
 	}
 	if !reflect.DeepEqual(source.ObjectMeta.Labels, found.ObjectMeta.Labels) {

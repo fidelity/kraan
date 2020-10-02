@@ -72,6 +72,7 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 		Owns(hr).
 		Owns(hrepo).
 		WithOptions(controller.Options{MaxConcurrentReconciles: opts.MaxConcurrentReconciles}).
+		WithEventFilter(predicates(r.Log)).
 		Build(r)
 	if err != nil {
 		return errors.Wrap(err, "error creating controller")
@@ -99,6 +100,23 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 			},
 		},
 	)
+}
+
+func predicates(logger logr.Logger) predicate.Funcs {
+	return predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			logger.V(3).Info("create event", "data", apply.LogJSON(e))
+			return true
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			logger.V(3).Info("update event", "data", apply.LogJSON(e))
+			return true
+		},
+		GenericFunc: func(e event.GenericEvent) bool {
+			logger.V(3).Info("generic event", "data", apply.LogJSON(e))
+			return true
+		},
+	}
 }
 
 // AddonsLayerReconciler reconciles a AddonsLayer object.

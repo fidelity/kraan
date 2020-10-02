@@ -26,6 +26,11 @@ spec:
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /home/controller/data
+          name: data
+        - mountPath: /tmp
+          name: tmp
         args:
         - --enable-leader-election
         - --zap-log-level=99
@@ -64,4 +69,6 @@ spec:
           requests:
             cpu: 500m
             memory: 128Mi
-
+      volumes:
+      - name: data
+      - name: tmp

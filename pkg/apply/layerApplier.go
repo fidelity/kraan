@@ -18,12 +18,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
-<<<<<<< HEAD
 	"k8s.io/apimachinery/pkg/api/errors"
-=======
-
-	//extv1b1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
->>>>>>> Resolving LayerApplier tests
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -491,12 +486,7 @@ func (a KubectlLayerApplier) ApplyIsRequired(ctx context.Context, layer layers.L
 		return false, err
 	}
 
-<<<<<<< HEAD
 	hrs := map[string]*helmctlv2.HelmRelease{}
-=======
-	// TODO map all resources by a label that includes the type as well as the name and namespace
-	hrs := map[string]*helmopv1.HelmRelease{}
->>>>>>> Resolving LayerApplier tests
 	for _, hr := range clusterHrs {
 		hrs[getLabel(hr.ObjectMeta)] = hr
 	}
@@ -559,7 +549,6 @@ func (a KubectlLayerApplier) helmReposApplyRequired(ctx context.Context, layer l
 	return false, nil
 }
 
-<<<<<<< HEAD
 func (a KubectlLayerApplier) sourceHasReleaseChanged(layer layers.Layer, source, found *helmctlv2.HelmRelease) (changed bool) {
 	if !CompareAsJSON(source.Spec, found.Spec) {
 		a.logInfo("found spec change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta),
@@ -580,25 +569,6 @@ func (a KubectlLayerApplier) sourceHasRepoChanged(layer layers.Layer, source, fo
 	if !CompareAsJSON(source.Spec, found.Spec) {
 		a.logInfo("found spec change for HelmRepository in AddonsLayer source directory", layer, "resource", getLabel(source.ObjectMeta),
 			"source", source.Spec, "found", found.Spec, "diff", cmp.Diff(source.Spec, found.Spec))
-=======
-func (a KubectlLayerApplier) marsh(obj interface{}, objName string, layer layers.Layer) string {
-	jsonBytes, err := json.Marshal(obj)
-	if err != nil {
-		a.logError(err, "unable to marshall object to JSON", layer, objName, obj)
-		return ""
-	}
-	return string(jsonBytes)
-}
-
-func (a KubectlLayerApplier) sourceHasChanged(layer layers.Layer, source, found *helmopv1.HelmRelease) (changed bool) {
-	a.logTrace("comparing HelmRelease source to KubeAPI resource", layer, "source", source.Spec, "found", found.Spec)
-	sourceSpecJSON := a.marsh(source.Spec, "sourceSpec", layer)
-	foundSpecJSON := a.marsh(found.Spec, "foundSpec", layer)
-	//if !reflect.DeepEqual(source.Spec, found.Spec) || !reflect.DeepEqual(source.ObjectMeta.Labels, found.ObjectMeta.Labels) {
-	if !reflect.DeepEqual(sourceSpecJSON, foundSpecJSON) || !reflect.DeepEqual(source.ObjectMeta.Labels, found.ObjectMeta.Labels) {
-		// this resource source spec does not match the resource spec on the cluster
-		a.logInfo("found spec change for HelmRelease in AddonsLayer source directory", layer, "resource", getLabel(source), "source", sourceSpecJSON, "found", foundSpecJSON)
->>>>>>> Resolving LayerApplier tests
 		return true
 	}
 	if !reflect.DeepEqual(source.ObjectMeta.Labels, found.ObjectMeta.Labels) {

@@ -59,8 +59,8 @@ integration:
 		{ echo "${YELLOW}Running integration test${NC_DIR}" && \
 		  go test -v --tags=integration && \
 		  echo "${GREEN}TEST PASSED${NC}"; } || \
-          echo "${RED}TEST FAILED${NC}" && \
-		  exit 1;
+        {  echo "${RED}TEST FAILED${NC}" && \
+		  exit 1; }
 	fi
 
 

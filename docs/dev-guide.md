@@ -153,3 +153,7 @@ To deploy the image to your account in docker.io:
 
 ### Integration Tests
 
+To run integration tests:
+
+    make integration
+

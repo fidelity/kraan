@@ -1,6 +1,6 @@
-package apply_test
+// +build integration
 
-// DISABLED - +build integration
+package apply_test
 
 import (
 	"context"

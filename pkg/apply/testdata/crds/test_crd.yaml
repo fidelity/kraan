@@ -1,0 +1,115 @@
+
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: kraantests.kraan.io
+spec:
+  group: kraan.io
+  names:
+    kind: KraanTest
+    listKind: KraanTestList
+    plural: kraantests
+    shortNames:
+    - ktest
+    - test
+    - kt
+    singular: kraantest
+  scope: Cluster
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: KraanTest is an arbitrary CRD to test applying CRDs with Kraan
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: KraanTest is a CRD created to test managing CRDs using Kraan.
+          properties:
+            ignoreFailure:
+              description: This flag indicates if Kraan should continue to deploy when this test fails.
+              type: boolean
+            stuff:
+              description: Some text data to keep in the test resource.
+              type: string
+            version:
+              description: Version is the version of the test.
+              type: string
+          required:
+          - stuff
+          - version
+          type: object
+        status:
+          description: KraanTestStatus defines the observed status.
+          properties:
+            conditions:
+              description: Conditions history.
+              items:
+                description: "Condition contains condition information for a KraanTest.
+                  \n Copyright 2020 The Flux CD contributors. \n Licensed under the
+                  Apache License, Version 2.0 (the \"License\"); you may not use this
+                  file except in compliance with the License. You may obtain a copy
+                  of the License at \n     http://www.apache.org/licenses/LICENSE-2.0
+                  \n Unless required by applicable law or agreed to in writing, software
+                  distributed under the License is distributed on an \"AS IS\" BASIS,
+                  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+                  implied. See the License for the specific language governing permissions
+                  and limitations under the License."
+                properties:
+                  lastTransitionTime:
+                    description: LastTransitionTime is the timestamp corresponding
+                      to the last status change of this condition.
+                    format: date-time
+                    type: string
+                  message:
+                    description: Message is a human readable description of the details
+                      of the last transition, complementing reason.
+                    type: string
+                  reason:
+                    description: Reason is a brief machine readable explanation for
+                      the condition's last transition.
+                    type: string
+                  status:
+                    description: Status of the condition, one of ('True', 'False',
+                      'Unknown').
+                    type: string
+                  type:
+                    description: Type of the condition, currently ('Ready').
+                    type: string
+                  version:
+                    description: Version, the version the status relates to.
+                    type: string
+                required:
+                - status
+                - type
+                type: object
+              type: array
+            state:
+              description: State is the current state of the test.
+              type: string
+            version:
+              description: Version, the version the state relates to.
+              type: string
+          type: object
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

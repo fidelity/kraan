@@ -107,7 +107,7 @@ When you run the 'run-controller.sh' script it will copy some files to a tempora
 
     if you want change and rerun the kraan-controller you should type...
     export DATA_PATH=/tmp/kraan-XJQUWB
-    kubectl -n gitops-system port-forward svc/source-controller 8090:80 &
+    kubectl -n gotk-system port-forward svc/source-controller 8090:80 &
     export SC_HOST=localhost:8090
     kraan-controller
     Pausing to allow user to make manual changes to testdata in /tmp/kraan-XJQUWB/testdata/addons, press enter to continue
@@ -124,7 +124,7 @@ The `SC_TIMEOUT` environmental variable can be used to set the timeout period fo
 
 The `SC_HOST` environmental variable can be used to set the host component of the source controller's artifact url. This is useful when running the kraan-controller out of cluster to enable it to access the source controller via a local address using kubectl port-forward, i.e.
 
-    kubectl -n gitops-system port-forward svc/source-controller 8090:80 &
+    kubectl -n gotk-system port-forward svc/source-controller 8090:80 &
 	export SC_HOST=localhost:8090
 
 If you elected to use the `--no-testdata` option when setting up the cluster then you will need to apply these files. You can do this by applying `.testdata/addons/addons-source.yaml` and `.testdata/addons/addons.yaml` to deploy the source controller custom resource and AddonsLayers custom resources respectively. This will cause the kraan-controller to operate on the testdata in the `./testdata` directory of this repository using the `master` branch. If you want to test against other branches use the copy of these files the `scripts/run-controller.sh` creates. Edit then apply those files.
@@ -152,4 +152,8 @@ To deploy the image to your account in docker.io:
     scripts/setup.sh --kraan-version $VERSION --no-gitops --kraan-image-repo $REPO
 
 ### Integration Tests
+
+To run integration tests:
+
+    make integration
 

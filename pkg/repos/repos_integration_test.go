@@ -15,7 +15,7 @@ import (
 	"github.com/fidelity/kraan/pkg/internal/testutils"
 	"github.com/fidelity/kraan/pkg/repos"
 
-	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
 	testlogr "github.com/go-logr/logr/testing"
 )
 

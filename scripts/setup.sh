@@ -12,7 +12,7 @@ function usage() {
 USAGE: ${0##*/} [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--no-kraan] [--no-gitops]
        [--kraan-version] [--kraan-image-pull-secret auto | <filename>] [--kraan-image-repo <repo-name>]
        [--gitops-image-pull-secret auto | <filename>] [--gitops-image-repo <repo-name>]
-       [--gitops-proxy auto | <proxy-url>] [--git-url <git-repo-url>] [--integration-test-data]
+       [--gitops-proxy auto | <proxy-url>] [--git-url <git-repo-url>]
        [--git-user <git_username>] [--git-token <git_token_or_password>]
 
 Install the Kraan Addon Manager and gitops source controller to a Kubernetes cluster
@@ -35,7 +35,6 @@ Options:
   '--no-kraan' do not deploy the Kraan runtime container to the target cluster. Useful when running controller out of cluster.
   '--no-gitops' do not deploy the gitops system components to the target cluster. Useful if components are already installed"
   '--no-testdata' do not deploy addons layers and source controller custom resources to the target cluster.
-  '--integration-testdata' add testdata required by integration tests to the target cluster.
   '--git-user' set (or override) the GIT_USER environment variables.
   '--git-token' set (or override) the GIT_CREDENTIALS environment variables.
   '--git-url' set the URL for the git repository from which Kraan should pull AddonsLayer configs.
@@ -104,7 +103,6 @@ function args() {
   deploy_gitops=1
   apply_testdata=1
   kraan_version="latest"
-  integration_testdata=0
 
   arg_list=( "$@" )
   arg_count=${#arg_list[@]}
@@ -116,7 +114,6 @@ function args() {
           "--no-kraan") deploy_kraan=0;;
           "--no-gitops") deploy_gitops=0;;
           "--no-testdata") apply_testdata=0;;
-          "--integration-testdata") integration_testdata=1;;
           "--kraan-version") (( arg_index+=1 )); kraan_version="${arg_list[${arg_index}]}";;
           "--kraan-image-pull-secret") (( arg_index+=1 )); kraan_regcred="${arg_list[${arg_index}]}";;
           "--gitops-image-pull-secret") (( arg_index+=1 )); gitops_regcred="${arg_list[${arg_index}]}";toolkit=1;;
@@ -180,7 +177,7 @@ function create_git_credentials_secret {
   sed -i -r "s|(^\W+username: ).*$|\1${base64_user}|" $TARGET
   sed -i -r "s|(^\W+password: ).*$|\1${base64_creds}|" $TARGET
   echo "Applying $TARGET"
-  kubectl apply ${dry_run} -f $TARGET -n gitops-system
+  kubectl apply ${dry_run} -f $TARGET -n gotk-system
 }
 
 function toolkit_refresh() {
@@ -285,7 +282,7 @@ if [ $deploy_gitops -gt 0 ] ; then
   create_git_credentials_secret "${base_dir}/testdata/templates/template-http.yaml" "${work_dir}/kraan-http.yaml"
 
   if [ -n "${gitops_regcred}" ] ; then
-    create_regcred gitops-system "${gitops_regcred}"
+    create_regcred gotk-system "${gitops_regcred}"
   fi
 fi
 
@@ -304,11 +301,6 @@ if [ $apply_testdata -gt 0 ]; then
   # Create namespaces for each addon layer
   kubectl apply ${dry_run} -f "${base_dir}"/testdata/namespaces.yaml
   kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/addons.yaml
-fi
-
-if [ $integration_testdata -gt 0 ]; then
-  kubectl apply ${dry_run} -f "${base_dir}"/pkg/apply/testdata/apply/single_layer/addons.yaml
-  kubectl apply ${dry_run} -f "${base_dir}"/pkg/apply/testdata/apply/simple_ns/namespace.yaml
 fi
 
 if [ -z "${dry_run}" ] ; then

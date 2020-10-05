@@ -1,5 +1,5 @@
 //Package apply applies Hel Releases
-//go:generate mockgen -destination=../mocks/apply/mockLayerApplier.go -package=apply -source=layerApplier.go . LayerApplier
+//go:generate mockgen -destination=../mocks/apply/mockLayerApplier.go -package=mocks -source=layerApplier.go . LayerApplier
 package apply
 
 /*
@@ -13,8 +13,9 @@ import (
 	"os"
 	"reflect"
 
-	helmctlv2 "github.com/fluxcd/helm-controller/api/v2alpha1"
-	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
+	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta1"
+	fluxmeta "github.com/fluxcd/pkg/apis/meta"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
@@ -30,7 +31,7 @@ import (
 )
 
 var (
-	ownerLabel     string                                            = "kraan/owner"
+	ownerLabel     string                                            = "kraan/layer"
 	newKubectlFunc func(logger logr.Logger) (kubectl.Kubectl, error) = kubectl.NewKubectl
 )
 
@@ -198,7 +199,7 @@ func (a KubectlLayerApplier) addOwnerRefs(layer layers.Layer, objs []runtime.Obj
 			a.logError(err, err.Error(), layer, "runtimeObject", robj)
 			return err
 		}
-		a.logTrace("Adding owner ref to resource for AddonsLayer", layer, "index", i, "obj", obj)
+		a.logDebug("Adding owner ref to resource for AddonsLayer", layer, "index", i, "obj", obj)
 		err := controllerutil.SetControllerReference(layer.GetAddonsLayer(), obj, a.scheme)
 		if err != nil {
 			// could not apply owner ref for object
@@ -337,7 +338,9 @@ func (a KubectlLayerApplier) checkSourcePath(layer layers.Layer) (sourceDir stri
 		return sourceDir, fmt.Errorf("error while checking source directory (%s) for AddonsLayer %s: %w",
 			sourceDir, layer.GetName(), err)
 	}
-	if !info.IsDir() {
+	if info.IsDir() {
+		sourceDir = sourceDir + string(os.PathSeparator)
+	} else {
 		// I'm not sure if this is an error, but I thought I should detect and log it
 		a.logInfo("source path is not a directory", layer)
 	}
@@ -349,8 +352,7 @@ func (a KubectlLayerApplier) getSourceResources(layer layers.Layer) (objs []runt
 	if err != nil {
 		return nil, err
 	}
-	dirSlash := fmt.Sprintf("%s/", sourceDir)
-	output, err := a.kubectl.Apply(dirSlash).WithLogger(layer.GetLogger()).DryRun()
+	output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).DryRun()
 	if err != nil {
 		return nil, fmt.Errorf("error from kubectl while parsing source directory (%s) for AddonsLayer %s: %w",
 			sourceDir, layer.GetName(), err)
@@ -459,11 +461,13 @@ func (a KubectlLayerApplier) PruneIsRequired(ctx context.Context, layer layers.L
 
 // ApplyIsRequired returns true if any resources need to be applied for this AddonsLayer
 func (a KubectlLayerApplier) ApplyIsRequired(ctx context.Context, layer layers.Layer) (applyIsRequired bool, err error) {
+	// TODO - get all resources defined in the YAML regardless of type
 	sourceHrs, err := a.getSourceHelmReleases(layer)
 	if err != nil {
 		return false, err
 	}
 
+	// TODO - get all resources owned by the layer regardless of type
 	clusterHrs, err := a.getHelmReleases(ctx, layer)
 	if err != nil {
 		return false, err
@@ -484,6 +488,7 @@ func (a KubectlLayerApplier) ApplyIsRequired(ctx context.Context, layer layers.L
 		}
 	}
 
+	// TODO - Compare each reource (regardless of type) source spec to the spec of the found resource on the cluster
 	// Compare each HelmRelease source spec to the spec of the found HelmRelease on the cluster
 	for _, source := range sourceHrs {
 		found := hrs[getLabel(source.ObjectMeta)]
@@ -582,16 +587,16 @@ func (a KubectlLayerApplier) ApplyWasSuccessful(ctx context.Context, layer layer
 
 func (a KubectlLayerApplier) CheckHR(hr helmctlv2.HelmRelease, layer layers.Layer) bool {
 	a.logDebug("Check HelmRelease for AddonsLayer", layer, "resource", hr)
-	cond := helmctlv2.GetHelmReleaseCondition(hr, "Ready")
-	if cond == nil {
+	// TODO - We could replace this entire function with a single call to fluxmeta.HasReadyCondition,
+	//        except for the logging.  This adapts CheckHR to the v2beta1 HelmController
+	//        api to preserve pre-existing log messages.
+	if !fluxmeta.HasReadyCondition(hr.Status.Conditions) {
 		a.logDebug("HelmRelease for AddonsLayer not installed", layer, "resource", hr)
 		return false
 	}
-	// "reason": "ReconciliationSucceeded",
-	//       "message": "release reconciliation succeeded"
-
+	cond := fluxmeta.GetCondition(hr.Status.Conditions, fluxmeta.ReadyCondition)
 	a.logDebug("HelmRelease for AddonsLayer installed", layer, "resource", hr, "condition", cond)
-	return cond.Status == "True"
+	return cond.Status == corev1.ConditionTrue
 }
 
 // CompareAsJSON compares two interfaces by converting them to json and comparing json text

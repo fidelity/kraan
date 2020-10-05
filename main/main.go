@@ -24,12 +24,13 @@ import (
 
 	// +kubebuilder:scaffold:imports
 
-	helmctlv2 "github.com/fluxcd/helm-controller/api/v2alpha1"
-	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
+	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta1"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
 	"github.com/go-logr/logr"
 	uzap "go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
+	extv1b1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	_ "sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -55,6 +56,7 @@ func init() {
 	_ = helmctlv2.AddToScheme(scheme)     // nolint:errcheck // ok
 	_ = kraanv1alpha1.AddToScheme(scheme) // nolint:errcheck // ok
 	_ = sourcev1.AddToScheme(scheme)      // nolint:errcheck // ok
+	_ = extv1b1.AddToScheme(scheme)       // nolint:errcheck // ok
 	// +kubebuilder:scaffold:scheme
 
 	if path, set := os.LookupEnv("DATA_PATH"); set {

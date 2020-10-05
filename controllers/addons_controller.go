@@ -20,8 +20,8 @@ import (
 	"context"
 	"fmt"
 
-	helmctlv2 "github.com/fluxcd/helm-controller/api/v2alpha1"
-	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
+	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta1"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

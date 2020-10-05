@@ -1,5 +1,5 @@
 {
-    "apiVersion": "source.toolkit.fluxcd.io/v1alpha1",
+    "apiVersion": "source.toolkit.fluxcd.io/v1beta1",
     "kind": "GitRepository",
     "metadata": {
         "creationTimestamp": "2020-09-04T09:30:06Z",
@@ -8,9 +8,9 @@
         ],
         "generation": 15,
         "name": "addons-config",
-        "namespace": "gitops-system",
+        "namespace": "gotk-system",
         "resourceVersion": "2355954",
-        "selfLink": "/apis/source.toolkit.fluxcd.io/v1alpha1/namespaces/gitops-system/gitrepositories/addons-config",
+        "selfLink": "/apis/source.toolkit.fluxcd.io/v1beta1/namespaces/gotk-system/gitrepositories/addons-config",
         "uid": "f261fb8e-f8bf-4f45-bc1a-45fc6e6b2e8d"
     },
     "spec": {
@@ -26,9 +26,9 @@
     "status": {
         "artifact": {
             "lastUpdateTime": "2020-09-16T05:56:10Z",
-            "path": "/data/gitrepository/gitops-system/addons-config/0415dab0313dfb23b7fff3fe809ac9b321067b7d.tar.gz",
+            "path": "/data/gitrepository/gotk-system/addons-config/0415dab0313dfb23b7fff3fe809ac9b321067b7d.tar.gz",
             "revision": "master/0415dab0313dfb23b7fff3fe809ac9b321067b7d",
-            "url": "http://source-controller.gitops-system/gitrepository/gitops-system/addons-config/0415dab0313dfb23b7fff3fe809ac9b321067b7d.tar.gz"
+            "url": "http://source-controller.gotk-system/gitrepository/gotk-system/addons-config/0415dab0313dfb23b7fff3fe809ac9b321067b7d.tar.gz"
         },
         "conditions": [
             {
@@ -39,6 +39,6 @@
                 "type": "Ready"
             }
         ],
-        "url": "http://source-controller.gitops-system/gitrepository/gitops-system/addons-config/latest.tar.gz"
+        "url": "http://source-controller.gotk-system/gitrepository/gotk-system/addons-config/latest.tar.gz"
     }
 }

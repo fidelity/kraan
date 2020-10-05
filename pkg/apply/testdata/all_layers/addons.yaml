@@ -8,7 +8,7 @@ spec:
   hold: true
   source:
     name: addons
-    namespace: gitops-system
+    namespace: gotk-system
     path: ./addons/bootstrap
   prereqs:
       k8sVersion: "1.16"
@@ -22,7 +22,7 @@ spec:
   version: 1.16-fideks-0.0.52
   source: 
     name: addons
-    namespace: gitops-system
+    namespace: gotk-system
     path: ./addons/base
   prereqs:
       k8sVersion: "1.16"
@@ -38,7 +38,7 @@ spec:
   version: 1.16-fideks-0.0.52
   source: 
     name: addons
-    namespace: gitops-system
+    namespace: gotk-system
     path: ./addons/mgmt
   prereqs:
       k8sVersion: "1.16"
@@ -54,7 +54,7 @@ spec:
   version: 1.16-fideks-0.0.52
   source: 
     name: addons
-    namespace: gitops-system
+    namespace: gotk-system
     path: ./addons/apps
   prereqs:
       k8sVersion: "1.16"

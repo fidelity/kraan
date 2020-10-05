@@ -8,7 +8,7 @@ spec:
   interval: 1m
   source:
     name: addons-config
-    namespace: gitops-system
+    namespace: gotk-system
     path: ./testdata/addons/bootstrap
   prereqs:
       k8sVersion: "v1.16"
@@ -22,7 +22,7 @@ spec:
   interval: 1m
   source: 
     name: addons-config
-    namespace: gitops-system
+    namespace: gotk-system
     path: ./testdata/addons/base
   prereqs:
       k8sVersion: "v1.16"
@@ -38,7 +38,7 @@ spec:
   version: 0.1.01
   source: 
     name: addons-config
-    namespace: gitops-system
+    namespace: gotk-system
     path: ./testdata/addons/mgmt
   prereqs:
       k8sVersion: "v1.16"
@@ -53,7 +53,7 @@ spec:
   version: 0.1.01
   source: 
     name: addons-config
-    namespace: gitops-system
+    namespace: gotk-system
     path: ./testdata/addons/apps
   prereqs:
       k8sVersion: "v1.16"

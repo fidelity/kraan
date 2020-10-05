@@ -13,7 +13,7 @@
                 },
                 "source": {
                     "name": "global-config",
-                    "namespace": "gitops-system",
+                    "namespace": "gotk-system",
                     "path": "./addons/apps"
                 },
                 "version": "0.1.01"
@@ -49,7 +49,7 @@
                 },
                 "source": {
                     "name": "global-config",
-                    "namespace": "gitops-system",
+                    "namespace": "gotk-system",
                     "path": "./addons/apps"
                 },
                 "version": "0.1.01"
@@ -72,7 +72,7 @@
                 "hold": true,
                 "source": {
                     "name": "global-config",
-                    "namespace": "gitops-system",
+                    "namespace": "gotk-system",
                     "path": "./addons/apps"
                 },
                 "version": "0.1.01"
@@ -89,7 +89,7 @@
                 },
                 "source": {
                     "name": "global-config",
-                    "namespace": "gitops-system",
+                    "namespace": "gotk-system",
                     "path": "./addons/apps"
                 },
                 "version": "0.1.01"
@@ -106,7 +106,7 @@
                 },
                 "source": {
                     "name": "global-config",
-                    "namespace": "gitops-system",
+                    "namespace": "gotk-system",
                     "path": "./addons/apps"
                 },
                 "version": "0.1.01"
@@ -126,7 +126,7 @@
                 },
                 "source": {
                     "name": "global-config",
-                    "namespace": "gitops-system",
+                    "namespace": "gotk-system",
                     "path": "./addons/apps"
                 },
                 "version": "0.1.01"

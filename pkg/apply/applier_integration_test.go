@@ -10,16 +10,11 @@ import (
 	"testing"
 	"time"
 
-	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
-	"github.com/fidelity/kraan/pkg/apply"
-	mocklayers "github.com/fidelity/kraan/pkg/mocks/layers"
 	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta1"
-	sourcev1 "github.com/fluxcd/source-controller/api/v1alpha1"
-
+	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
-
 	extv1b1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	unstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -32,6 +27,10 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
+	"github.com/fidelity/kraan/pkg/apply"
+	mocklayers "github.com/fidelity/kraan/pkg/mocks/layers"
 )
 
 var (
@@ -88,7 +87,7 @@ func TestApplyNamespace(t *testing.T) {
 }
 
 func TestApplyCRD(t *testing.T) {
-	s := testMgr.Setup(t).Applier().WithLayer(testCRDFile, 1)
+	s := testMgr.Setup(t).Applier().WithLayer(testCRDFile, 0)
 	defer s.dFunc()
 	if testMgr.count <= 1 {
 		// TODO - This test passes when run by itself but fails when run as part of the suite, so skipping temporarily if the test counter is > 1
@@ -112,7 +111,7 @@ func TestPruneIsNotRequired(t *testing.T) {
 }
 
 func TestApplyIsNotRequired(t *testing.T) {
-	s := testMgr.Setup(t).Applier().WithNs().WithLayer(singleRel, 1).ApplyMockLayer().WithLayer(singleRel, 1)
+	s := testMgr.Setup(t).Applier().WithNs().WithLayer(singleRel, 1).ApplyMockLayer().WithLayer(singleRel, 2)
 	defer s.dFunc()
 	s.VerifyApplyIsRequired(false)
 }
@@ -332,11 +331,30 @@ func indexHelmReleaseByOwner(o runtime.Object) []string {
 	return []string{owner.Name}
 }
 
+func indexHelmRepoByOwner(o runtime.Object) []string {
+	hr, ok := o.(*sourcev1.HelmRepository)
+	if !ok {
+		return nil
+	}
+	owner := metav1.GetControllerOf(hr)
+	if owner == nil {
+		return nil
+	}
+	if owner.APIVersion != kraanv1alpha1.GroupVersion.String() || owner.Kind != "AddonsLayer" {
+		return nil
+	}
+	return []string{owner.Name}
+}
+
 func (r *fakeReconciler) setupWithManager(mgr ctrl.Manager) error {
 	addonsLayer := &kraanv1alpha1.AddonsLayer{}
 	hr := &helmctlv2.HelmRelease{}
 	if err := mgr.GetFieldIndexer().IndexField(r.Context, hr, ".owner", indexHelmReleaseByOwner); err != nil {
 		return fmt.Errorf("failed setting up FieldIndexer for HelmRelease owner: %w", err)
+	}
+	hRepo := &sourcev1.HelmRepository{}
+	if err := mgr.GetFieldIndexer().IndexField(r.Context, hRepo, ".owner", indexHelmRepoByOwner); err != nil {
+		return fmt.Errorf("failed setting up FieldIndexer for HelmRepository owner: %w", err)
 	}
 	err := ctrl.NewControllerManagedBy(mgr).For(addonsLayer).Owns(hr).Complete(r)
 	// +kubebuilder:scaffold:builder

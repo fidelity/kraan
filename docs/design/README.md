@@ -72,7 +72,7 @@ spec:
   interval: 1m
   source:
     name: addons
-    namespace: gitops-system
+    namespace: gotk-system
     path: ./addons/bootstrap
   prereqs:
       k8sVersion: "1.16"
@@ -87,7 +87,7 @@ spec:
   interval: 1m
   source: 
     name: addons
-    namespace: gitops-system
+    namespace: gotk-system
     path: ./addons/base
   prereqs:
       k8sVersion: "1.16"

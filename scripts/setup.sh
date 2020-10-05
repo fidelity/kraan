@@ -180,7 +180,7 @@ function create_git_credentials_secret {
   sed -i -r "s|(^\W+username: ).*$|\1${base64_user}|" $TARGET
   sed -i -r "s|(^\W+password: ).*$|\1${base64_creds}|" $TARGET
   echo "Applying $TARGET"
-  kubectl apply ${dry_run} -f $TARGET -n gitops-system
+  kubectl apply ${dry_run} -f $TARGET -n gotk-system
 }
 
 function toolkit_refresh() {
@@ -285,7 +285,7 @@ if [ $deploy_gitops -gt 0 ] ; then
   create_git_credentials_secret "${base_dir}/testdata/templates/template-http.yaml" "${work_dir}/kraan-http.yaml"
 
   if [ -n "${gitops_regcred}" ] ; then
-    create_regcred gitops-system "${gitops_regcred}"
+    create_regcred gotk-system "${gitops_regcred}"
   fi
 fi
 

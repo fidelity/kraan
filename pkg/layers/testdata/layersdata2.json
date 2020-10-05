@@ -16,7 +16,7 @@
                 },
                 "source": {
                     "name": "global-config",
-                    "namespace": "gitops-system",
+                    "namespace": "gotk-system",
                     "path": "./addons/apps"
                 },
                 "version": "0.1.01"
@@ -33,7 +33,7 @@
                 "interval": "1m",
                 "source": {
                     "name": "global-config",
-                    "namespace": "gitops-system",
+                    "namespace": "gotk-system",
                     "path": "./addons/bootstrap"
                 },
                 "version": "0.1.01"
@@ -54,7 +54,7 @@
                 },
                 "source": {
                     "name": "global-config",
-                    "namespace": "gitops-system",
+                    "namespace": "gotk-system",
                     "path": "./addons/mgmt"
                 },
                 "version": "0.1.01"

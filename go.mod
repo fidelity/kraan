@@ -29,7 +29,7 @@ require (
 	golang.org/x/arch v0.0.0-20200826200359-b19915210f00 // indirect
 	golang.org/x/mod v0.3.0
 	golang.org/x/sys v0.0.0-20201005065044-765f4ea38db3 // indirect
-	golang.org/x/tools v0.0.0-20200930213115-e57f6d466a48 // indirect
+	golang.org/x/tools v0.0.0-20201002184944-ecd9fd270d5d // indirect
 	google.golang.org/protobuf v1.24.0 // indirect
 	k8s.io/api v0.19.2
 	k8s.io/apiextensions-apiserver v0.18.9

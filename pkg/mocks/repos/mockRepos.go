@@ -261,6 +261,20 @@ func (mr *MockRepoMockRecorder) GetDataPath() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDataPath", reflect.TypeOf((*MockRepo)(nil).GetDataPath))
 }
 
+// GetLoadPath mocks base method
+func (m *MockRepo) GetLoadPath() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLoadPath")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetLoadPath indicates an expected call of GetLoadPath
+func (mr *MockRepoMockRecorder) GetLoadPath() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLoadPath", reflect.TypeOf((*MockRepo)(nil).GetLoadPath))
+}
+
 // SetHostName mocks base method
 func (m *MockRepo) SetHostName(hostName string) {
 	m.ctrl.T.Helper()

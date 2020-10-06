@@ -77,6 +77,7 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
     '--git-user' set (or override) the GIT_USER environment variables.
     '--git-token' set (or override) the GIT_CREDENTIALS environment variables.
     '--git-url' set the URL for the git repository from which Kraan should pull AddonsLayer configs.
+    '--no-git-auth' to indicate that no authorization is required to access git repository'
     '--toolkit' to generate GitOps toolkit components.
     '--debug' for verbose output.
     '--dry-run' to generate yaml but not deploy to cluster. This option will retain temporary work directory.

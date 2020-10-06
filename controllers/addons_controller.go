@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"time"
 
 	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta1"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
@@ -227,6 +228,29 @@ func (r *AddonsLayerReconciler) checkSuccess(l layers.Layer) error {
 	return nil
 }
 
+func (r *AddonsLayerReconciler) checkData(l layers.Layer) (bool, error) {
+	sourceRepoName := l.GetSourceKey()
+	MaxTries := 5
+	for try := 1; try < MaxTries; try++ {
+		repo := r.Repos.Get(sourceRepoName)
+		if repo != nil {
+			if err := repo.LinkData(l.GetSourcePath(), l.GetSpec().Source.Path); err != nil {
+				r.Log.Error(err, "unable to link AddonsLayer directory to repository data",
+					"kind", "gitrepositories.source.toolkit.fluxcd.io", "source", l.GetSpec().Source, "layer", l.GetName())
+				l.StatusUpdate(kraanv1alpha1.FailedCondition, kraanv1alpha1.AddonsLayerFailedReason, err.Error())
+				return false, err
+			}
+			r.Log.V(1).Info("linked to layer data", "requestName", l.GetName(), "kind", "gitrepositories.source.toolkit.fluxcd.io", "source", "source", l.GetSpec().Source)
+			return true, nil
+		}
+		r.Log.Info("waiting for layer data", "requestName", l.GetName(), "kind", "gitrepositories.source.toolkit.fluxcd.io", "source", "source", l.GetSpec().Source)
+		time.Sleep(time.Duration(time.Second * time.Duration(try))) // nolint: unconvert // ignore
+	}
+	l.SetDelayedRequeue()
+	l.SetStatusPending()
+	return false, nil
+}
+
 func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error {
 	r.Log.Info("processing", "requestName", l.GetName(), "Status", l.GetStatus())
 
@@ -238,6 +262,14 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error {
 	if !l.CheckK8sVersion() {
 		l.SetStatusK8sVersion()
 		l.SetDelayedRequeue()
+		return nil
+	}
+
+	layerDataReady, err := r.checkData(l)
+	if err != nil {
+		return err
+	}
+	if !layerDataReady {
 		return nil
 	}
 
@@ -309,7 +341,7 @@ func (r *AddonsLayerReconciler) update(ctx context.Context, log logr.Logger,
 	return nil
 }
 
-func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.Request {
+func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.Request { // nolint:gocyclo // ok
 	kind := a.Object.GetObjectKind().GroupVersionKind()
 	repoKind := sourcev1.GitRepositoryKind
 	if kind.Kind != repoKind {
@@ -324,28 +356,38 @@ func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.
 		return []reconcile.Request{}
 	}
 	r.Log.V(1).Info("monitoring", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(srcRepo))
-	repo := r.Repos.Add(srcRepo)
-	if err := repo.SyncRepo(); err != nil {
-		r.Log.Error(err, "unable to sync repo, not requeuing", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(srcRepo))
-		return []reconcile.Request{}
-	}
 	addonsList := &kraanv1alpha1.AddonsLayerList{}
 	if err := r.List(r.Context, addonsList); err != nil {
 		r.Log.Error(err, "unable to list AddonsLayers", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(srcRepo))
 		return []reconcile.Request{}
 	}
+	layerList := []layers.Layer{}
 	addons := []reconcile.Request{}
 	for _, addon := range addonsList.Items {
 		layer := layers.CreateLayer(r.Context, r.Client, r.k8client, r.Log, &addon) //nolint:scopelint // ok
+		r.Log.V(1).Info("checking layer to list", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(srcRepo), "layer", addon.Name)
+		if layer.GetSpec().Source.Name == srcRepo.Name && layer.GetSpec().Source.NameSpace == srcRepo.Namespace {
+			r.Log.Info("layer is using this source", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(srcRepo), "layer", addon.Name)
+			layerList = append(layerList, layer)
+			addons = append(addons, reconcile.Request{NamespacedName: types.NamespacedName{Name: layer.GetName(), Namespace: ""}})
+		}
+	}
+	if len(addons) == 0 {
+		return addons
+	}
+	repo := r.Repos.Add(srcRepo)
+	r.Log.V(1).Info("created", "kind", "gitrepositories.source.toolkit.fluxcd.io", "repo", apply.LogJSON(srcRepo))
+	if err := repo.SyncRepo(); err != nil {
+		r.Log.Error(err, "unable to sync repo, not requeuing", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(srcRepo))
+		return []reconcile.Request{}
+	}
+	r.Log.V(1).Info("synced", "kind", "gitrepositories.source.toolkit.fluxcd.io", "repo", apply.LogJSON(srcRepo))
+
+	for _, layer := range layerList {
 		if err := repo.LinkData(layer.GetSourcePath(), layer.GetSpec().Source.Path); err != nil {
 			r.Log.Error(err, "unable to link AddonsLayer directory to repository data",
-				"kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(srcRepo), "layer", addon.Name)
+				"kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(srcRepo), "layer", layer.GetName())
 			continue
-		}
-
-		r.Log.Info("adding layer to list", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(srcRepo), "layer", addon.Name)
-		if layer.GetSpec().Source.Name == repo.GetSourceName() && layer.GetSpec().Source.NameSpace == repo.GetSourceNameSpace() {
-			addons = append(addons, reconcile.Request{NamespacedName: types.NamespacedName{Name: layer.GetName(), Namespace: ""}})
 		}
 	}
 	return addons

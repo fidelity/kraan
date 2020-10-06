@@ -72,6 +72,18 @@ func (mr *MockLayerMockRecorder) SetStatusPruning() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusPruning", reflect.TypeOf((*MockLayer)(nil).SetStatusPruning))
 }
 
+// SetStatusPending mocks base method
+func (m *MockLayer) SetStatusPending() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetStatusPending")
+}
+
+// SetStatusPending indicates an expected call of SetStatusPending
+func (mr *MockLayerMockRecorder) SetStatusPending() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusPending", reflect.TypeOf((*MockLayer)(nil).SetStatusPending))
+}
+
 // SetStatusDeployed mocks base method
 func (m *MockLayer) SetStatusDeployed() {
 	m.ctrl.T.Helper()
@@ -134,6 +146,20 @@ func (m *MockLayer) DependenciesDeployed() bool {
 func (mr *MockLayerMockRecorder) DependenciesDeployed() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DependenciesDeployed", reflect.TypeOf((*MockLayer)(nil).DependenciesDeployed))
+}
+
+// GetSourceKey mocks base method
+func (m *MockLayer) GetSourceKey() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSourceKey")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetSourceKey indicates an expected call of GetSourceKey
+func (mr *MockLayerMockRecorder) GetSourceKey() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSourceKey", reflect.TypeOf((*MockLayer)(nil).GetSourceKey))
 }
 
 // GetStatus mocks base method

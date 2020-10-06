@@ -62,7 +62,7 @@ func NewRepos(ctx context.Context, log logr.Logger) Repos {
 }
 
 func (r *reposData) pathKey(repo *sourcev1.GitRepository) string {
-	return fmt.Sprintf("%s/%s/%s", repo.GetNamespace(), repo.GetName(), repo.GetArtifact().Revision)
+	return fmt.Sprintf("%s/%s", repo.GetNamespace(), repo.GetName())
 }
 
 func (r *reposData) SetRootPath(path string) {
@@ -127,6 +127,7 @@ type Repo interface {
 	GetGitRepo() *sourcev1.GitRepository
 	GetPath() string
 	GetDataPath() string
+	GetLoadPath() string
 	SetHostName(hostName string)
 	SetHTTPClient(client *http.Client)
 	SetTarConsumer(tarConsumer tarconsumer.TarConsumer)
@@ -140,11 +141,13 @@ type repoData struct {
 	client       *http.Client
 	hostName     string
 	dataPath     string
+	loadPath     string
 	path         string
 	repo         *sourcev1.GitRepository
 	tarConsumer  tarconsumer.TarConsumer
 	Repo         `json:"-"`
 	sync.RWMutex `json:"-"`
+	syncLock     sync.RWMutex
 }
 
 // newRepo creates a repo.
@@ -155,6 +158,7 @@ func (r *reposData) newRepo(path string, sourceRepo *sourcev1.GitRepository) Rep
 		client:      r.client,
 		hostName:    r.hostName,
 		dataPath:    fmt.Sprintf("%s/%s", r.rootPath, path),
+		loadPath:    fmt.Sprintf("%s/load/%s", r.rootPath, path),
 		path:        path,
 		repo:        sourceRepo,
 		tarConsumer: tarconsumer.NewTarConsumer(r.ctx, r.client, sourceRepo.Status.Artifact.URL),
@@ -172,6 +176,10 @@ func (r *repoData) GetPath() string {
 
 func (r *repoData) GetDataPath() string {
 	return r.dataPath
+}
+
+func (r *repoData) GetLoadPath() string {
+	return r.loadPath
 }
 
 func (r *repoData) SetHostName(hostName string) {
@@ -242,26 +250,42 @@ limitations under the License.
 */
 
 func (r *repoData) SyncRepo() error {
-	r.Lock()
-	defer r.Unlock()
+	r.syncLock.Lock()
+	defer r.syncLock.Unlock()
 	ctx, cancel := context.WithTimeout(r.ctx, DefaultTimeOut)
 	defer cancel()
 
-	r.log.Info("New revision detected", "revision", r.repo.Status.Artifact.Revision)
+	r.log.Info("New revision detected", "kind", "gitrepositories.source.toolkit.fluxcd.io", "revision", r.repo.Status.Artifact.Revision)
 
-	if _, err := os.Stat(r.dataPath); os.IsNotExist(err) {
-		if e := os.RemoveAll(r.dataPath); e != nil {
+	if _, err := os.Stat(r.loadPath); os.IsNotExist(err) {
+		if e := os.RemoveAll(r.loadPath); e != nil {
 			return fmt.Errorf("failed to remove dir, error: %w", e)
 		}
 	} else if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(r.dataPath, os.ModePerm); err != nil {
+	if err := os.MkdirAll(r.loadPath, os.ModePerm); err != nil {
 		return err
 	}
 
 	// download and extract artifact
-	return r.fetchArtifact(ctx)
+	if err := r.fetchArtifact(ctx); err != nil {
+		return err
+	}
+
+	if err := os.MkdirAll(r.dataPath, os.ModePerm); err != nil {
+		return err
+	}
+
+	r.Lock()
+	defer r.Unlock()
+	if e := os.RemoveAll(r.dataPath); e != nil {
+		return fmt.Errorf("failed to remove data path, error: %w", e)
+	}
+	if err := os.Rename(r.loadPath, r.dataPath); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *repoData) fetchArtifact(ctx context.Context) error {
@@ -283,7 +307,7 @@ func (r *repoData) fetchArtifact(ctx context.Context) error {
 		return fmt.Errorf("failed to download artifact from %s, error: %w", url, err)
 	}
 
-	if err := tarconsumer.UnpackTar(tar, r.GetDataPath()); err != nil {
+	if err := tarconsumer.UnpackTar(tar, r.GetLoadPath()); err != nil {
 		return fmt.Errorf("faild to untar artifact, error: %w", err)
 	}
 

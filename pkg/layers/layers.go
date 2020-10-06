@@ -39,6 +39,7 @@ type Layer interface {
 	SetStatusK8sVersion()
 	SetStatusApplying()
 	SetStatusPruning()
+	SetStatusPending()
 	SetStatusDeployed()
 	StatusUpdate(status, reason, message string)
 
@@ -46,6 +47,7 @@ type Layer interface {
 	SetHold()
 	DependenciesDeployed() bool
 
+	GetSourceKey() string
 	GetStatus() string
 	GetName() string
 	GetLogger() logr.Logger
@@ -214,6 +216,18 @@ func (l *KraanLayer) SetStatusApplying() {
 func (l *KraanLayer) SetStatusPruning() {
 	l.setStatus(kraanv1alpha1.PruningCondition,
 		kraanv1alpha1.AddonsLayerPruningReason, kraanv1alpha1.AddonsLayerPruningMsg)
+}
+
+// SetStatusPending sets the addon layer's status to pending.
+func (l *KraanLayer) SetStatusPending() {
+	reason := fmt.Sprintf("waiting for layer data to be available.")
+	message := fmt.Sprintf("Layer source: %s, not yet available.", l.GetSourceKey())
+	l.setStatus(kraanv1alpha1.FailedCondition, reason, message)
+}
+
+// GetSourceKey gets the namespace and name of the source used by layer.
+func (l *KraanLayer) GetSourceKey() string {
+	return fmt.Sprintf("%s/%s", l.GetSpec().Source.NameSpace, l.GetSpec().Source.Name)
 }
 
 // StatusUpdate sets the addon layer's status.

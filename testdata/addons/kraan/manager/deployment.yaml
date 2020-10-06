@@ -22,7 +22,7 @@ spec:
       containers:
       - name: manager
         image: docker.pkg.github.com/fidelity/kraan/kraan-controller:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true

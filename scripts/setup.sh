@@ -38,6 +38,7 @@ Options:
   '--git-user' set (or override) the GIT_USER environment variables.
   '--git-token' set (or override) the GIT_CREDENTIALS environment variables.
   '--git-url' set the URL for the git repository from which Kraan should pull AddonsLayer configs.
+  '--no-git-auth' to indicate that no authorization is required to access git repository'
   '--toolkit' to generate GitOps toolkit components.
   '--debug' for verbose output.
   '--dry-run' to generate yaml but not deploy to cluster. This option will retain temporary work directory.
@@ -103,6 +104,7 @@ function args() {
   deploy_gitops=1
   apply_testdata=1
   kraan_version="latest"
+  no_git_auth=0
 
   arg_list=( "$@" )
   arg_count=${#arg_list[@]}
@@ -124,6 +126,7 @@ function args() {
           "--git-user") (( arg_index+=1 )); GIT_USER="${arg_list[${arg_index}]}";;
           "--git-token") (( arg_index+=1 )); GIT_CREDENTIALS="${arg_list[${arg_index}]}";;
           "--dry-run") dry_run="--dry-run";;
+          "--no-git-auth") no_git_auth=1;;
           "--debug") set -x;;
                "-h") usage; exit;;
            "--help") usage; exit;;
@@ -138,14 +141,16 @@ function args() {
   done
 
   check_git_credentials
-  # If GIT_CREDENTIALS are not set warn the user but set up the cluster without a credentials secret
-  if [ -z "${GIT_USER:-}" ] ; then 
-    echo "GIT_USER is not set to the git user name"
-    # usage; exit 1
-  fi
-  if [ -z "${GIT_CREDENTIALS:-}" ] ; then
-      echo "GIT_CREDENTIALS is not set to the git user's password or token"
+  if [ $no_git_auth -eq 0 ] ; then
+    # If GIT_CREDENTIALS are not set warn the user but set up the cluster without a credentials secret
+    if [ -z "${GIT_USER:-}" ] ; then 
+      echo "GIT_USER is not set to the git user name"
       # usage; exit 1
+    fi
+    if [ -z "${GIT_CREDENTIALS:-}" ] ; then
+        echo "GIT_CREDENTIALS is not set to the git user's password or token"
+        # usage; exit 1
+    fi
   fi
 }
 
@@ -158,7 +163,7 @@ function create_addons_source_yaml {
     sed -r -i "s|^(\W+url: ).*$|\1$GIT_URL|" $TARGET
   fi
   # If GIT_CREDENTIALS is not set, remove the secretRef from addons-source.yaml
-  if [ -z "${GIT_CREDENTIALS}" ]; then
+  if [[ -z "${GIT_CREDENTIALS}" || $no_git_auth -eq 1 ]] ; then
     sed -r -i "/^\W+secretRef:\W*$/,+1d" $TARGET
   fi
   echo "Applying $TARGET"
@@ -168,7 +173,7 @@ function create_addons_source_yaml {
 function create_git_credentials_secret {
   local SOURCE="$1"
   local TARGET="$2"
-  if [ -z "$GIT_CREDENTIALS" ]; then
+  if [[ -z "$GIT_CREDENTIALS" || $no_git_auth -eq 1 ]]; then
     return
   fi
   cp $SOURCE $TARGET
@@ -204,8 +209,9 @@ function toolkit_refresh() {
     gitops_proxy_url="${HTTPS_PROXY}"
   fi
     cp "${work_dir}"/gitops/gitops.yaml "${work_dir}"/gitops/gitops-orignal.yaml
-    awk '/metadata.namespace:/{ print "        - name: HTTPS_PROXY\n          value: ${gitops_proxy_url}\n        - name: NO_PROXY\n         value: 10.0.0.0/8"}1' \
+    awk '/env:/{ print;print "        - name: HTTPS_PROXY\n          value: gitops_proxy_url\n        - name: NO_PROXY\n          value: 10.0.0.0/8";next}1' \
         "${work_dir}"/gitops/gitops-orignal.yaml > "${work_dir}"/gitops/gitops.yaml
+    sed -i "s#gitops_proxy_url#${gitops_proxy_url}#" "${work_dir}"/gitops/gitops.yaml
   fi
 }
 

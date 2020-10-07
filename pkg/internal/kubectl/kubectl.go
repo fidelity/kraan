@@ -31,7 +31,7 @@ var (
 
 // Kubectl is a Factory interface that returns concrete Command implementations from named constructors.
 type Kubectl interface {
-	Apply(path string) (c Command)
+	Apply(args ...string) (c Command)
 	Delete(args ...string) (c Command)
 	Get(args ...string) (c Command)
 }
@@ -162,14 +162,14 @@ type ApplyCommand struct {
 }
 
 // Apply instantiates an ApplyCommand instance using the provided directory path.
-func (f *CommandFactory) Apply(path string) (c Command) {
+func (f *CommandFactory) Apply(args ...string) (c Command) {
 	c = &ApplyCommand{
 		abstractCommand: abstractCommand{
 			logger:     f.logger,
 			factory:    f,
 			subCmd:     "apply",
 			jsonOutput: true,
-			args:       []string{"-R", "-f", path},
+			args:       args,
 		},
 	}
 	return c

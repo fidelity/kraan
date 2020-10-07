@@ -35,17 +35,21 @@ func (m *MockKubectl) EXPECT() *MockKubectlMockRecorder {
 }
 
 // Apply mocks base method
-func (m *MockKubectl) Apply(arg0 string) kubectl.Command {
+func (m *MockKubectl) Apply(arg0 ...string) kubectl.Command {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Apply", arg0)
+	varargs := []interface{}{}
+	for _, a := range arg0 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Apply", varargs...)
 	ret0, _ := ret[0].(kubectl.Command)
 	return ret0
 }
 
 // Apply indicates an expected call of Apply
-func (mr *MockKubectlMockRecorder) Apply(arg0 interface{}) *gomock.Call {
+func (mr *MockKubectlMockRecorder) Apply(arg0 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Apply", reflect.TypeOf((*MockKubectl)(nil).Apply), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Apply", reflect.TypeOf((*MockKubectl)(nil).Apply), arg0...)
 }
 
 // Delete mocks base method

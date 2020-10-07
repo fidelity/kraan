@@ -33,7 +33,7 @@ spec:
           name: tmp
         args:
         - --enable-leader-election
-        - --zap-log-level=99
+        - --zap-log-level=2
         - --zap-encoder=json
         env:
           - name: DATA_PATH

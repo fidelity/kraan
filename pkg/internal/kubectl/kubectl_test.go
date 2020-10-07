@@ -264,7 +264,7 @@ func (s *Setup) validateCommandState(c kubectl.Command) {
 }
 
 func (s *Setup) Apply() *kubectl.ApplyCommand {
-	command := s.factory.Apply(s.sourceDir)
+	command := s.factory.Apply("-R", "-f", s.sourceDir)
 	s.validateCommand(command, &kubectl.ApplyCommand{}, "Apply")
 	typedCommand, ok := command.(*kubectl.ApplyCommand)
 	if !ok {

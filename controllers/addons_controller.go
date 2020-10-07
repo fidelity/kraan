@@ -240,10 +240,10 @@ func (r *AddonsLayerReconciler) checkData(l layers.Layer) (bool, error) {
 				l.StatusUpdate(kraanv1alpha1.FailedCondition, kraanv1alpha1.AddonsLayerFailedReason, err.Error())
 				return false, err
 			}
-			r.Log.V(1).Info("linked to layer data", "requestName", l.GetName(), "kind", "gitrepositories.source.toolkit.fluxcd.io", "source", "source", l.GetSpec().Source)
+			r.Log.V(1).Info("linked to layer data", "requestName", l.GetName(), "kind", "gitrepositories.source.toolkit.fluxcd.io", "source", l.GetSpec().Source)
 			return true, nil
 		}
-		r.Log.Info("waiting for layer data", "requestName", l.GetName(), "kind", "gitrepositories.source.toolkit.fluxcd.io", "source", "source", l.GetSpec().Source)
+		r.Log.Info("waiting for layer data", "requestName", l.GetName(), "kind", "gitrepositories.source.toolkit.fluxcd.io", "source", l.GetSpec().Source)
 		time.Sleep(time.Duration(time.Second * time.Duration(try))) // nolint: unconvert // ignore
 	}
 	l.SetDelayedRequeue()

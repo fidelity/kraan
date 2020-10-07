@@ -20,18 +20,25 @@ package kubectl
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/go-logr/logr"
 )
 
+const (
+	kustomizeYaml = "kustomization.yaml"
+)
+
 var (
-	kubectlCmd = "kubectl"
+	k8s             = []string{"-R", "-f"}
+	kustomizeOption = []string{"-k"}
+	kubectlCmd      = "kubectl"
 )
 
 // Kubectl is a Factory interface that returns concrete Command implementations from named constructors.
 type Kubectl interface {
-	Apply(args ...string) (c Command)
+	Apply(path string) (c Command)
 	Delete(args ...string) (c Command)
 	Get(args ...string) (c Command)
 }
@@ -162,17 +169,24 @@ type ApplyCommand struct {
 }
 
 // Apply instantiates an ApplyCommand instance using the provided directory path.
-func (f *CommandFactory) Apply(args ...string) (c Command) {
+func (f *CommandFactory) Apply(path string) (c Command) {
 	c = &ApplyCommand{
 		abstractCommand: abstractCommand{
 			logger:     f.logger,
 			factory:    f,
 			subCmd:     "apply",
 			jsonOutput: true,
-			args:       args,
+			args:       getApplyType(path),
 		},
 	}
 	return c
+}
+
+func getApplyType(dir string) []string {
+	if _, err := os.Stat(fmt.Sprintf("%s%s", dir, kustomizeYaml)); os.IsNotExist(err) {
+		return append(k8s, dir)
+	}
+	return append(kustomizeOption, dir)
 }
 
 // DeleteCommand implements the Command interface to delete resources from the KubeAPI service.

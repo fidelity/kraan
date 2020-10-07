@@ -10,12 +10,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"reflect"
-	"strings"
-
-	"github.com/pkg/errors"
 
 	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta1"
 	fluxmeta "github.com/fluxcd/pkg/apis/meta"
@@ -34,16 +30,9 @@ import (
 	"github.com/fidelity/kraan/pkg/layers"
 )
 
-const (
-	kustomizeYaml = "kustomization.yaml"
-	kustomizeKind = "kind: Kustomization"
-)
-
 var (
-	ownerLabel      string                                            = "kraan/layer"
-	newKubectlFunc  func(logger logr.Logger) (kubectl.Kubectl, error) = kubectl.NewKubectl
-	k8s                                                               = []string{"-R", "-f"}
-	kustomizeOption                                                   = []string{"-k"}
+	ownerLabel     string                                            = "kraan/layer"
+	newKubectlFunc func(logger logr.Logger) (kubectl.Kubectl, error) = kubectl.NewKubectl
 )
 
 // LayerApplier defines methods for managing the Addons within an AddonLayer in a cluster.
@@ -358,35 +347,13 @@ func (a KubectlLayerApplier) checkSourcePath(layer layers.Layer) (sourceDir stri
 	return sourceDir, nil
 }
 
-func (a KubectlLayerApplier) getApplyType(layer layers.Layer, dir string) ([]string, error) {
-	data, err := ioutil.ReadFile(fmt.Sprintf("%s%s", dir, kustomizeYaml))
-	if err != nil {
-		a.logTrace("error reading file", layer, "error", err)
-		if strings.Contains(err.Error(), "no such file or directory") {
-			return append(k8s, dir), nil
-		}
-		return nil, errors.Wrap(err,
-			fmt.Sprintf("failed to check for file: %s in directory: %s", kustomizeYaml, dir))
-	}
-	if !strings.Contains(string(data), kustomizeKind) {
-		a.logTrace(fmt.Sprintf("file: %s in directory: %s but %s not found", kustomizeYaml, dir, kustomizeKind),
-			layer, "data", string(data))
-		return append(k8s, dir), nil
-	}
-	return append(kustomizeOption, dir), nil
-}
-
 func (a KubectlLayerApplier) getSourceResources(layer layers.Layer) (objs []runtime.Object, err error) {
 	sourceDir, err := a.checkSourcePath(layer)
 	if err != nil {
 		return nil, err
 	}
 
-	options, err := a.getApplyType(layer, sourceDir)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to generate apply options")
-	}
-	output, err := a.kubectl.Apply(options...).WithLogger(layer.GetLogger()).DryRun()
+	output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).DryRun()
 	if err != nil {
 		return nil, fmt.Errorf("error from kubectl while parsing source directory (%s) for AddonsLayer %s: %w",
 			sourceDir, layer.GetName(), err)

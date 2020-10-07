@@ -32,6 +32,20 @@ func (m *MockExecProvider) EXPECT() *MockExecProviderMockRecorder {
 	return m.recorder
 }
 
+// FileExists mocks base method
+func (m *MockExecProvider) FileExists(filePath string) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FileExists", filePath)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// FileExists indicates an expected call of FileExists
+func (mr *MockExecProviderMockRecorder) FileExists(filePath interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FileExists", reflect.TypeOf((*MockExecProvider)(nil).FileExists), filePath)
+}
+
 // FindOnPath mocks base method
 func (m *MockExecProvider) FindOnPath(file string) (string, error) {
 	m.ctrl.T.Helper()

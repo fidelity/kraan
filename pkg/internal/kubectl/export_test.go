@@ -17,3 +17,7 @@ var (
 func SetKubectlCmd(command string) {
 	kubectlCmd = command
 }
+
+func SetNewExecProviderFunc(newFunc func() ExecProvider) {
+	newExecProviderFunc = newFunc
+}

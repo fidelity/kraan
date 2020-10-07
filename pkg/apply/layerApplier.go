@@ -35,7 +35,7 @@ import (
 )
 
 const (
-	kustomizeYaml = "kustomize.yaml"
+	kustomizeYaml = "kustomization.yaml"
 	kustomizeKind = "kind: Kustomization"
 )
 

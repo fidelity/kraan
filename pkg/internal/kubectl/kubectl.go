@@ -34,9 +34,7 @@ const (
 
 var (
 	applyArgs           = []string{"-R", "-f"}
-	kustomizeApplyArgs  = []string{"-k"}
 	kubectlCmd          = "kubectl"
-	kustomizeCmd        = "kustomize"
 	newExecProviderFunc = newExecProvider
 )
 
@@ -49,7 +47,7 @@ type Kubectl interface {
 
 // Kustomize is a Factory interface that returns concrete Command implementations from named constructors.
 type Kustomize interface {
-	Build(args ...string) (c Command)
+	Build(path string) (c Command)
 }
 
 // NewKubectl returns a Kubectl object for creating and running kubectl sub-commands.
@@ -199,14 +197,32 @@ type ApplyCommand struct {
 	abstractCommand
 }
 
+// BuildCommand is a kustomize sub-command that processes a kustomization.yaml file.
+type BuildCommand struct {
+	abstractCommand
+}
+
 func kustomizationBuiler(path string, log logr.Logger) string {
 	kustomize, err := NewKustomize(log)
 	if err != nil {
 		log.Error(err, "failed to create kustomize command object")
 		return path
 	}
-	kustomize.Build()
+	kustomize.Build(path)
 	return path
+}
+
+// Build instantiates an BuildCommand instance using the provided directory path.
+func (f *CommandFactory) Build(path string) (c Command) {
+	c = &BuildCommand{
+		abstractCommand: abstractCommand{
+			logger:  f.logger,
+			factory: f,
+			subCmd:  "build",
+			args:    []string{path, "-o"},
+		},
+	}
+	return c
 }
 
 // Apply instantiates an ApplyCommand instance using the provided directory path.

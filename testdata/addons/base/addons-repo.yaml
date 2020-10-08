@@ -2,7 +2,6 @@ apiVersion: source.toolkit.fluxcd.io/v1beta1
 kind: HelmRepository
 metadata:
   name: microservice-1
-  namespace: base
 spec:
   interval: 1m0s
   url: https://stefanprodan.github.io/podinfo

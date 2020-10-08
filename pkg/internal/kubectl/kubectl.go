@@ -20,13 +20,21 @@ package kubectl
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/go-logr/logr"
 )
 
+const (
+	kustomizeYaml = "kustomization.yaml"
+)
+
 var (
-	kubectlCmd = "kubectl"
+	applyArgs           = []string{"-R", "-f"}
+	kustomizeApplyArgs  = []string{"-k"}
+	kubectlCmd          = "kubectl"
+	newExecProviderFunc = newExecProvider
 )
 
 // Kubectl is a Factory interface that returns concrete Command implementations from named constructors.
@@ -36,17 +44,17 @@ type Kubectl interface {
 	Get(args ...string) (c Command)
 }
 
+// NewKubectl returns a Kubectl object for creating and running kubectl sub-commands.
+func NewKubectl(logger logr.Logger) (kubectl Kubectl, err error) {
+	execProvider := newExecProviderFunc()
+	return newCommandFactory(logger, execProvider)
+}
+
 // CommandFactory is a concrete Factory implementation of the Kubectl interface's API.
 type CommandFactory struct {
 	logger       logr.Logger
 	path         string
 	execProvider ExecProvider
-}
-
-// NewKubectl returns a Kubectl object for creating and running kubectl sub-commands.
-func NewKubectl(logger logr.Logger) (kubectl Kubectl, err error) {
-	execProvider := newExecProvider()
-	return newCommandFactory(logger, execProvider)
 }
 
 func newCommandFactory(logger logr.Logger, execProvider ExecProvider) (factory *CommandFactory, err error) {
@@ -169,10 +177,17 @@ func (f *CommandFactory) Apply(path string) (c Command) {
 			factory:    f,
 			subCmd:     "apply",
 			jsonOutput: true,
-			args:       []string{"-R", "-f", path},
+			args:       f.applyArgs(path),
 		},
 	}
 	return c
+}
+
+func (f *CommandFactory) applyArgs(dir string) []string {
+	if f.getExecProvider().FileExists(filepath.Join(dir, kustomizeYaml)) {
+		return append(kustomizeApplyArgs, dir)
+	}
+	return append(applyArgs, dir)
 }
 
 // DeleteCommand implements the Command interface to delete resources from the KubeAPI service.

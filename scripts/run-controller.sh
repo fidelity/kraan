@@ -51,9 +51,9 @@ echo "if you want change and rerun the kraan-controller you should type..."
 echo "kubectl -n gotk-system port-forward svc/source-controller 8090:80 &"
 echo "export DATA_PATH=${work_dir}"
 echo "export SC_HOST=localhost:8090"
-echo "kraan-controller -zap-encoder=json -zap-log-level=99 2>&1 | tee ${DATA_PATH}/kraan.log | grep "^{" | jq -r"
+echo "kraan-controller -zap-encoder=json -zap-log-level=7 2>&1 | tee ${DATA_PATH}/kraan.log | grep "^{" | jq -r"
 read -p "Pausing to allow user to make manual changes to testdata in ${work_dir}/testdata/addons, press enter to continue"
 
 kubectl -n gotk-system port-forward svc/source-controller 8090:80 &
 export SC_HOST=localhost:8090
-kraan-controller -zap-encoder=json -zap-log-level=3 2>&1 | tee ${work_dir}/kraan.log | grep "^{" | jq -r
+kraan-controller -zap-encoder=json -zap-log-level=7 2>&1 | tee ${work_dir}/kraan.log | grep "^{" | jq -r

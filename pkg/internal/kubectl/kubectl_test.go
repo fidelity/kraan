@@ -20,6 +20,7 @@ From the project root directory, you can then generate mocks for all the interfa
 import (
 	"bytes"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -38,9 +39,11 @@ var (
 	errExecFileNotFound = fmt.Errorf("executable file not found in $PATH")
 	kubectlPath         = "/mocked/path/to/kubectl"
 	sourcePath          = "/mocked/path/to/source/directory"
+	kustomizeFile       = "kustomization.yaml"
 )
 
 func TestNewKubectl(t *testing.T) {
+	s := setupApply(t).expectKubectlFound()
 	logger := testlogr.TestLogger{T: t}
 	k, err := kubectl.NewKubectl(logger)
 	if err != nil {
@@ -64,83 +67,264 @@ func TestNewKubectl(t *testing.T) {
 	if gotExecProvider == nil {
 		t.Errorf("The NewKubectl function did not instantiate an execProvider!")
 	}
+	if gotExecProvider != s.execProvider {
+		t.Errorf("The NewKubectl function did not call the function referenced by the newExecProviderFunc package var")
+	}
 	t.Logf("kubectl full path: %s", kubectl.GetFactoryPath(*f))
 }
 
-type Setup struct {
-	t            *testing.T
-	mockCtl      *gomock.Controller
-	execProvider *mocks.MockExecProvider
-	factory      *kubectl.CommandFactory
-	path         string
-	subCmd       string
-	sourceDir    string
-	args         []string
-	cmdArgs      []string
-	runArgs      []string
-	dryRunArgs   []string
-	cmdStr       string
-	runStr       string
-	dryRunStr    string
-	expectJSON   bool
-	output       string
-	testLogr     testlogr.TestLogger
-	mockLogr     *mocklogr.MockLogger
-	cmdLogr      *mocklogr.MockLogger
-	restoreFunc  func()
+func TestKubectlCommandFoundInPath(t *testing.T) {
+	s := setupApply(t).expectKubectlFound()
+	defer s.restoreFunc()
+
+	f, err := kubectl.NewCommandFactory(s.testLogr, s.execProvider)
+	t.Logf("Kubectl (%T) %#v", f, f)
+	if err != nil {
+		t.Errorf("Error returned from the execLookPath function : %w", err)
+	} else {
+		t.Logf("Kubectl command path '%s'", kubectl.GetFactoryPath(*f))
+	}
 }
 
-func setup(t *testing.T, subCmd string, expectJSON bool, expectedArgs ...string) *Setup {
+func TestKubectlCommandNotFoundInPath(t *testing.T) {
+	s := setupApply(t).expectKubectlNotFound()
+	defer s.restoreFunc()
+
+	f, err := kubectl.NewCommandFactory(s.testLogr, s.execProvider)
+	t.Logf("Kubectl (%T) %#v", f, f)
+	if err == nil {
+		t.Errorf("Expected error 'executable file not found' was not returned from NewKubectl constructor")
+	} else {
+		t.Logf("Expected error was returned: %#v", err)
+	}
+}
+
+func TestKubectlApplyReturnsApplyCommand(t *testing.T) {
+	s := setupApply(t).expectKubectlFound().withFactory()
+	defer s.restoreFunc()
+	s.validateCommandState(s.Apply())
+}
+
+func TestKubectlApplyChecksForKustomizeFile(t *testing.T) {
+	s := setupApply(t).WithKustomize().expectKubectlFound().withFactory()
+	defer s.restoreFunc()
+	s.validateCommandState(s.Apply())
+}
+
+func TestGetReturnsGetCommand(t *testing.T) {
+	s := setupGet(t).expectKubectlFound().withFactory()
+	defer s.restoreFunc()
+	s.validateCommandState(s.Get())
+}
+
+func TestDeleteReturnsDeleteCommand(t *testing.T) {
+	s := setupDelete(t).expectKubectlFound().withFactory()
+	defer s.restoreFunc()
+	s.validateCommandState(s.Delete())
+}
+
+func TestKubectlApplyRunReturnsOutput(t *testing.T) {
+	s := setupApply(t).expectRun().withFactory()
+	defer s.restoreFunc()
+
+	gotOutput, err := s.Apply().Run()
+	if err != nil {
+		t.Errorf("Error returned from ApplyCommand.Run: %w", err)
+		t.Fatalf("Error returned from ApplyCommand.Run")
+	}
+
+	if !bytes.Equal([]byte(s.output), gotOutput) {
+		t.Fatalf("expected output '%s', got output '%s' from ApplyCommand.Run", s.output, string(gotOutput))
+	} else {
+		t.Logf("ApplyCommand.Run expected output '%s' matches output '%s'", s.output, string(gotOutput))
+	}
+}
+
+func TestKubectlApplyDryRunReturnsOutput(t *testing.T) {
+	s := setupApply(t).expectDryRun().withFactory()
+	defer s.restoreFunc()
+
+	gotOutput, err := s.Apply().DryRun()
+	if err != nil {
+		t.Errorf("Error returned from ApplyCommand.DryRun: %w", err)
+		t.Fatalf("Error returned from ApplyCommand.DryRun")
+	}
+
+	if !bytes.Equal([]byte(s.output), gotOutput) {
+		t.Fatalf("expected output '%s', got output '%s' from ApplyCommand.Run", s.output, string(gotOutput))
+	} else {
+		t.Logf("ApplyCommand.Run expected output '%s' matches output '%s'", s.output, string(gotOutput))
+	}
+}
+
+func TestKubectlApplyRunReturnsExecError(t *testing.T) {
+	s := setupApply(t).expectRunError().withFactory()
+	defer s.restoreFunc()
+
+	_, err := s.Apply().Run()
+	if err == nil {
+		t.Fatalf("Expected error was not returned from ApplyCommand.Run!")
+	}
+}
+
+func TestKubectlRunUsesFactoryLogger(t *testing.T) {
+	s := setupApply(t).expectRunLogsKubectlCommand().withFactoryMockLogr()
+	defer s.restoreFunc()
+
+	_, err := s.Apply().Run()
+	if err != nil {
+		t.Errorf("Error returned from ApplyCommand.DryRun: %w", err)
+		t.Fatalf("Error returned from ApplyCommand.DryRun")
+	}
+}
+
+func TestKubectlCommandWithLoggerPassedNil(t *testing.T) {
+	s := setupApply(t).expectRunLogsKubectlCommand().withFactoryMockLogr()
+	defer s.restoreFunc()
+
+	// Create the ApplyCommand from the Kubectl factory and try passing nil to Withlogger
+	_, err := s.Apply().WithLogger(nil).Run()
+	// No error, and the message should be logged to the CommandFactory's logger as expected
+	if err != nil {
+		t.Errorf("Error returned from ApplyCommand.Run: %w", err)
+		t.Fatalf("Error returned from ApplyCommand.Run")
+	}
+}
+
+func TestKubectlApplyRunLogsKubectlCommand(t *testing.T) {
+	s := setupApply(t).expectRunLogsKubectlCommand().withFactoryMockLogr()
+	defer s.restoreFunc()
+
+	_, err := s.Apply().Run()
+	if err != nil {
+		t.Errorf("Error returned from ApplyCommand.Run: %w", err)
+		t.Fatalf("Error returned from ApplyCommand.Run")
+	}
+}
+
+func TestKubectlApplyDryRunLogsKubectlCommand(t *testing.T) {
+	s := setupApply(t).expectDryRunLogsKubectlCommand().withFactoryMockLogr()
+	defer s.restoreFunc()
+
+	_, err := s.Apply().DryRun()
+	if err != nil {
+		t.Errorf("Error returned from ApplyCommand.Run: %w", err)
+		t.Fatalf("Error returned from ApplyCommand.Run")
+	}
+}
+
+func TestKubectlApplyRunSetsKustomizeFlag(t *testing.T) {
+	s := setupApply(t).WithKustomize().expectRunLogsKubectlCommand().withFactoryMockLogr()
+	defer s.restoreFunc()
+
+	_, err := s.Apply().Run()
+	if err != nil {
+		t.Errorf("Error returned from ApplyCommand.Run: %w", err)
+		t.Fatalf("Error returned from ApplyCommand.Run")
+	}
+}
+
+func TestKubectlCommandWithLoggerUsesPassedLogger(t *testing.T) {
+	s := setupApply(t).expectRunUsesCommandLogger().withFactoryMockLogr()
+	defer s.restoreFunc()
+
+	// Create the ApplyCommand from the Kubectl factory, and swap in the rightLogger with the WithLogger function
+	_, err := s.Apply().WithLogger(s.cmdLogr).Run()
+	if err != nil {
+		t.Errorf("Error returned from ApplyCommand.Run: %w", err)
+		t.Fatalf("Error returned from ApplyCommand.Run")
+	}
+}
+
+type Setup struct { // nolint:maligned // will fix later
+	t             *testing.T
+	mockCtl       *gomock.Controller
+	execProvider  *mocks.MockExecProvider
+	factory       *kubectl.CommandFactory
+	path          string
+	subCmd        string
+	sourceDir     string
+	withKustomize bool
+	args          []string
+	cmdArgs       []string
+	runArgs       []string
+	dryRunArgs    []string
+	cmdStr        string
+	runStr        string
+	dryRunStr     string
+	expectJSON    bool
+	output        string
+	testLogr      testlogr.TestLogger
+	mockLogr      *mocklogr.MockLogger
+	cmdLogr       *mocklogr.MockLogger
+	restoreFunc   func()
+}
+
+func setup(t *testing.T, subCmd string, expectJSON bool) *Setup {
 	mockCtl := gomock.NewController(t)
 
 	mockExecProvider := mocks.NewMockExecProvider(mockCtl)
+
+	kubectl.SetNewExecProviderFunc(func() kubectl.ExecProvider { return mockExecProvider })
 
 	restoreFunc := func() {
 		mockCtl.Finish()
 	}
 
-	cmdArgs := append([]string{subCmd}, expectedArgs...)
-	runArgs := cmdArgs
-	dryRunArgs := append(runArgs, "--server-dry-run")
-	if expectJSON {
-		jsonArgs := []string{"-o", "json"}
-		runArgs = append(runArgs, jsonArgs...)
-		dryRunArgs = append(dryRunArgs, jsonArgs...)
-	}
-
 	return &Setup{
-		t:            t,
-		mockCtl:      mockCtl,
-		execProvider: mockExecProvider,
-		subCmd:       subCmd,
-		sourceDir:    sourcePath,
-		path:         kubectlPath,
-		args:         expectedArgs,
-		cmdArgs:      cmdArgs,
-		runArgs:      runArgs,
-		dryRunArgs:   dryRunArgs,
-		cmdStr:       fmt.Sprintf("%s %s", kubectlPath, strings.Join(cmdArgs, " ")),
-		runStr:       fmt.Sprintf("%s %s", kubectlPath, strings.Join(runArgs, " ")),
-		dryRunStr:    fmt.Sprintf("%s %s", kubectlPath, strings.Join(dryRunArgs, " ")),
-		expectJSON:   expectJSON,
-		output:       "FAKE OUTPUT",
-		testLogr:     testlogr.TestLogger{T: t},
-		mockLogr:     mocklogr.NewMockLogger(mockCtl),
-		cmdLogr:      mocklogr.NewMockLogger(mockCtl),
-		restoreFunc:  restoreFunc,
+		t:             t,
+		mockCtl:       mockCtl,
+		execProvider:  mockExecProvider,
+		subCmd:        subCmd,
+		sourceDir:     sourcePath,
+		withKustomize: false,
+		path:          kubectlPath,
+		expectJSON:    expectJSON,
+		output:        "FAKE OUTPUT",
+		testLogr:      testlogr.TestLogger{T: t},
+		mockLogr:      mocklogr.NewMockLogger(mockCtl),
+		cmdLogr:       mocklogr.NewMockLogger(mockCtl),
+		restoreFunc:   restoreFunc,
 	}
 }
 
 func setupApply(t *testing.T) *Setup {
-	return setup(t, "apply", true, "-R", "-f", sourcePath)
+	return setup(t, "apply", true).WithArgs("-R", "-f", sourcePath)
 }
 
 func setupDelete(t *testing.T) *Setup {
-	return setup(t, "delete", false, "pod", "random-pod", "-n", "some-namespace")
+	return setup(t, "delete", false).WithArgs("pod", "random-pod", "-n", "some-namespace")
 }
 
 func setupGet(t *testing.T) *Setup {
-	return setup(t, "get", true, "helmrelease", "addon", "-n", "kube-system")
+	return setup(t, "get", true).WithArgs("helmrelease", "addon", "-n", "kube-system")
+}
+
+func (s *Setup) WithArgs(expectedArgs ...string) *Setup {
+	s.args = expectedArgs
+	s.cmdArgs = append([]string{s.subCmd}, expectedArgs...)
+	s.runArgs = s.cmdArgs
+	s.dryRunArgs = append(s.runArgs, "--server-dry-run")
+	if s.expectJSON {
+		jsonArgs := []string{"-o", "json"}
+		s.runArgs = append(s.runArgs, jsonArgs...)
+		s.dryRunArgs = append(s.dryRunArgs, jsonArgs...)
+	}
+	s.cmdStr = fmt.Sprintf("%s %s", kubectlPath, strings.Join(s.cmdArgs, " "))
+	s.runStr = fmt.Sprintf("%s %s", kubectlPath, strings.Join(s.runArgs, " "))
+	s.dryRunStr = fmt.Sprintf("%s %s", kubectlPath, strings.Join(s.dryRunArgs, " "))
+	return s
+}
+
+func (s *Setup) WithKustomize() *Setup {
+	s.withKustomize = true
+	return s.WithArgs("-k", s.sourceDir)
+}
+
+func (s *Setup) expectKustomize() *Setup {
+	kustomizePath := filepath.Join(sourcePath, kustomizeFile)
+	s.execProvider.EXPECT().FileExists(kustomizePath).Return(s.withKustomize).Times(1)
+	return s
 }
 
 func (s *Setup) expectKubectlFound() *Setup {
@@ -148,7 +332,7 @@ func (s *Setup) expectKubectlFound() *Setup {
 	return s
 }
 
-func (s *Setup) exepectKubectlNotFound() *Setup {
+func (s *Setup) expectKubectlNotFound() *Setup {
 	s.execProvider.EXPECT().FindOnPath(kubectl.KubectlCmd).Return(s.path, errExecFileNotFound).Times(1)
 	return s
 }
@@ -189,11 +373,19 @@ func (s *Setup) expectRunError() *Setup {
 	return s
 }
 
-func (s *Setup) expectRunUsesFactoryLogger() *Setup {
+func (s *Setup) expectRunLogsKubectlCommand() *Setup {
 	s.expectRun()
 	// The ApplyCommand should use the factory's mockLogger to log a log-leveled message indicating that kubectl was executed with the expected command
 	s.mockLogr.EXPECT().V(gomock.Any()).Return(s.mockLogr).Times(1)
 	s.mockLogr.EXPECT().Info("executing kubectl", "command", s.runStr).Times(1)
+	return s
+}
+
+func (s *Setup) expectDryRunLogsKubectlCommand() *Setup {
+	s.expectDryRun()
+	// The ApplyCommand should use the factory's mockLogger to log a log-leveled message indicating that kubectl was executed with the expected command
+	s.mockLogr.EXPECT().V(gomock.Any()).Return(s.mockLogr).Times(1)
+	s.mockLogr.EXPECT().Info("executing kubectl", "command", s.dryRunStr).Times(1)
 	return s
 }
 
@@ -264,7 +456,7 @@ func (s *Setup) validateCommandState(c kubectl.Command) {
 }
 
 func (s *Setup) Apply() *kubectl.ApplyCommand {
-	command := s.factory.Apply(s.sourceDir)
+	command := s.expectKustomize().factory.Apply(s.sourceDir)
 	s.validateCommand(command, &kubectl.ApplyCommand{}, "Apply")
 	typedCommand, ok := command.(*kubectl.ApplyCommand)
 	if !ok {
@@ -291,131 +483,4 @@ func (s *Setup) Delete() *kubectl.DeleteCommand {
 		s.t.Logf("error casting to *kubectl.DeleteCommand! %#v", command)
 	}
 	return typedCommand
-}
-
-func TestKubectlCommandFoundInPath(t *testing.T) {
-	s := setupApply(t).expectKubectlFound()
-	defer s.restoreFunc()
-
-	f, err := kubectl.NewCommandFactory(s.testLogr, s.execProvider)
-	t.Logf("Kubectl (%T) %#v", f, f)
-	if err != nil {
-		t.Errorf("Error returned from the execLookPath function : %w", err)
-	} else {
-		t.Logf("Kubectl command path '%s'", kubectl.GetFactoryPath(*f))
-	}
-}
-
-func TestKubectlCommandNotFoundInPath(t *testing.T) {
-	s := setupApply(t).exepectKubectlNotFound()
-	defer s.restoreFunc()
-
-	f, err := kubectl.NewCommandFactory(s.testLogr, s.execProvider)
-	t.Logf("Kubectl (%T) %#v", f, f)
-	if err == nil {
-		t.Errorf("Expected error 'executable file not found' was not returned from NewKubectl constructor")
-	} else {
-		t.Logf("Expected error was returned: %#v", err)
-	}
-}
-
-func TestKubectlApplyReturnsApplyCommand(t *testing.T) {
-	s := setupApply(t).expectKubectlFound().withFactory()
-	defer s.restoreFunc()
-	s.validateCommandState(s.Apply())
-}
-
-func TestGetReturnsGetCommand(t *testing.T) {
-	s := setupGet(t).expectKubectlFound().withFactory()
-	defer s.restoreFunc()
-	s.validateCommandState(s.Get())
-}
-
-func TestDeleteReturnsDeleteCommand(t *testing.T) {
-	s := setupDelete(t).expectKubectlFound().withFactory()
-	defer s.restoreFunc()
-	s.validateCommandState(s.Delete())
-}
-
-func TestKubectlApplyRunReturnsOutput(t *testing.T) {
-	s := setupApply(t).expectRun().withFactory()
-	defer s.restoreFunc()
-
-	gotOutput, err := s.Apply().Run()
-	if err != nil {
-		t.Errorf("Error returned from ApplyCommand.Run: %w", err)
-		t.Fatalf("Error returned from ApplyCommand.Run")
-	}
-
-	if !bytes.Equal([]byte(s.output), gotOutput) {
-		t.Fatalf("expected output '%s', got output '%s' from ApplyCommand.Run", s.output, string(gotOutput))
-	} else {
-		t.Logf("ApplyCommand.Run expected output '%s' matches output '%s'", s.output, string(gotOutput))
-	}
-}
-
-func TestKubectlApplyRunReturnsExecError(t *testing.T) {
-	s := setupApply(t).expectRunError().withFactory()
-	defer s.restoreFunc()
-
-	_, err := s.Apply().Run()
-	if err == nil {
-		t.Fatalf("Expected error was not returned from ApplyCommand.Run!")
-	}
-}
-
-func TestKubectlApplyDryRunReturnsOutput(t *testing.T) {
-	s := setupApply(t).expectDryRun().withFactory()
-	defer s.restoreFunc()
-
-	gotOutput, err := s.Apply().DryRun()
-	if err != nil {
-		t.Errorf("Error returned from ApplyCommand.DryRun: %w", err)
-		t.Fatalf("Error returned from ApplyCommand.DryRun")
-	}
-
-	if !bytes.Equal([]byte(s.output), gotOutput) {
-		t.Fatalf("expected output '%s', got output '%s' from ApplyCommand.Run", s.output, string(gotOutput))
-	} else {
-		t.Logf("ApplyCommand.Run expected output '%s' matches output '%s'", s.output, string(gotOutput))
-	}
-}
-
-func TestKubectlRunUsesFactoryLogger(t *testing.T) {
-	s := setupApply(t).expectRunUsesFactoryLogger().withFactoryMockLogr()
-	defer s.restoreFunc()
-
-	output, err := s.Apply().Run()
-	if err != nil {
-		t.Errorf("Error returned from ApplyCommand.DryRun: %w", err)
-		t.Fatalf("Error returned from ApplyCommand.DryRun")
-	}
-	t.Logf("output: (%T) %#v", output, output)
-}
-
-func TestKubectlCommandWithLoggerPassedNil(t *testing.T) {
-	s := setupApply(t).expectRunUsesFactoryLogger().withFactoryMockLogr()
-	defer s.restoreFunc()
-
-	// Create the ApplyCommand from the Kubectl factory and try passing nil to Withlogger
-	output, err := s.Apply().WithLogger(nil).Run()
-	// No error, and the message should be logged to the CommandFactory's logger as expected
-	if err != nil {
-		t.Errorf("Error returned from ApplyCommand.Run: %w", err)
-		t.Fatalf("Error returned from ApplyCommand.Run")
-	}
-	t.Logf("output: (%T) %#v", output, output)
-}
-
-func TestKubectlCommandWithLoggerUsesPassedLogger(t *testing.T) {
-	s := setupApply(t).expectRunUsesCommandLogger().withFactoryMockLogr()
-	defer s.restoreFunc()
-
-	// Create the ApplyCommand from the Kubectl factory, and swap in the rightLogger with the WithLogger function
-	output, err := s.Apply().WithLogger(s.cmdLogr).Run()
-	if err != nil {
-		t.Errorf("Error returned from ApplyCommand.Run: %w", err)
-		t.Fatalf("Error returned from ApplyCommand.Run")
-	}
-	t.Logf("output: (%T) %#v", output, output)
 }

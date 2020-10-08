@@ -19,7 +19,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -266,7 +266,7 @@ func (a KubectlLayerApplier) isObjectPresent(ctx context.Context, layer layers.L
 	existing := obj.DeepCopyObject()
 	err = a.client.Get(ctx, key, existing)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			removeResourceVersion(obj)
 			a.logDebug("existing object not found", layer, "key", key)
 			return false, nil
@@ -352,6 +352,7 @@ func (a KubectlLayerApplier) getSourceResources(layer layers.Layer) (objs []runt
 	if err != nil {
 		return nil, err
 	}
+
 	output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).DryRun()
 	if err != nil {
 		return nil, fmt.Errorf("error from kubectl while parsing source directory (%s) for AddonsLayer %s: %w",

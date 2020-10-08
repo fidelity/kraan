@@ -34,6 +34,7 @@ var (
 	applyArgs           = []string{"-R", "-f"}
 	kustomizeApplyArgs  = []string{"-k"}
 	kubectlCmd          = "kubectl"
+	kustomizeCmd        = "kustomize"
 	newExecProviderFunc = newExecProvider
 )
 
@@ -60,6 +61,7 @@ func NewKustomize(logger logr.Logger) (kubectl Kubectl, err error) {
 	execProvider := newExecProviderFunc()
 	return newCommandFactory(logger, execProvider)
 }
+
 // CommandFactory is a concrete Factory implementation of the Kubectl interface's API.
 type CommandFactory struct {
 	logger       logr.Logger
@@ -185,9 +187,10 @@ func kustomizationBuiler(path string, log logr.Logger) string {
 		log.Error(err, "failed to create kustomize command object")
 		return path
 	}
-	kustomize.
+	kustomize.Build()
 	return path
 }
+
 // Apply instantiates an ApplyCommand instance using the provided directory path.
 func (f *CommandFactory) Apply(path string) (c Command) {
 	if f.isKustomization(path) {

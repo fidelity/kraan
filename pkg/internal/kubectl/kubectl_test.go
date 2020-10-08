@@ -236,7 +236,7 @@ func TestKubectlCommandWithLoggerUsesPassedLogger(t *testing.T) {
 	}
 }
 
-type Setup struct {
+type Setup struct { // nolint:maligned // will fix later
 	t             *testing.T
 	mockCtl       *gomock.Controller
 	execProvider  *mocks.MockExecProvider

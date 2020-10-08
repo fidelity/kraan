@@ -20,10 +20,12 @@ package kubectl
 
 import (
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
 	"strings"
 
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -57,7 +59,7 @@ func NewKubectl(logger logr.Logger) (kubectl Kubectl, err error) {
 }
 
 // NewKustomize returns a Kustomize object for creating and running Kustomize sub-commands.
-func NewKustomize(logger logr.Logger) (kubectl Kubectl, err error) {
+func NewKustomize(logger logr.Logger) (kustomize Kustomize, err error) {
 	execProvider := newExecProviderFunc()
 	return newCommandFactory(logger, execProvider)
 }
@@ -96,6 +98,7 @@ func (f CommandFactory) getExecProvider() ExecProvider {
 // Command defines an interface for commands created by the Kubectl factory type.
 type Command interface {
 	Run() (output []byte, err error)
+	Build() (buildDir string, err error)
 	DryRun() (output []byte, err error)
 	WithLogger(logger logr.Logger) (self Command)
 	getPath() string
@@ -162,6 +165,21 @@ func (c *abstractCommand) Run() (output []byte, err error) {
 	return c.output, err
 }
 
+// Build executes the Kustomize command with all its arguments and returns the output.
+func (c *abstractCommand) Build() (buildDir string, err error) {
+	buildDir, err = ioutil.TempDir("", "build-*")
+	if err != nil {
+		return buildDir, errors.Wrap(err, "unable to create temporary directory for kustomize build")
+	}
+	c.args = append(c.args, "-o", buildDir)
+	c.logInfo("executing kustomize build")
+	c.output, err = c.factory.getExecProvider().ExecCmd(c.getPath(), c.getArgs()...)
+	if err != nil {
+		err = c.logError(err)
+	}
+	return buildDir, err
+}
+
 // DryRun executes the Kubectl command as a dry run and returns the output without making any changes to the cluster.
 func (c *abstractCommand) DryRun() (output []byte, err error) {
 	c.args = append(c.args, "--server-dry-run")
@@ -194,7 +212,7 @@ func kustomizationBuiler(path string, log logr.Logger) string {
 // Apply instantiates an ApplyCommand instance using the provided directory path.
 func (f *CommandFactory) Apply(path string) (c Command) {
 	if f.isKustomization(path) {
-		path := kustomizationBuiler(path, f.logger)
+		path = kustomizationBuiler(path, f.logger)
 	}
 	c = &ApplyCommand{
 		abstractCommand: abstractCommand{

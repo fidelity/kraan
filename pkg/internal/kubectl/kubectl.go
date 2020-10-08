@@ -33,8 +33,8 @@ const (
 )
 
 var (
-	applyArgs           = []string{"-R", "-f"}
 	kubectlCmd          = "kubectl"
+	applyArgs           = []string{"-R", "-f"}
 	newExecProviderFunc = newExecProvider
 )
 

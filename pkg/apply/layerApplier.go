@@ -347,13 +347,25 @@ func (a KubectlLayerApplier) checkSourcePath(layer layers.Layer) (sourceDir stri
 	return sourceDir, nil
 }
 
+func (a KubectlLayerApplier) doApply(layer layers.Layer, sourceDir string) (output []byte, err error) {
+	MaxTries := 5
+	for try := 1; try < MaxTries; try++ {
+		output, err = a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).DryRun()
+		if err == nil {
+			return output, nil
+		}
+		a.logTrace("retrying apply", layer)
+	}
+	return output, err
+}
+
 func (a KubectlLayerApplier) getSourceResources(layer layers.Layer) (objs []runtime.Object, err error) {
 	sourceDir, err := a.checkSourcePath(layer)
 	if err != nil {
 		return nil, err
 	}
 
-	output, err := a.kubectl.Apply(sourceDir).WithLogger(layer.GetLogger()).DryRun()
+	output, err := a.doApply(layer, sourceDir)
 	if err != nil {
 		return nil, fmt.Errorf("error from kubectl while parsing source directory (%s) for AddonsLayer %s: %w",
 			sourceDir, layer.GetName(), err)

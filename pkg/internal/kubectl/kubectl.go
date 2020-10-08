@@ -145,7 +145,7 @@ func (c *abstractCommand) Run() (output []byte, err error) {
 	c.logInfo("executing kubectl")
 	c.output, err = c.factory.getExecProvider().ExecCmd(c.getPath(), c.getArgs()...)
 	if err != nil {
-		err = c.logError(err)
+		err = c.logError(err, "output", c.output)
 	}
 	return c.output, err
 }

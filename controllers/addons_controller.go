@@ -228,19 +228,32 @@ func (r *AddonsLayerReconciler) checkSuccess(l layers.Layer) error {
 	return nil
 }
 
+func (r *AddonsLayerReconciler) waitForData(l layers.Layer, repo repos.Repo) (err error) {
+	MaxTries := 5
+	for try := 1; try < MaxTries; try++ {
+		err = repo.LinkData(l.GetSourcePath(), l.GetSpec().Source.Path)
+		if err == nil {
+			r.Log.V(1).Info("linked to layer data", "requestName", l.GetName(), "kind", "gitrepositories.source.toolkit.fluxcd.io", "source", l.GetSpec().Source)
+			return nil
+		}
+		r.Log.Info("waiting for layer data to be synced", "requestName", l.GetName(), "kind", "gitrepositories.source.toolkit.fluxcd.io", "source", l.GetSpec().Source)
+		time.Sleep(time.Second)
+	}
+	r.Log.Error(err, "unable to link AddonsLayer directory to repository data",
+		"kind", "gitrepositories.source.toolkit.fluxcd.io", "source", l.GetSpec().Source, "layer", l.GetName())
+	l.StatusUpdate(kraanv1alpha1.FailedCondition, kraanv1alpha1.AddonsLayerFailedReason, err.Error())
+	return err
+}
+
 func (r *AddonsLayerReconciler) checkData(l layers.Layer) (bool, error) {
 	sourceRepoName := l.GetSourceKey()
 	MaxTries := 5
 	for try := 1; try < MaxTries; try++ {
 		repo := r.Repos.Get(sourceRepoName)
 		if repo != nil {
-			if err := repo.LinkData(l.GetSourcePath(), l.GetSpec().Source.Path); err != nil {
-				r.Log.Error(err, "unable to link AddonsLayer directory to repository data",
-					"kind", "gitrepositories.source.toolkit.fluxcd.io", "source", l.GetSpec().Source, "layer", l.GetName())
-				l.StatusUpdate(kraanv1alpha1.FailedCondition, kraanv1alpha1.AddonsLayerFailedReason, err.Error())
+			if err := r.waitForData(l, repo); err != nil {
 				return false, err
 			}
-			r.Log.V(1).Info("linked to layer data", "requestName", l.GetName(), "kind", "gitrepositories.source.toolkit.fluxcd.io", "source", l.GetSpec().Source)
 			return true, nil
 		}
 		r.Log.Info("waiting for layer data", "requestName", l.GetName(), "kind", "gitrepositories.source.toolkit.fluxcd.io", "source", l.GetSpec().Source)
@@ -385,7 +398,7 @@ func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.
 
 	for _, layer := range layerList {
 		if err := repo.LinkData(layer.GetSourcePath(), layer.GetSpec().Source.Path); err != nil {
-			r.Log.Error(err, "unable to link AddonsLayer directory to repository data",
+			r.Log.Error(err, "unable to link referencing AddonsLayer directory to repository data",
 				"kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(srcRepo), "layer", layer.GetName())
 			continue
 		}

@@ -23,6 +23,7 @@ WORKDIR /
 RUN apk add curl
 COPY --from=builder /workspace/kraan-controller /usr/local/bin/
 RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.17.12/bin/linux/amd64/kubectl
+RUN curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
 RUN chmod +x ./kubectl
 RUN mv ./kubectl /usr/local/bin
 RUN addgroup -S controller && adduser -S -g controller controller

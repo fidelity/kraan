@@ -44,12 +44,22 @@ type Kubectl interface {
 	Get(args ...string) (c Command)
 }
 
+// Kustomize is a Factory interface that returns concrete Command implementations from named constructors.
+type Kustomize interface {
+	Build(args ...string) (c Command)
+}
+
 // NewKubectl returns a Kubectl object for creating and running kubectl sub-commands.
 func NewKubectl(logger logr.Logger) (kubectl Kubectl, err error) {
 	execProvider := newExecProviderFunc()
 	return newCommandFactory(logger, execProvider)
 }
 
+// NewKustomize returns a Kustomize object for creating and running Kustomize sub-commands.
+func NewKustomize(logger logr.Logger) (kubectl Kubectl, err error) {
+	execProvider := newExecProviderFunc()
+	return newCommandFactory(logger, execProvider)
+}
 // CommandFactory is a concrete Factory implementation of the Kubectl interface's API.
 type CommandFactory struct {
 	logger       logr.Logger
@@ -169,25 +179,34 @@ type ApplyCommand struct {
 	abstractCommand
 }
 
+func kustomizationBuiler(path string, log logr.Logger) string {
+	kustomize, err := NewKustomize(log)
+	if err != nil {
+		log.Error(err, "failed to create kustomize command object")
+		return path
+	}
+	kustomize.
+	return path
+}
 // Apply instantiates an ApplyCommand instance using the provided directory path.
 func (f *CommandFactory) Apply(path string) (c Command) {
+	if f.isKustomization(path) {
+		path := kustomizationBuiler(path, f.logger)
+	}
 	c = &ApplyCommand{
 		abstractCommand: abstractCommand{
 			logger:     f.logger,
 			factory:    f,
 			subCmd:     "apply",
 			jsonOutput: true,
-			args:       f.applyArgs(path),
+			args:       append(applyArgs, path),
 		},
 	}
 	return c
 }
 
-func (f *CommandFactory) applyArgs(dir string) []string {
-	if f.getExecProvider().FileExists(filepath.Join(dir, kustomizeYaml)) {
-		return append(kustomizeApplyArgs, dir)
-	}
-	return append(applyArgs, dir)
+func (f *CommandFactory) isKustomization(dir string) bool {
+	return f.getExecProvider().FileExists(filepath.Join(dir, kustomizeYaml))
 }
 
 // DeleteCommand implements the Command interface to delete resources from the KubeAPI service.

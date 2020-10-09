@@ -339,7 +339,7 @@ func setupApply(t *testing.T) *Setup {
 }
 
 func setupBuild(t *testing.T) *Setup {
-	s := setup(t, "build", true).WithKustomizeArgs(sourcePath, "-o")
+	s := setup(t, "build", true).WithKustomizeArgs(sourcePath)
 	s.path = "/mocked/path/to/kustomize"
 	return s
 }

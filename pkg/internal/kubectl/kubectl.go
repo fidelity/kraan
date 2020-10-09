@@ -222,7 +222,7 @@ func (f *CommandFactory) Build(path string) (c Command) {
 			factory:    f,
 			subCmd:     "build",
 			jsonOutput: true,
-			args:       []string{path, "-o"},
+			args:       []string{path},
 		},
 	}
 	return c

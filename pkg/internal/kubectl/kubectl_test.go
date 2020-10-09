@@ -13,6 +13,7 @@ Or you can allow `go generate` to create all mocks for a project or package in a
 Add a go:generate annotation above the package statement in all the code files containing interfaces that you want to mock.  Example:
 	//go:generate mockgen -destination=mockExecProvider.go -package=kubectl -source=execProvider.go . ExecProvider
 	//go:generate mockgen -destination=../mocks/logr/mockLogger.go -package=mocks github.com/go-logr/logr Logger
+	//go:generate mockgen -destination=../mocks/ioutil/mockioutil.go -package=mocks io/ioutil TempDir
 
 From the project root directory, you can then generate mocks for all the interfaces that have a go:generate annotation by running 'go generate ./...'.
 
@@ -38,6 +39,7 @@ var (
 	errFromExec         = fmt.Errorf("error from executable")
 	errExecFileNotFound = fmt.Errorf("executable file not found in $PATH")
 	kubectlPath         = "/mocked/path/to/kubectl"
+	kustomizePath       = "/mocked/path/to/kustomize"
 	sourcePath          = "/mocked/path/to/source/directory"
 	kustomizeFile       = "kustomization.yaml"
 )
@@ -73,11 +75,42 @@ func TestNewKubectl(t *testing.T) {
 	t.Logf("kubectl full path: %s", kubectl.GetFactoryPath(*f))
 }
 
+func TestNewKustomize(t *testing.T) {
+	s := setupApply(t).expectKustomizeFound()
+	logger := testlogr.TestLogger{T: t}
+	k, err := kubectl.NewKustomize(logger)
+	if err != nil {
+		t.Errorf("The NewKustomize function returned an error! %w", err)
+	}
+	t.Logf("k (%T) %#v", k, k)
+	fType := &kubectl.CommandFactory{}
+	if reflect.TypeOf(k) != reflect.TypeOf(fType) {
+		t.Fatalf("The NewKustomize function did not return an instance of %T", fType)
+	}
+	f, ok := k.(*kubectl.CommandFactory)
+	if !ok {
+		t.Fatalf("Failed to cast Kubectl instance to %T : %#v", fType, k)
+	}
+	gotLogger := kubectl.GetLogger(*f)
+	t.Logf("gotLogger (%T) %#v", gotLogger, gotLogger)
+	if logger != gotLogger {
+		t.Errorf("The passed logger was not stored as the new Kubectl instance's Logger")
+	}
+	gotExecProvider := kubectl.GetExecProvider(*f)
+	if gotExecProvider == nil {
+		t.Errorf("The NewKustomize function did not instantiate an execProvider!")
+	}
+	if gotExecProvider != s.execProvider {
+		t.Errorf("The NewKustomize function did not call the function referenced by the newExecProviderFunc package var")
+	}
+	t.Logf("kubectl full path: %s", kubectl.GetFactoryPath(*f))
+}
+
 func TestKubectlCommandFoundInPath(t *testing.T) {
-	s := setupApply(t).expectKubectlFound()
+	s := setupApply(t).withKustomize().expectKubectlFound()
 	defer s.restoreFunc()
 
-	f, err := kubectl.NewCommandFactory(s.testLogr, s.execProvider)
+	f, err := kubectl.NewCommandFactory(s.testLogr, s.execProvider, kubectl.KubectlCmd)
 	t.Logf("Kubectl (%T) %#v", f, f)
 	if err != nil {
 		t.Errorf("Error returned from the execLookPath function : %w", err)
@@ -90,7 +123,7 @@ func TestKubectlCommandNotFoundInPath(t *testing.T) {
 	s := setupApply(t).expectKubectlNotFound()
 	defer s.restoreFunc()
 
-	f, err := kubectl.NewCommandFactory(s.testLogr, s.execProvider)
+	f, err := kubectl.NewCommandFactory(s.testLogr, s.execProvider, kubectl.KubectlCmd)
 	t.Logf("Kubectl (%T) %#v", f, f)
 	if err == nil {
 		t.Errorf("Expected error 'executable file not found' was not returned from NewKubectl constructor")
@@ -99,14 +132,20 @@ func TestKubectlCommandNotFoundInPath(t *testing.T) {
 	}
 }
 
+func TestKustomizeBuildReturnsBuildCommand(t *testing.T) {
+	s := setupBuild(t).expectKustomizeFound().withKustomizeFactory()
+	defer s.restoreFunc()
+	s.validateCommandState(s.Build())
+}
+
 func TestKubectlApplyReturnsApplyCommand(t *testing.T) {
-	s := setupApply(t).expectKubectlFound().withFactory()
+	s := setupApply(t).expectNoKustomize().expectKubectlFound().withFactory()
 	defer s.restoreFunc()
 	s.validateCommandState(s.Apply())
 }
 
 func TestKubectlApplyChecksForKustomizeFile(t *testing.T) {
-	s := setupApply(t).WithKustomize().expectKubectlFound().withFactory()
+	s := setupApply(t).expectNoKustomize().expectKubectlFound().withFactory()
 	defer s.restoreFunc()
 	s.validateCommandState(s.Apply())
 }
@@ -123,8 +162,26 @@ func TestDeleteReturnsDeleteCommand(t *testing.T) {
 	s.validateCommandState(s.Delete())
 }
 
+/*
+func TestKustomizeBuild(t *testing.T) {
+	s := setupApply(t).expectKustomize().expectKustomizeFound().expectRun().withFactory()
+	defer s.restoreFunc()
+
+	gotOutput, err := s.Apply().Run()
+	if err != nil {
+		t.Errorf("Error returned from ApplyCommand.Run: %w", err)
+		t.Fatalf("Error returned from ApplyCommand.Run")
+	}
+
+	if !bytes.Equal([]byte(s.output), gotOutput) {
+		t.Fatalf("expected output '%s', got output '%s' from ApplyCommand.Run", s.output, string(gotOutput))
+	} else {
+		t.Logf("ApplyCommand.Run expected output '%s' matches output '%s'", s.output, string(gotOutput))
+	}
+}
+*/
 func TestKubectlApplyRunReturnsOutput(t *testing.T) {
-	s := setupApply(t).expectRun().withFactory()
+	s := setupApply(t).expectNoKustomize().expectRun().withFactory()
 	defer s.restoreFunc()
 
 	gotOutput, err := s.Apply().Run()
@@ -141,7 +198,7 @@ func TestKubectlApplyRunReturnsOutput(t *testing.T) {
 }
 
 func TestKubectlApplyDryRunReturnsOutput(t *testing.T) {
-	s := setupApply(t).expectDryRun().withFactory()
+	s := setupApply(t).expectNoKustomize().expectDryRun().withFactory()
 	defer s.restoreFunc()
 
 	gotOutput, err := s.Apply().DryRun()
@@ -158,7 +215,7 @@ func TestKubectlApplyDryRunReturnsOutput(t *testing.T) {
 }
 
 func TestKubectlApplyRunReturnsExecError(t *testing.T) {
-	s := setupApply(t).expectRunError().withFactory()
+	s := setupApply(t).expectNoKustomize().expectRunError().withFactory()
 	defer s.restoreFunc()
 
 	_, err := s.Apply().Run()
@@ -168,7 +225,7 @@ func TestKubectlApplyRunReturnsExecError(t *testing.T) {
 }
 
 func TestKubectlRunUsesFactoryLogger(t *testing.T) {
-	s := setupApply(t).expectRunLogsKubectlCommand().withFactoryMockLogr()
+	s := setupApply(t).expectNoKustomize().expectRunLogsKubectlCommand().withFactoryMockLogr()
 	defer s.restoreFunc()
 
 	_, err := s.Apply().Run()
@@ -179,7 +236,7 @@ func TestKubectlRunUsesFactoryLogger(t *testing.T) {
 }
 
 func TestKubectlCommandWithLoggerPassedNil(t *testing.T) {
-	s := setupApply(t).expectRunLogsKubectlCommand().withFactoryMockLogr()
+	s := setupApply(t).expectNoKustomize().expectRunLogsKubectlCommand().withFactoryMockLogr()
 	defer s.restoreFunc()
 
 	// Create the ApplyCommand from the Kubectl factory and try passing nil to Withlogger
@@ -192,7 +249,7 @@ func TestKubectlCommandWithLoggerPassedNil(t *testing.T) {
 }
 
 func TestKubectlApplyRunLogsKubectlCommand(t *testing.T) {
-	s := setupApply(t).expectRunLogsKubectlCommand().withFactoryMockLogr()
+	s := setupApply(t).expectNoKustomize().expectRunLogsKubectlCommand().withFactoryMockLogr()
 	defer s.restoreFunc()
 
 	_, err := s.Apply().Run()
@@ -203,7 +260,7 @@ func TestKubectlApplyRunLogsKubectlCommand(t *testing.T) {
 }
 
 func TestKubectlApplyDryRunLogsKubectlCommand(t *testing.T) {
-	s := setupApply(t).expectDryRunLogsKubectlCommand().withFactoryMockLogr()
+	s := setupApply(t).expectNoKustomize().expectDryRunLogsKubectlCommand().withFactoryMockLogr()
 	defer s.restoreFunc()
 
 	_, err := s.Apply().DryRun()
@@ -213,19 +270,8 @@ func TestKubectlApplyDryRunLogsKubectlCommand(t *testing.T) {
 	}
 }
 
-func TestKubectlApplyRunSetsKustomizeFlag(t *testing.T) {
-	s := setupApply(t).WithKustomize().expectRunLogsKubectlCommand().withFactoryMockLogr()
-	defer s.restoreFunc()
-
-	_, err := s.Apply().Run()
-	if err != nil {
-		t.Errorf("Error returned from ApplyCommand.Run: %w", err)
-		t.Fatalf("Error returned from ApplyCommand.Run")
-	}
-}
-
 func TestKubectlCommandWithLoggerUsesPassedLogger(t *testing.T) {
-	s := setupApply(t).expectRunUsesCommandLogger().withFactoryMockLogr()
+	s := setupApply(t).expectNoKustomize().expectRunUsesCommandLogger().withFactoryMockLogr()
 	defer s.restoreFunc()
 
 	// Create the ApplyCommand from the Kubectl factory, and swap in the rightLogger with the WithLogger function
@@ -236,28 +282,28 @@ func TestKubectlCommandWithLoggerUsesPassedLogger(t *testing.T) {
 	}
 }
 
-type Setup struct { // nolint:maligned // will fix later
-	t             *testing.T
-	mockCtl       *gomock.Controller
-	execProvider  *mocks.MockExecProvider
-	factory       *kubectl.CommandFactory
-	path          string
-	subCmd        string
-	sourceDir     string
-	withKustomize bool
-	args          []string
-	cmdArgs       []string
-	runArgs       []string
-	dryRunArgs    []string
-	cmdStr        string
-	runStr        string
-	dryRunStr     string
-	expectJSON    bool
-	output        string
-	testLogr      testlogr.TestLogger
-	mockLogr      *mocklogr.MockLogger
-	cmdLogr       *mocklogr.MockLogger
-	restoreFunc   func()
+type Setup struct {
+	t            *testing.T
+	mockCtl      *gomock.Controller
+	execProvider *mocks.MockExecProvider
+	factory      *kubectl.CommandFactory
+	path         string
+	subCmd       string
+	sourceDir    string
+	applyDir     string
+	args         []string
+	cmdArgs      []string
+	runArgs      []string
+	dryRunArgs   []string
+	cmdStr       string
+	runStr       string
+	dryRunStr    string
+	expectJSON   bool
+	output       string
+	testLogr     testlogr.TestLogger
+	mockLogr     *mocklogr.MockLogger
+	cmdLogr      *mocklogr.MockLogger
+	restoreFunc  func()
 }
 
 func setup(t *testing.T, subCmd string, expectJSON bool) *Setup {
@@ -272,24 +318,30 @@ func setup(t *testing.T, subCmd string, expectJSON bool) *Setup {
 	}
 
 	return &Setup{
-		t:             t,
-		mockCtl:       mockCtl,
-		execProvider:  mockExecProvider,
-		subCmd:        subCmd,
-		sourceDir:     sourcePath,
-		withKustomize: false,
-		path:          kubectlPath,
-		expectJSON:    expectJSON,
-		output:        "FAKE OUTPUT",
-		testLogr:      testlogr.TestLogger{T: t},
-		mockLogr:      mocklogr.NewMockLogger(mockCtl),
-		cmdLogr:       mocklogr.NewMockLogger(mockCtl),
-		restoreFunc:   restoreFunc,
+		t:            t,
+		mockCtl:      mockCtl,
+		execProvider: mockExecProvider,
+		subCmd:       subCmd,
+		sourceDir:    sourcePath,
+		applyDir:     sourcePath,
+		path:         kubectlPath,
+		expectJSON:   expectJSON,
+		output:       "FAKE OUTPUT",
+		testLogr:     testlogr.TestLogger{T: t},
+		mockLogr:     mocklogr.NewMockLogger(mockCtl),
+		cmdLogr:      mocklogr.NewMockLogger(mockCtl),
+		restoreFunc:  restoreFunc,
 	}
 }
 
 func setupApply(t *testing.T) *Setup {
 	return setup(t, "apply", true).WithArgs("-R", "-f", sourcePath)
+}
+
+func setupBuild(t *testing.T) *Setup {
+	s := setup(t, "build", true).WithKustomizeArgs(sourcePath, "-o")
+	s.path = "/mocked/path/to/kustomize"
+	return s
 }
 
 func setupDelete(t *testing.T) *Setup {
@@ -298,6 +350,15 @@ func setupDelete(t *testing.T) *Setup {
 
 func setupGet(t *testing.T) *Setup {
 	return setup(t, "get", true).WithArgs("helmrelease", "addon", "-n", "kube-system")
+}
+
+func (s *Setup) WithKustomizeArgs(expectedArgs ...string) *Setup {
+	s.args = expectedArgs
+	s.cmdArgs = append([]string{s.subCmd}, expectedArgs...)
+	s.runArgs = s.cmdArgs
+	s.cmdStr = fmt.Sprintf("%s %s", kustomizePath, strings.Join(s.cmdArgs, " "))
+	s.runStr = fmt.Sprintf("%s %s", kustomizePath, strings.Join(s.runArgs, " "))
+	return s
 }
 
 func (s *Setup) WithArgs(expectedArgs ...string) *Setup {
@@ -316,14 +377,21 @@ func (s *Setup) WithArgs(expectedArgs ...string) *Setup {
 	return s
 }
 
-func (s *Setup) WithKustomize() *Setup {
-	s.withKustomize = true
-	return s.WithArgs("-k", s.sourceDir)
+func (s *Setup) withKustomize() *Setup {
+	s.applyDir = "/tmp/build-test"
+	return s
 }
 
+/*
 func (s *Setup) expectKustomize() *Setup {
 	kustomizePath := filepath.Join(sourcePath, kustomizeFile)
-	s.execProvider.EXPECT().FileExists(kustomizePath).Return(s.withKustomize).Times(1)
+	s.execProvider.EXPECT().FileExists(kustomizePath).Return(true).Times(1)
+	return s
+}
+*/
+func (s *Setup) expectNoKustomize() *Setup {
+	kustomizePath := filepath.Join(sourcePath, kustomizeFile)
+	s.execProvider.EXPECT().FileExists(kustomizePath).Return(false).Times(1)
 	return s
 }
 
@@ -332,13 +400,32 @@ func (s *Setup) expectKubectlFound() *Setup {
 	return s
 }
 
+func (s *Setup) expectKustomizeFound() *Setup {
+	s.execProvider.EXPECT().FindOnPath(kubectl.KustomizeCmd).Return(s.path, nil).Times(1)
+	return s
+}
+
 func (s *Setup) expectKubectlNotFound() *Setup {
 	s.execProvider.EXPECT().FindOnPath(kubectl.KubectlCmd).Return(s.path, errExecFileNotFound).Times(1)
 	return s
 }
 
+func (s *Setup) withKustomizeFactoryLogr(logger logr.Logger) *Setup {
+	factory, err := kubectl.NewCommandFactory(logger, s.execProvider, kubectl.KustomizeCmd)
+	s.t.Logf("kustomize (%T) %#v", factory, factory)
+	if err != nil {
+		s.t.Errorf("Error returned from the execLookPath function : %w", err)
+	}
+	s.factory = factory
+	return s
+}
+
+func (s *Setup) withKustomizeFactory() *Setup {
+	return s.withKustomizeFactoryLogr(s.testLogr)
+}
+
 func (s *Setup) withFactoryLogr(logger logr.Logger) *Setup {
-	factory, err := kubectl.NewCommandFactory(logger, s.execProvider)
+	factory, err := kubectl.NewCommandFactory(logger, s.execProvider, kubectl.KubectlCmd)
 	s.t.Logf("Kubectl (%T) %#v", factory, factory)
 	if err != nil {
 		s.t.Errorf("Error returned from the execLookPath function : %w", err)
@@ -455,8 +542,18 @@ func (s *Setup) validateCommandState(c kubectl.Command) {
 	}
 }
 
+func (s *Setup) Build() *kubectl.BuildCommand {
+	command := s.factory.Build(s.sourceDir)
+	s.validateCommand(command, &kubectl.BuildCommand{}, "Build")
+	typedCommand, ok := command.(*kubectl.BuildCommand)
+	if !ok {
+		s.t.Logf("error casting to *kubectl.BuildCommand! %#v", command)
+	}
+	return typedCommand
+}
+
 func (s *Setup) Apply() *kubectl.ApplyCommand {
-	command := s.expectKustomize().factory.Apply(s.sourceDir)
+	command := s.factory.Apply(s.sourceDir)
 	s.validateCommand(command, &kubectl.ApplyCommand{}, "Apply")
 	typedCommand, ok := command.(*kubectl.ApplyCommand)
 	if !ok {

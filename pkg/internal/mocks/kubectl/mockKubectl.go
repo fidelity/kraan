@@ -107,6 +107,20 @@ func (m *MockCommand) EXPECT() *MockCommandMockRecorder {
 	return m.recorder
 }
 
+// Build mocks base method
+func (m *MockCommand) Build() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Build")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// Build indicates an expected call of Build
+func (mr *MockCommandMockRecorder) Build() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Build", reflect.TypeOf((*MockCommand)(nil).Build))
+}
+
 // DryRun mocks base method
 func (m *MockCommand) DryRun() ([]byte, error) {
 	m.ctrl.T.Helper()

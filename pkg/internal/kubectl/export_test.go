@@ -3,6 +3,7 @@ package kubectl
 
 var (
 	KubectlCmd        = kubectlCmd
+	KustomizeCmd      = kustomizeCmd
 	NewCommandFactory = newCommandFactory
 	GetFactoryPath    = CommandFactory.getPath
 	GetLogger         = CommandFactory.getLogger

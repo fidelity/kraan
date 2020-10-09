@@ -16,6 +16,7 @@ limitations under the License.
 
 //Package kubectl executes various kubectl sub-commands in a forked shell
 //go:generate mockgen -destination=../mocks/kubectl/mockKubectl.go -package=mocks . Kubectl,Command
+//Disabled go:generate mockgen -destination=../mocks/ioutil/mockLogger.go -package=mocks io/ioutil TempDir
 package kubectl
 
 import (
@@ -25,7 +26,6 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -34,6 +34,7 @@ const (
 
 var (
 	kubectlCmd          = "kubectl"
+	kustomizeCmd        = "kustomize"
 	applyArgs           = []string{"-R", "-f"}
 	newExecProviderFunc = newExecProvider
 )
@@ -53,13 +54,13 @@ type Kustomize interface {
 // NewKubectl returns a Kubectl object for creating and running kubectl sub-commands.
 func NewKubectl(logger logr.Logger) (kubectl Kubectl, err error) {
 	execProvider := newExecProviderFunc()
-	return newCommandFactory(logger, execProvider)
+	return newCommandFactory(logger, execProvider, kubectlCmd)
 }
 
 // NewKustomize returns a Kustomize object for creating and running Kustomize sub-commands.
 func NewKustomize(logger logr.Logger) (kustomize Kustomize, err error) {
 	execProvider := newExecProviderFunc()
-	return newCommandFactory(logger, execProvider)
+	return newCommandFactory(logger, execProvider, kustomizeCmd)
 }
 
 // CommandFactory is a concrete Factory implementation of the Kubectl interface's API.
@@ -69,14 +70,14 @@ type CommandFactory struct {
 	execProvider ExecProvider
 }
 
-func newCommandFactory(logger logr.Logger, execProvider ExecProvider) (factory *CommandFactory, err error) {
+func newCommandFactory(logger logr.Logger, execProvider ExecProvider, execProg string) (factory *CommandFactory, err error) {
 	factory = &CommandFactory{
 		logger:       logger,
 		execProvider: execProvider,
 	}
-	factory.path, err = factory.getExecProvider().FindOnPath(kubectlCmd)
+	factory.path, err = factory.getExecProvider().FindOnPath(execProg)
 	if err != nil {
-		err = fmt.Errorf("unable to find %s binary on system PATH: %w", kubectlCmd, err)
+		err = fmt.Errorf("unable to find %s binary on system PATH: %w", execProg, err)
 	}
 	return factory, err
 }
@@ -96,7 +97,7 @@ func (f CommandFactory) getExecProvider() ExecProvider {
 // Command defines an interface for commands created by the Kubectl factory type.
 type Command interface {
 	Run() (output []byte, err error)
-	Build() (buildDir string, err error)
+	Build() (buildDir string)
 	DryRun() (output []byte, err error)
 	WithLogger(logger logr.Logger) (self Command)
 	getPath() string
@@ -164,18 +165,20 @@ func (c *abstractCommand) Run() (output []byte, err error) {
 }
 
 // Build executes the Kustomize command with all its arguments and returns the output.
-func (c *abstractCommand) Build() (buildDir string, err error) {
+func (c *abstractCommand) Build() (buildDir string) {
+	var err error
 	buildDir, err = ioutil.TempDir("", "build-*")
 	if err != nil {
-		return buildDir, errors.Wrap(err, "unable to create temporary directory for kustomize build")
+		c.logError(err) // nolint:errcheck //ok
+		return buildDir
 	}
 	c.args = append(c.args, "-o", buildDir)
 	c.logInfo("executing kustomize build")
 	c.output, err = c.factory.getExecProvider().ExecCmd(c.getPath(), c.getArgs()...)
 	if err != nil {
-		err = c.logError(err)
+		c.logError(err) // nolint:errcheck //ok
 	}
-	return buildDir, err
+	return buildDir
 }
 
 // DryRun executes the Kubectl command as a dry run and returns the output without making any changes to the cluster.
@@ -202,24 +205,24 @@ type BuildCommand struct {
 	abstractCommand
 }
 
-func kustomizationBuiler(path string, log logr.Logger) string {
+func (f *CommandFactory) kustomizationBuiler(path string, log logr.Logger) string {
 	kustomize, err := NewKustomize(log)
 	if err != nil {
 		log.Error(err, "failed to create kustomize command object")
 		return path
 	}
-	kustomize.Build(path)
-	return path
+	return kustomize.Build(path).Build()
 }
 
 // Build instantiates an BuildCommand instance using the provided directory path.
 func (f *CommandFactory) Build(path string) (c Command) {
 	c = &BuildCommand{
 		abstractCommand: abstractCommand{
-			logger:  f.logger,
-			factory: f,
-			subCmd:  "build",
-			args:    []string{path, "-o"},
+			logger:     f.logger,
+			factory:    f,
+			subCmd:     "build",
+			jsonOutput: true,
+			args:       []string{path, "-o"},
 		},
 	}
 	return c
@@ -228,7 +231,7 @@ func (f *CommandFactory) Build(path string) (c Command) {
 // Apply instantiates an ApplyCommand instance using the provided directory path.
 func (f *CommandFactory) Apply(path string) (c Command) {
 	if f.isKustomization(path) {
-		path = kustomizationBuiler(path, f.logger)
+		path = f.kustomizationBuiler(path, f.logger)
 	}
 	c = &ApplyCommand{
 		abstractCommand: abstractCommand{

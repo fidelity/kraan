@@ -20,6 +20,7 @@ package kubectl
 
 import (
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
 	"strings"
 
@@ -31,10 +32,11 @@ const (
 )
 
 var (
-	applyArgs           = []string{"-R", "-f"}
-	kustomizeApplyArgs  = []string{"-k"}
 	kubectlCmd          = "kubectl"
+	kustomizeCmd        = "kustomize"
+	applyArgs           = []string{"-R", "-f"}
 	newExecProviderFunc = newExecProvider
+	tempDirProviderFunc = createTempDir
 )
 
 // Kubectl is a Factory interface that returns concrete Command implementations from named constructors.
@@ -44,10 +46,21 @@ type Kubectl interface {
 	Get(args ...string) (c Command)
 }
 
+// Kustomize is a Factory interface that returns concrete Command implementations from named constructors.
+type Kustomize interface {
+	Build(path string) (c Command)
+}
+
 // NewKubectl returns a Kubectl object for creating and running kubectl sub-commands.
 func NewKubectl(logger logr.Logger) (kubectl Kubectl, err error) {
 	execProvider := newExecProviderFunc()
-	return newCommandFactory(logger, execProvider)
+	return newCommandFactory(logger, execProvider, kubectlCmd)
+}
+
+// NewKustomize returns a Kustomize object for creating and running Kustomize sub-commands.
+func NewKustomize(logger logr.Logger) (kustomize Kustomize, err error) {
+	execProvider := newExecProviderFunc()
+	return newCommandFactory(logger, execProvider, kustomizeCmd)
 }
 
 // CommandFactory is a concrete Factory implementation of the Kubectl interface's API.
@@ -57,14 +70,14 @@ type CommandFactory struct {
 	execProvider ExecProvider
 }
 
-func newCommandFactory(logger logr.Logger, execProvider ExecProvider) (factory *CommandFactory, err error) {
+func newCommandFactory(logger logr.Logger, execProvider ExecProvider, execProg string) (factory *CommandFactory, err error) {
 	factory = &CommandFactory{
 		logger:       logger,
 		execProvider: execProvider,
 	}
-	factory.path, err = factory.getExecProvider().FindOnPath(kubectlCmd)
+	factory.path, err = factory.getExecProvider().FindOnPath(execProg)
 	if err != nil {
-		err = fmt.Errorf("unable to find %s binary on system PATH: %w", kubectlCmd, err)
+		err = fmt.Errorf("unable to find %s binary on system PATH: %w", execProg, err)
 	}
 	return factory, err
 }
@@ -84,6 +97,7 @@ func (f CommandFactory) getExecProvider() ExecProvider {
 // Command defines an interface for commands created by the Kubectl factory type.
 type Command interface {
 	Run() (output []byte, err error)
+	Build() (buildDir string)
 	DryRun() (output []byte, err error)
 	WithLogger(logger logr.Logger) (self Command)
 	getPath() string
@@ -150,6 +164,29 @@ func (c *abstractCommand) Run() (output []byte, err error) {
 	return c.output, err
 }
 
+// createTempDir creates a temporary directory.
+func createTempDir() (buildDir string, err error) {
+	buildDir, err = ioutil.TempDir("", "build-*")
+	return buildDir, err
+}
+
+// Build executes the Kustomize command with all its arguments and returns the output.
+func (c *abstractCommand) Build() (buildDir string) {
+	var err error
+	buildDir, err = tempDirProviderFunc()
+	if err != nil {
+		c.logError(err) // nolint:errcheck //ok
+		return buildDir
+	}
+	c.args = append(c.args, "-o", buildDir)
+	c.logInfo("executing kustomize build")
+	c.output, err = c.factory.getExecProvider().ExecCmd(c.getPath(), c.getArgs()...)
+	if err != nil {
+		c.logError(err) // nolint:errcheck //ok
+	}
+	return buildDir
+}
+
 // DryRun executes the Kubectl command as a dry run and returns the output without making any changes to the cluster.
 func (c *abstractCommand) DryRun() (output []byte, err error) {
 	c.args = append(c.args, "--server-dry-run")
@@ -169,25 +206,53 @@ type ApplyCommand struct {
 	abstractCommand
 }
 
+// BuildCommand is a kustomize sub-command that processes a kustomization.yaml file.
+type BuildCommand struct {
+	abstractCommand
+}
+
+func (f *CommandFactory) kustomizationBuiler(path string, log logr.Logger) string {
+	kustomize, err := NewKustomize(log)
+	if err != nil {
+		log.Error(err, "failed to create kustomize command object")
+		return path
+	}
+	return kustomize.Build(path).Build()
+}
+
+// Build instantiates an BuildCommand instance using the provided directory path.
+func (f *CommandFactory) Build(path string) (c Command) {
+	c = &BuildCommand{
+		abstractCommand: abstractCommand{
+			logger:     f.logger,
+			factory:    f,
+			subCmd:     "build",
+			jsonOutput: true,
+			args:       []string{path},
+		},
+	}
+	return c
+}
+
 // Apply instantiates an ApplyCommand instance using the provided directory path.
 func (f *CommandFactory) Apply(path string) (c Command) {
+	if f.isKustomization(path) {
+		path = f.kustomizationBuiler(path, f.logger)
+	}
 	c = &ApplyCommand{
 		abstractCommand: abstractCommand{
 			logger:     f.logger,
 			factory:    f,
 			subCmd:     "apply",
 			jsonOutput: true,
-			args:       f.applyArgs(path),
+			args:       append(applyArgs, path),
 		},
 	}
 	return c
 }
 
-func (f *CommandFactory) applyArgs(dir string) []string {
-	if f.getExecProvider().FileExists(filepath.Join(dir, kustomizeYaml)) {
-		return append(kustomizeApplyArgs, dir)
-	}
-	return append(applyArgs, dir)
+func (f *CommandFactory) isKustomization(dir string) bool {
+	return f.getExecProvider().FileExists(filepath.Join(dir, kustomizeYaml))
 }
 
 // DeleteCommand implements the Command interface to delete resources from the KubeAPI service.

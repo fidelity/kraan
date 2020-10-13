@@ -3,6 +3,7 @@ package kubectl
 
 var (
 	KubectlCmd        = kubectlCmd
+	KustomizeCmd      = kustomizeCmd
 	NewCommandFactory = newCommandFactory
 	GetFactoryPath    = CommandFactory.getPath
 	GetLogger         = CommandFactory.getLogger
@@ -20,4 +21,8 @@ func SetKubectlCmd(command string) {
 
 func SetNewExecProviderFunc(newFunc func() ExecProvider) {
 	newExecProviderFunc = newFunc
+}
+
+func SetNewTempDirProviderFunc(newFunc func() (string, error)) {
+	tempDirProviderFunc = newFunc
 }

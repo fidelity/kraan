@@ -42,6 +42,7 @@ var (
 	kustomizePath       = "/mocked/path/to/kustomize"
 	sourcePath          = "/mocked/path/to/source/directory"
 	kustomizeFile       = "kustomization.yaml"
+	tempDir             = "/tmp/temp-dir"
 )
 
 func TestNewKubectl(t *testing.T) {
@@ -162,24 +163,16 @@ func TestDeleteReturnsDeleteCommand(t *testing.T) {
 	s.validateCommandState(s.Delete())
 }
 
-/*
 func TestKustomizeBuild(t *testing.T) {
-	s := setupApply(t).expectKustomize().expectKustomizeFound().expectRun().withFactory()
+	s := setupBuild(t).expectBuildRun([]string{"-o", tempDir}).withKustomizeFactory()
 	defer s.restoreFunc()
 
-	gotOutput, err := s.Apply().Run()
-	if err != nil {
-		t.Errorf("Error returned from ApplyCommand.Run: %w", err)
-		t.Fatalf("Error returned from ApplyCommand.Run")
-	}
-
-	if !bytes.Equal([]byte(s.output), gotOutput) {
-		t.Fatalf("expected output '%s', got output '%s' from ApplyCommand.Run", s.output, string(gotOutput))
-	} else {
-		t.Logf("ApplyCommand.Run expected output '%s' matches output '%s'", s.output, string(gotOutput))
+	path := s.Build().Build()
+	if path == "" {
+		t.Fatalf("expected a path")
 	}
 }
-*/
+
 func TestKubectlApplyRunReturnsOutput(t *testing.T) {
 	s := setupApply(t).expectNoKustomize().expectRun().withFactory()
 	defer s.restoreFunc()
@@ -312,7 +305,7 @@ func setup(t *testing.T, subCmd string, expectJSON bool) *Setup {
 	mockExecProvider := mocks.NewMockExecProvider(mockCtl)
 
 	kubectl.SetNewExecProviderFunc(func() kubectl.ExecProvider { return mockExecProvider })
-
+	kubectl.SetNewTempDirProviderFunc(func() (string, error) { return tempDir, nil })
 	restoreFunc := func() {
 		mockCtl.Finish()
 	}
@@ -382,13 +375,6 @@ func (s *Setup) withKustomize() *Setup {
 	return s
 }
 
-/*
-func (s *Setup) expectKustomize() *Setup {
-	kustomizePath := filepath.Join(sourcePath, kustomizeFile)
-	s.execProvider.EXPECT().FileExists(kustomizePath).Return(true).Times(1)
-	return s
-}
-*/
 func (s *Setup) expectNoKustomize() *Setup {
 	kustomizePath := filepath.Join(sourcePath, kustomizeFile)
 	s.execProvider.EXPECT().FileExists(kustomizePath).Return(false).Times(1)
@@ -440,6 +426,12 @@ func (s *Setup) withFactory() *Setup {
 
 func (s *Setup) withFactoryMockLogr() *Setup {
 	return s.withFactoryLogr(s.mockLogr)
+}
+
+func (s *Setup) expectBuildRun(extraArgs []string) *Setup {
+	s.expectKustomizeFound()
+	s.execProvider.EXPECT().ExecCmd(s.path, append(s.runArgs, extraArgs...)).Return([]byte(s.output), nil).Times(1)
+	return s
 }
 
 func (s *Setup) expectRun() *Setup {

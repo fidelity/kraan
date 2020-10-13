@@ -22,3 +22,7 @@ func SetKubectlCmd(command string) {
 func SetNewExecProviderFunc(newFunc func() ExecProvider) {
 	newExecProviderFunc = newFunc
 }
+
+func SetNewTempDirProviderFunc(newFunc func() (string, error)) {
+	tempDirProviderFunc = newFunc
+}

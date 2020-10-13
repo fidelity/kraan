@@ -16,7 +16,6 @@ limitations under the License.
 
 //Package kubectl executes various kubectl sub-commands in a forked shell
 //go:generate mockgen -destination=../mocks/kubectl/mockKubectl.go -package=mocks . Kubectl,Command
-//Disabled go:generate mockgen -destination=../mocks/ioutil/mockLogger.go -package=mocks io/ioutil TempDir
 package kubectl
 
 import (
@@ -37,6 +36,7 @@ var (
 	kustomizeCmd        = "kustomize"
 	applyArgs           = []string{"-R", "-f"}
 	newExecProviderFunc = newExecProvider
+	tempDirProviderFunc = createTempDir
 )
 
 // Kubectl is a Factory interface that returns concrete Command implementations from named constructors.
@@ -164,10 +164,16 @@ func (c *abstractCommand) Run() (output []byte, err error) {
 	return c.output, err
 }
 
+// createTempDir creates a temporary directory.
+func createTempDir() (buildDir string, err error) {
+	buildDir, err = ioutil.TempDir("", "build-*")
+	return buildDir, err
+}
+
 // Build executes the Kustomize command with all its arguments and returns the output.
 func (c *abstractCommand) Build() (buildDir string) {
 	var err error
-	buildDir, err = ioutil.TempDir("", "build-*")
+	buildDir, err = tempDirProviderFunc()
 	if err != nil {
 		c.logError(err) // nolint:errcheck //ok
 		return buildDir

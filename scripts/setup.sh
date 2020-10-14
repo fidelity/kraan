@@ -209,7 +209,7 @@ function toolkit_refresh() {
     gitops_proxy_url="${HTTPS_PROXY}"
   fi
     cp "${work_dir}"/gitops/gitops.yaml "${work_dir}"/gitops/gitops-orignal.yaml
-    awk '/env:/{ print;print "        - name: HTTPS_PROXY\n          value: gitops_proxy_url\n        - name: NO_PROXY\n          value: 10.0.0.0/8";next}1' \
+    awk '/env:/{ print;print "        - name: HTTPS_PROXY\n          value: gitops_proxy_url\n        - name: NO_PROXY\n          value: 10.0.0.0/8,172.0.0.0/8";next}1' \
         "${work_dir}"/gitops/gitops-orignal.yaml > "${work_dir}"/gitops/gitops.yaml
     sed -i "s#gitops_proxy_url#${gitops_proxy_url}#" "${work_dir}"/gitops/gitops.yaml
   fi
@@ -239,7 +239,7 @@ function create_regcred() {
 
 function deploy_kraan_mgr() {
   if [ -n "${kraan_regcred}" ] ; then
-    create_regcred kraan "${kraan_regcred}"
+    create_regcred gotk-system "${kraan_regcred}"
   fi
   cp -rf "${base_dir}"/testdata/addons/kraan/manager "${work_dir}"
   if [ -n "${kraan_repo}" ] ; then
@@ -292,9 +292,8 @@ if [ $deploy_gitops -gt 0 ] ; then
   fi
 fi
 
-kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/kraan/namespace.yaml
-
 kubectl apply ${dry_run} -k "${base_dir}"/config/crd
+kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/kraan/rbac/serviceaccount.yaml
 kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/kraan/rbac/leader_election_role.yaml
 kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/kraan/rbac/leader_election_role_binding.yaml
 kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/kraan/rbac/role.yaml

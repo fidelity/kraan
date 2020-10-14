@@ -15,7 +15,7 @@ layer custom resource.
 
 kraan is powered by [gitops-toolkit](https://toolkit.fluxcd.io/) and builds on
 top of projects like [source-controller](https://github.com/fluxcd/source-controller)
-and [helm-operator](https://github.com/fluxcd/helm-operator).
+and [helm-controller](https://github.com/fluxcd/helm-controller).
 
 ## Use cases
 
@@ -50,7 +50,7 @@ other layers become cloud specific.
 Kraan is a kubernetes controller that is built on top of [k8s custom resources](
 https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/).
 It works in tandem with [source-controller](https://github.com/fluxcd/source-controller)
-and [helm-operator](https://github.com/fluxcd/helm-operator) and hence they are always
+and [helm-controller](https://github.com/fluxcd/helm-controller) and hence they are always
 deployed together. The detailed design documentation can be found [here](docs/design/README.md)
 
 ## Usage

@@ -20,8 +20,8 @@ PROJECT_SOURCES:=$(shell find ./main ./controllers/ ./api/ ./pkg/ -regex '.*.\.\
 
 BUILD_DIR:=build/
 GITHUB_USER?=$(shell git config --local  user.name)
-GITHUB_ORG=$(shell git config --get remote.origin.url | cut -f2 -d: | cut -f1 -d/)
-GITHUB_REPO=$(shell git config --get remote.origin.url | cut -f2 -d/ | cut -f1 -d.)
+GITHUB_ORG=$(shell git config --get remote.origin.url | sed -nr '/github.com/ s/.*github.com([^"]+).*/\1/p' | cut --characters=2- | cut -f1 -d/)
+GITHUB_REPO=$(shell git config --get remote.origin.url | sed -nr '/github.com/ s/.*github.com([^"]+).*/\1/p'| cut --characters=2- | cut -f2 -d/ | cut -f1 -d.)
 export VERSION?=latest
 export REPO ?=docker.pkg.github.com/${GITHUB_ORG}/${GITHUB_REPO}
 # Image URL to use all building/pushing image targets

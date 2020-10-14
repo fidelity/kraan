@@ -1,7 +1,7 @@
 # Design
 Kraan is a kubernetes controller for processing "AddonLayer" custom resources.
 An AddonLayer has the following features.
-* Represents a collection of add-ons, managed as [HelmRelease](https://docs.fluxcd.io/projects/helm-operator/en/stable/helmrelease-guide/introduction/#a-minimal-helmrelease)
+* Represents a collection of add-ons, managed as [HelmRelease](https://toolkit.fluxcd.io/guides/helmreleases/#define-a-helm-release)
   custom resources.   
 * AddonLayer is a cluster scoped custom resource (non-namespaced).
 * Certify layers on specific k8s version. i.e All the add-ons in a layer is guaranteed
@@ -15,16 +15,16 @@ Kraan is a combination of 3 tools. The installation of kraan will involve the
 installation of all these 3 tools.
 * kraan controller
 * [source-controller](https://github.com/fluxcd/source-controller)
-* [helm-operator](https://github.com/fluxcd/helm-operator)
+* [helm-controller](https://github.com/fluxcd/helm-controller)
 
 ![layers](../diagrams/addon-layer-dependencies.png)
 
 kraan controller is the main controller that is responsible to watching AddonLayer
 custom resources and bringing to its desired state. In attempting to do so, it 
-relies on helm-operator to deploy the addon helm charts that are part of the layer. Helm operator watches
+relies on helm-controller to deploy the addon helm charts that are part of the layer. Helm operator watches
 and reconciles *HelmRelease* custom resource. Each *HelmRelease* custom resources
 represents a single addon. For more details on *HelmRelease*, check 
-[here](https://docs.fluxcd.io/projects/helm-operator/en/stable/helmrelease-guide/introduction/).
+[here](https://toolkit.fluxcd.io/guides/helmreleases/#define-a-helm-release).
 source-controller is one of the components in [gitops-toolkit](https://toolkit.fluxcd.io/) which 
 helps abstracting away git interaction from kraan. By design, an AddonLayer will
 point to a *directory in a git repository* which contains the list of
@@ -40,7 +40,7 @@ than helm charts e.g kustomization*
 The addons are first packaged as HelmRelease custom resources which represents
 a helm chart. A sample helm release custom resource is shown below.
 For more details on *HelmRelease*, check
-[here](https://docs.fluxcd.io/projects/helm-operator/en/stable/helmrelease-guide/introduction/).
+[here](https://toolkit.fluxcd.io/guides/helmreleases/#define-a-helm-release).
 
 
 ```yaml

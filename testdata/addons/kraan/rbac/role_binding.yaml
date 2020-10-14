@@ -8,8 +8,8 @@ roleRef:
   name: kraan-manager
 subjects:
 - kind: ServiceAccount
-  name: default
-  namespace: kraan
+  name: kraan
+  namespace: gotk-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -21,8 +21,8 @@ roleRef:
   name: kraan-gitops-source
 subjects:
 - kind: ServiceAccount
-  name: default
-  namespace: kraan
+  name: kraan
+  namespace: gotk-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -34,8 +34,8 @@ roleRef:
   name: kraan-helm-release
 subjects:
 - kind: ServiceAccount
-  name: default
-  namespace: kraan
+  name: kraan
+  namespace: gotk-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -47,5 +47,5 @@ roleRef:
   name: cluster-admin
 subjects:
 - kind: ServiceAccount
-  name: default
-  namespace: kraan
+  name: kraan
+  namespace: gotk-system

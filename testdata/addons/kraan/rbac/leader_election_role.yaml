@@ -2,8 +2,8 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: leader-election-role
-  namespace: kraan
+  name: kraan-leader-election-role
+  namespace: gotk-system
 rules:
 - apiGroups:
   - ""

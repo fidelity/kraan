@@ -16,16 +16,22 @@ COPY controllers/ controllers
 COPY api/ api
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o kraan-controller main/main.go
+RUN mkdir bin
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o bin/kraan-controller main/main.go
+
+RUN apt install -y curl
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.17.12/bin/linux/amd64/kubectl
+RUN chmod +x ./kubectl
+RUN mv kubectl bin
+RUN curl -LO https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v3.8.5/kustomize_v3.8.5_linux_amd64.tar.gz
+RUN tar xzf ./kustomize_v3.8.5_linux_amd64.tar.gz
+RUN chmod +x ./kustomize
+RUN mv kustomize bin
 
 FROM alpine:3.12
 WORKDIR /
-RUN apk add curl
-COPY --from=builder /workspace/kraan-controller /usr/local/bin/
-RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.17.12/bin/linux/amd64/kubectl
-RUN curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
-RUN chmod +x ./kubectl
-RUN mv ./kubectl /usr/local/bin
+
+COPY --from=builder /workspace/bin/ /usr/local/bin/
 RUN addgroup -S controller && adduser -S -g controller controller
 
 USER controller

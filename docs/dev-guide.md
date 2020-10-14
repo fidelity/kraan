@@ -136,7 +136,7 @@ If you want to use the kraan-controller to deploy items defined in your own repo
 
 To deploy to a cluster build the docker image and then deploy to the cluster. Assuming you have already installed the GitOps Toolkit (see above) use the `setup.sh` script. The following will build the docker image and push it to the Github packages then deploy to your Kubernetes cluster.
     
-    export VERSION=v0.0.14
+    export VERSION=v0.1.xx
     make clean-build
     make build
     docker login docker.pkg.github.com -u <github user> -p <github token>
@@ -151,6 +151,8 @@ To deploy the image to your account in docker.io:
     docker login -u <docker user> -p <docker password>
     make docker-push
     scripts/setup.sh --kraan-version $VERSION --no-gitops --kraan-image-repo $REPO
+
+Set `REPO` to `kraan` to push to the `kraan` organisation in docker.io.
 
 ### Integration Tests
 

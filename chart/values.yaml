@@ -1,0 +1,7 @@
+image:
+  repository: 
+  tag: v0.1.05
+  pullPolicy: Always
+
+imagePullSecrets:
+  - name: regcred

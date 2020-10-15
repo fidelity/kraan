@@ -22,7 +22,7 @@ BUILD_DIR:=build/
 GITHUB_USER?=$(shell git config --local  user.name)
 GITHUB_ORG=$(shell git config --get remote.origin.url | sed -nr '/github.com/ s/.*github.com([^"]+).*/\1/p' | cut --characters=2- | cut -f1 -d/)
 GITHUB_REPO=$(shell git config --get remote.origin.url | sed -nr '/github.com/ s/.*github.com([^"]+).*/\1/p'| cut --characters=2- | cut -f2 -d/ | cut -f1 -d.)
-export VERSION?=latest
+export VERSION?=master
 export REPO ?=docker.pkg.github.com/${GITHUB_ORG}/${GITHUB_REPO}
 # Image URL to use all building/pushing image targets
 IMG ?= ${REPO}/${PROJECT}:${VERSION}
@@ -135,16 +135,15 @@ ${GO_BIN_ARTIFACT}: go.sum ${MAKE_SOURCES} ${PROJECT_SOURCES}
 clean-check:
 	rm -f ${CHECK_ARTIFACT}
 
-check: DOCKER_SOURCES=Dockerfile ${MAKE_SOURCES} ${PROJECT_SOURCES}
-check: DOCKER_BUILD_OPTIONS=--target builder --build-arg VERSION
-check: TAG=${REPO}/${PROJECT}-check:${VERSION}
+check: DOCKER_SOURCES=Dockerfile-check ${MAKE_SOURCES} ${PROJECT_SOURCES}
+check: DOCKER_BUILD_OPTIONS=--target builder --no-cache
+check: IMG=${PROJECT}-check:${VERSION}
 check: ${BUILD_DIR} ${CHECK_ARTIFACT}
 
 clean-build:
 	rm -f ${BUILD_ARTIFACT}
 
 build: DOCKER_SOURCES=Dockerfile ${MAKE_SOURCES} ${PROJECT_SOURCES}
-build: DOCKER_BUILD_OPTIONS=--build-arg VERSION
 build: IMG=${REPO}/${PROJECT}:${VERSION}
 build: ${BUILD_DIR} ${BUILD_ARTIFACT}
 

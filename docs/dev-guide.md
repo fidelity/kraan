@@ -4,25 +4,29 @@ This readme contains guidance for developers. covering building the kraan-contro
 
 ## Setup
 
-clone [[Kraan repository]](https://github.com/fidelity/kraan) or fork it and clone your fork. 
+clone [[Kraan repository]](https://github.com/fidelity/kraan) or fork it and clone your fork.
 
 This project requires the following software:
 
-    golangci-lint --version = 1.30.0
+    golangci-lint version = 1.30.0
     golang version >= 1.14.6
     mockgen = v1.4.4
+    kubebuilder = v2.3.1
+    gotk = latest
 
-You can install [golangci-lint](https://github.com/golangci/golangci-lint) and [mockgen client](https://github.com/golang/mock) using the 'setup.sh' script:
+You can install [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder), [golangci-lint](https://github.com/golangci/golangci-lint), [mockgen client](https://github.com/golang/mock) and [gotk](https://toolkit.fluxcd.io/) using the 'setup.sh' script:
 
-    bin/setup.sh
+    source bin/setup.sh
 
-The setup.sh script can will also install the [gitops toolkit cli tool](https://toolkit.fluxcd.io/) which is only needed if you want to upgrade the version of the GitOps Toolkit components or deploy on a system that requires changes to the gitops toolkit components.
-
-## Development
+## Build
 
 The Makefile in the project's top level directory will compile, build and test all components.
 
     make
+
+Alternatively you can run make in a docker container.
+
+    make check
 
 To build docker image type:
 
@@ -35,13 +39,13 @@ Then to deploy the docker container:
     docker login <docker repository>
     make docker-push
 
-If the `VERSION` is not set `latest` is used. The REPO will default to `docker.pkg.github.com/fidelity/kraan` which only users with privileges on the `fidelity` organization will be able to push to. However if you fork the Kraan repository then the default will be `docker.pkg.github.com/<org/user you forked to>/kraan`.
+If the `VERSION` is not set `master` is used. The REPO will default to `docker.pkg.github.com/fidelity/kraan` which only users with privileges on the `fidelity` organization will be able to push to. However if you fork the Kraan repository then the default will be `docker.pkg.github.com/<org/user you forked to>/kraan`.
 
 If changes are made to go source imports you may need to perform a go mod vendor, type:
 
     make gomod-update
 
-## Setup Test Environment
+## Deployment Guide
 
 A shell script is provided to deploy the artifacts necessary to test the kraan-controller to a kubernetes cluster.
 
@@ -82,6 +86,25 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
     '--debug' for verbose output.
     '--dry-run' to generate yaml but not deploy to cluster. This option will retain temporary work directory.
 
+To deploy to a cluster build the docker image and then deploy to the cluster. Assuming you have already installed the GitOps Toolkit (see above) use the `setup.sh` script. The following will build the docker image and push it to the Github packages then deploy to your Kubernetes cluster.
+    
+    export VERSION=v0.1.xx
+    make clean-build
+    make build
+    docker login docker.pkg.github.com -u <github user> -p <github token>
+    make docker-push
+    scripts/setup.sh --kraan-version $VERSION --no-gitops --kraan-image-pull-secret auto
+
+To deploy the image to your account in docker.io:
+
+    make clean-build
+    export REPO=<docker user>
+    make build
+    docker login -u <docker user> -p <docker password>
+    make docker-push
+    scripts/setup.sh --kraan-version $VERSION --no-gitops --kraan-image-repo $REPO
+
+Set `REPO` to `kraan` to push to the `kraan` organisation in docker.io.
 
 ## Testing
 
@@ -130,29 +153,7 @@ The `SC_HOST` environmental variable can be used to set the host component of th
 
 If you elected to use the `--no-testdata` option when setting up the cluster then you will need to apply these files. You can do this by applying `.testdata/addons/addons-source.yaml` and `.testdata/addons/addons.yaml` to deploy the source controller custom resource and AddonsLayers custom resources respectively. This will cause the kraan-controller to operate on the testdata in the `./testdata` directory of this repository using the `master` branch. If you want to test against other branches use the copy of these files the `scripts/run-controller.sh` creates. Edit then apply those files.
 
-If you want to use the kraan-controller to deploy items defined in your own repository edit the 'addons-source.yaml' file in the temporary directory to reference the repository and branch contaiining your addons definitions and apply it to the cluster. Then edit the `.testdata/addons/addons.yaml` file to define the addons layers and apply that.
-
-## Deployment Guide
-
-To deploy to a cluster build the docker image and then deploy to the cluster. Assuming you have already installed the GitOps Toolkit (see above) use the `setup.sh` script. The following will build the docker image and push it to the Github packages then deploy to your Kubernetes cluster.
-    
-    export VERSION=v0.1.xx
-    make clean-build
-    make build
-    docker login docker.pkg.github.com -u <github user> -p <github token>
-    make docker-push
-    scripts/setup.sh --kraan-version $VERSION --no-gitops --kraan-image-pull-secret auto
-
-To deploy the image to your account in docker.io:
-
-    make clean-build
-    export REPO=<docker user>
-    make build
-    docker login -u <docker user> -p <docker password>
-    make docker-push
-    scripts/setup.sh --kraan-version $VERSION --no-gitops --kraan-image-repo $REPO
-
-Set `REPO` to `kraan` to push to the `kraan` organisation in docker.io.
+If you want to use the kraan-controller to deploy items defined in your own repository edit the 'addons-source.yaml' file in the temporary directory to reference the repository and branch containing your addons definitions and apply it to the cluster. Then edit the `.testdata/addons/addons.yaml` file to define the addons layers and apply that.
 
 ### Integration Tests
 

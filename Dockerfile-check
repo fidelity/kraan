@@ -1,0 +1,30 @@
+# Build the manager binary
+FROM golang:1.14 as builder
+
+WORKDIR /workspace
+# Copy the Go Modules manifests
+COPY go.mod go.mod
+COPY go.sum go.sum
+# Copy the go source
+COPY pkg/ pkg
+COPY main/ main
+COPY controllers/ controllers
+COPY api/ api
+RUN mkdir bin
+# Copy makefiles and run tests
+COPY Makefile Makefile
+COPY makefile.mk makefile.mk
+COPY project-name.mk project-name.mk
+COPY golangci-lint.yml golangci-lint.yml
+COPY bin/ bin/
+RUN apt install -y curl
+RUN bin/setup.sh
+# Temporary fix see https://github.com/fidelity/kraan/issues/114
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.17.12/bin/linux/amd64/kubectl
+RUN chmod +x ./kubectl
+RUN mv kubectl bin
+RUN cp bin/* /usr/local/bin
+# Make
+RUN make clean
+RUN PATH=$PATH:/usr/local/kubebuilder/bin make
+

@@ -60,11 +60,11 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 	hrepo := &sourcev1.HelmRepository{}
 
 	if err := mgr.GetFieldIndexer().IndexField(r.Context, &helmctlv2.HelmRelease{}, hrOwnerKey, indexHelmReleaseByOwner); err != nil {
-		return fmt.Errorf("failed setting up FieldIndexer for HelmRelease owner: %w", err)
+		return errors.Wrap(err, "failed setting up FieldIndexer for HelmRelease owner")
 	}
 
 	if err := mgr.GetFieldIndexer().IndexField(r.Context, &sourcev1.HelmRepository{}, hrOwnerKey, indexHelmRepoByOwner); err != nil {
-		return fmt.Errorf("failed setting up FieldIndexer for HelmRepository owner: %w", err)
+		return errors.Wrap(err, "failed setting up FieldIndexer for HelmRepository owner")
 	}
 
 	ctl, err := ctrl.NewControllerManagedBy(mgr).
@@ -144,12 +144,12 @@ func NewReconciler(config *rest.Config, client client.Client, logger logr.Logger
 	var err error
 	reconciler.k8client, err = reconciler.getK8sClient()
 	if err != nil {
-		return nil, err
+		return nil, errors.WithMessage(err, "failed to create reconciler")
 	}
 	reconciler.Context = context.Background()
 	reconciler.Applier, err = apply.NewApplier(client, logger.WithName("applier"), scheme)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create applier")
+		return nil, errors.WithMessage(err, "failed to create applier")
 	}
 	reconciler.Repos = repos.NewRepos(reconciler.Context, reconciler.Log)
 	return reconciler, err
@@ -159,7 +159,7 @@ func (r *AddonsLayerReconciler) getK8sClient() (kubernetes.Interface, error) {
 	// creates the clientset
 	clientset, err := kubernetes.NewForConfig(r.Config)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to create k8s client")
 	}
 
 	return clientset, nil
@@ -177,7 +177,7 @@ func (r *AddonsLayerReconciler) processPrune(l layers.Layer) (statusReconciled b
 		l.SetStatusPruning()
 		if pruneErr := applier.Prune(ctx, l, hrs); pruneErr != nil {
 			r.Log.Error(pruneErr, "prune failed", "requestName", l.GetName())
-			return true, pruneErr
+			return true, errors.WithMessage(pruneErr, "prune failed")
 		}
 		l.SetDelayedRequeue()
 		return true, nil
@@ -191,8 +191,8 @@ func (r *AddonsLayerReconciler) processApply(l layers.Layer) (statusReconciled b
 
 	applyIsRequired, err := applier.ApplyIsRequired(ctx, l)
 	if err != nil {
-		r.Log.Error(err, "check for apply required failed", "requestName", l.GetName())
-		return false, err
+		r.Log.Error(err, "check if apply is required failed", "requestName", l.GetName())
+		return false, errors.WithMessage(err, "check if apply is required failed")
 	} else if applyIsRequired {
 		r.Log.Info("apply required", "requestName", l.GetName(), "Spec", l.GetSpec(), "Status", l.GetFullStatus())
 		if !l.DependenciesDeployed() {
@@ -280,7 +280,7 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error {
 
 	layerDataReady, err := r.checkData(l)
 	if err != nil {
-		return err
+		return errors.WithMessage(err, "failed to check layer data is ready")
 	}
 	if !layerDataReady {
 		return nil
@@ -288,7 +288,7 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error {
 
 	layerStatusUpdated, err := r.processPrune(l)
 	if err != nil {
-		return err
+		return errors.WithMessage(err, "failed to perform prune processing")
 	}
 	if layerStatusUpdated {
 		return nil
@@ -296,7 +296,7 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error {
 
 	layerStatusUpdated, err = r.processApply(l)
 	if err != nil {
-		return err
+		return errors.WithMessage(err, "failed to perform apply processing")
 	}
 	if layerStatusUpdated {
 		return nil
@@ -322,26 +322,23 @@ func (r *AddonsLayerReconciler) updateRequeue(l layers.Layer, res *ctrl.Result, 
 // Reconcile process AddonsLayers custom resources.
 // +kubebuilder:rbac:groups=kraan.io,resources=addons,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kraan.io,resources=addons/status,verbs=get;update;patch
-func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (res ctrl.Result, err error) {
 	ctx := r.Context
 
 	var addonsLayer *kraanv1alpha1.AddonsLayer = &kraanv1alpha1.AddonsLayer{}
-	if err := r.Get(ctx, req.NamespacedName, addonsLayer); err != nil {
+	if err = r.Get(ctx, req.NamespacedName, addonsLayer); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	log := r.Log.WithValues("requestName", req.NamespacedName.Name)
 
 	l := layers.CreateLayer(ctx, r.Client, r.k8client, log, addonsLayer)
-	var rerr error = nil
-	var res ctrl.Result = ctrl.Result{}
-	//defer r.updateRequeue(l, &res, &rerr)
-	err := r.processAddonLayer(l)
+	err = r.processAddonLayer(l)
 	if err != nil {
 		l.StatusUpdate(kraanv1alpha1.FailedCondition, kraanv1alpha1.AddonsLayerFailedReason, err.Error())
 	}
-	r.updateRequeue(l, &res, &rerr)
-	return res, rerr
+	r.updateRequeue(l, &res, &err)
+	return res, err
 }
 
 func (r *AddonsLayerReconciler) update(ctx context.Context, log logr.Logger,

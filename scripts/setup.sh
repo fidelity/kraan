@@ -103,7 +103,7 @@ function args() {
   deploy_kraan=1
   deploy_gitops=1
   apply_testdata=1
-  kraan_version="latest"
+  kraan_version="master"
   no_git_auth=0
 
   arg_list=( "$@" )
@@ -246,7 +246,7 @@ function deploy_kraan_mgr() {
     sed -i "s#image\:\ docker.pkg.github.com/fidelity/kraan#image\:\ ${kraan_repo}#" "${work_dir}"/manager/deployment.yaml
   fi
   if [ -n "${kraan_version}" ] ; then
-    sed -i "s#\:latest#\:${kraan_version}#" "${work_dir}"/manager/deployment.yaml
+    sed -i "s#\:master#\:${kraan_version}#" "${work_dir}"/manager/deployment.yaml
   fi
   if [ -n "${kraan_regcred}" ] ; then
     local secret_name="regcred"

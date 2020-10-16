@@ -19,6 +19,7 @@ USAGE: ${0##*/} [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--testdata]
 Install the Kraan Addon Manager and gitops source controller to a Kubernetes cluster
 
 Options:
+  '--upgrade' to perform helm upgrade rather than hlm install.
   '--kraan-image-pull-secret' set to 'auto' to generate image pull secrets from ~/.docker/config.json
                               or supply name of file containing image pull secret defintion to apply.
                               The secret should be called 'kraan-regcred'.
@@ -108,6 +109,7 @@ function args() {
   apply_testdata=0
   kraan_tag="master"
   no_git_auth=0
+  helm_action="install"
 
   arg_list=( "$@" )
   arg_count=${#arg_list[@]}
@@ -128,6 +130,7 @@ function args() {
           "--git-user") (( arg_index+=1 )); GIT_USER="${arg_list[${arg_index}]}";;
           "--git-token") (( arg_index+=1 )); GIT_CREDENTIALS="${arg_list[${arg_index}]}";;
           "--dry-run") dry_run="--dry-run";;
+          "--upgrade") helm_action="upgrade";;
           "--no-git-auth") no_git_auth=1;;
           "--debug") set -x;;
                "-h") usage; exit;;
@@ -270,7 +273,7 @@ if [ -n "${dry_run}" ] ; then
   helm_args="${helm_args} --dry-run"
 fi
 
-helm install kraan chart ${helm_args}
+helm ${helm_action} kraan chart ${helm_args}
 
 create_git_credentials_secret "${base_dir}/testdata/templates/template-http.yaml" "${work_dir}/kraan-http.yaml"
 

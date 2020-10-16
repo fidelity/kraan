@@ -364,7 +364,7 @@ spec:
         {{- if .Values.kraan.image.registry }}
         image: {{ .Values.kraan.image.registry }}/{{ .Values.kraan.image.repository }}/kraan-controller:{{ .Values.kraan.image.tag }}
         {{- else }}
-        image: "{{ .Values.kraan.image.repository }}:{{ .Values.kraan.image.tag }}"
+        image: "{{ .Values.kraan.image.repository }}/kraan-controller:{{ .Values.kraan.image.tag }}"
         {{- end }}
         imagePullPolicy: IfNotPresent
         securityContext:

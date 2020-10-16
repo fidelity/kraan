@@ -270,7 +270,7 @@ if [ -n "${dry_run}" ] ; then
   helm_args="${helm_args} --dry-run"
 fi
 
-helm upgrade kraan chart ${helm_args}
+helm install kraan chart ${helm_args}
 
 create_git_credentials_secret "${base_dir}/testdata/templates/template-http.yaml" "${work_dir}/kraan-http.yaml"
 

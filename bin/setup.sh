@@ -88,15 +88,15 @@ mockgen -version 2>&1 | grep ${mockgen_version} >/dev/null
 ret_code="${?}"
 if [[ "${ret_code}" != "0" ]] ; then
     echo "installing mockgen version: ${mockgen_version}"
-    install_helm
-    helm version 2>&1 | grep ${helm_version} >/dev/null
+    GO111MODULE=on go get github.com/golang/mock/mockgen@${mockgen_version}
+    mockgen -version 2>&1 | grep ${mockgen_version} >/dev/null
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then
         echo "Failed to install helm"
         return
     fi
 else
-    echo "helm version: `helm -version`"
+    echo "mockgen version: `mockgen -version`"
 fi
 
 gotk --version >/dev/null 2>&1 
@@ -118,13 +118,13 @@ helm version 2>&1 | grep ${helm_version} >/dev/null
 ret_code="${?}"
 if [[ "${ret_code}" != "0" ]] ; then
     echo "installing helm version: ${helm_version}"
-    GO111MODULE=on go get github.com/golang/mock/mockgen@${mockgen_version}
-    mockgen -version 2>&1 | grep ${mockgen_version} >/dev/null
+    install_helm
+    helm version 2>&1 | grep ${helm_version} >/dev/null
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then
         echo "Failed to install mockgen"
         return
     fi
 else
-    echo "mockgen version: `mockgen -version`"
+    echo "helm version: `helm version`"
 fi

@@ -97,6 +97,7 @@ release:
 	git add kraan-controller-${VERSION}.tgz
 	git commit -a -m "release chart version ${VERSION}"
 	git push
+	git checkout master
 
 clean-gomod:
 	rm -rf ${GOMOD_ARTIFACT}

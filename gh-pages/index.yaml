@@ -1,0 +1,13 @@
+apiVersion: v1
+entries:
+  kraan-controller:
+  - apiVersion: v2
+    created: "2020-10-16T15:51:59.904062525+01:00"
+    description: A Helm chart for kraan controller
+    digest: 98205660d995d92a468eded4eab973fa2dc720eab3b733f56966222545095f34
+    name: kraan-controller
+    type: application
+    urls:
+    - https://kraan.github.io/helm-chart/kraan-controller-v0.1.05.tgz
+    version: v0.1.05
+generated: "2020-10-16T15:51:59.902609637+01:00"

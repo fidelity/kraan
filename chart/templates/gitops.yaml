@@ -790,6 +790,10 @@ spec:
       labels:
         app: source-controller
     spec:
+      {{- if .Values.gotk.imagePullSecrets.name }}
+      imagePullSecrets:
+      - name: {{ .Values.gotk.imagePullSecrets.name }}
+      {{- end }}
       containers:
       - args:
         - --events-addr=
@@ -803,7 +807,17 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        {{- if .Values.gotk.env.httpsProxy }}
+        - name: HTTPS_PROXY
+          value: {{ .Values.gotk.env.httpsProxy }}
+        - name: NO_PROXY
+          value: {{ .Values.gotk.env.noProxy }}
+        {{- end }}
+        {{- if .Values.gotk.image.registry }}
+        image: {{ .Values.gotk.image.registry }}/fluxcd/source-controller:v0.1.0
+        {{- else }}
         image: ghcr.io/fluxcd/source-controller:v0.1.0
+        {{- end }}
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1241,6 +1255,10 @@ spec:
       labels:
         app: helm-controller
     spec:
+      {{- if .Values.gotk.imagePullSecrets.name }}
+      imagePullSecrets:
+      - name: {{ .Values.gotk.imagePullSecrets.name }}
+      {{- end }}
       containers:
       - args:
         - --events-addr=
@@ -1253,7 +1271,17 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        {{- if .Values.gotk.env.httpsProxy }}
+        - name: HTTPS_PROXY
+          value: {{ .Values.gotk.env.httpsProxy }}
+        - name: NO_PROXY
+          value: {{ .Values.gotk.env.noProxy }}
+        {{- end }}
+        {{- if .Values.gotk.image.registry }}
+        image: {{ .Values.gotk.image.registry }}/fluxcd/helm-controller:v0.1.1
+        {{- else }}
         image: ghcr.io/fluxcd/helm-controller:v0.1.1
+        {{- end }}
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:

@@ -1,7 +1,19 @@
-image:
-  repository: 
-  tag: v0.1.05
-  pullPolicy: Always
+kraan:
+  image:
+    registry: 
+    repository: kraan
+    tag: master
 
-imagePullSecrets:
-  - name: regcred
+  imagePullSecrets:
+    name:
+
+gotk:
+  image:
+    registry: 
+
+  imagePullSecrets:
+    name:
+
+  env:
+    httpsProxy:
+    noProxy: 10.0.0.0/8,172.0.0.0/8

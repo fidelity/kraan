@@ -47,7 +47,26 @@ Then to deploy the docker container:
 If the `VERSION` is not set `master` is used. The REPO will default to `docker.pkg.github.com/fidelity/kraan` which only users with privileges on the `fidelity` organization will be able to push to. However if you fork the Kraan repository then the default will be `docker.pkg.github.com/<org/user you forked to>/kraan`.
 
 ## Releases
-The offical releases use docker hub reporistory: kraan/kraan-controller. The 'master' tag will be contain a version of kraan built from the master branch. Release versions will be deployed to this repository for public use. 
+The offical releases use docker hub reporistory: kraan/kraan-controller. The 'master' tag will be contain a version of kraan built from the master branch. Release versions will be deployed to this repository for public use.
+
+Helm Charts are deployed to github pages so can be accessed via repo: kraan https://fidelity.github.io/kraan/
+
+    helm repo add kraan https://fidelity.github.io/kraan/
+    helm search repo --regexp kraan --versions
+
+## Creating a Release
+To create a release set `VERSION` to the release version and `REPO` to 'kraan' then build and push the image:
+
+    export VERSION=vx.y.z
+    export REPO=kraan
+    make clean-build
+    make build
+    make docker-push
+    make release
+
+The 'release' target will update the tag in the values file, package the chart and deploy it to gh-pages.
+
+Finally use githuweb interface to create a tag.
 
 ## Deployment Guide
 

@@ -3,6 +3,7 @@
 linter_version=1.30.0
 kubebuilder_version=2.3.1
 mockgen_version=v1.4.4
+helm_version=v3.3.4
 
 function usage()
 {
@@ -37,6 +38,12 @@ function install_kubebuilder() {
     # (you'll need to set the KUBEBUILDER_ASSETS env var if you put it somewhere else)
     $sudo mv /tmp/kubebuilder_${kubebuilder_version}_${os}_${arch} /usr/local/kubebuilder
 }
+
+function install_helm() {
+    curl -L https://get.helm.sh/helm-${helm_version}-linux-amd64.tar.gz | tar -xz -C /tmp/
+    $sudo mv /tmp/linux-amd64/helm /usr/local/bin
+}
+
 args "${@}"
 
 sudo -E env >/dev/null 2>&1
@@ -85,7 +92,7 @@ if [[ "${ret_code}" != "0" ]] ; then
     mockgen -version 2>&1 | grep ${mockgen_version} >/dev/null
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then
-        echo "Failed to install mockgen"
+        echo "Failed to install helm"
         return
     fi
 else
@@ -105,4 +112,19 @@ if [[ "${ret_code}" != "0" ]] ; then
     fi
 else
     echo "gotk version: `gotk --version`"
+fi
+
+helm version 2>&1 | grep ${helm_version} >/dev/null
+ret_code="${?}"
+if [[ "${ret_code}" != "0" ]] ; then
+    echo "installing helm version: ${helm_version}"
+    install_helm
+    helm version 2>&1 | grep ${helm_version} >/dev/null
+    ret_code="${?}"
+    if [ "${ret_code}" != "0" ] ; then
+        echo "Failed to install mockgen"
+        return
+    fi
+else
+    echo "helm version: `helm version`"
 fi

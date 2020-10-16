@@ -48,7 +48,7 @@ NC:=\033[0m
 # Targets that do not represent filenames need to be registered as phony or
 # Make won't always rebuild them.
 .PHONY: all clean ci-check ci-gate clean-godocs go-generate \
-	godocs clean-gomod gomod gomod-update \
+	godocs clean-gomod gomod gomod-update release \
 	clean-${PROJECT}-check ${PROJECT}-check clean-${PROJECT}-build \
 	${PROJECT}-build ${GO_CHECK_PACKAGES} clean-check check \
 	clean-build build generate manifests deploy docker-push controller-gen \
@@ -87,6 +87,17 @@ godocs: ${GO_DOCS_ARTIFACTS}
 	echo "${YELLOW}Running godocdown: $@${NC}" && \
 	godocdown -output $@ $(shell dirname $@)
 
+
+release:
+	git checkout gh-pages || exit
+	sed -i s/tag\:\ master/tag\:\ ${VERSION}/ chart/values.yaml
+	helm package --version ${VERSION} chart
+	git checkout chart/values.yaml
+	helm repo index --url https://kraan.github.io/helm-chart/ .
+	git add kraan-controller-${VERSION}.tgz
+	git commit -a -m "release chart version ${VERSION}"
+	git push
+	git checkout master
 
 clean-gomod:
 	rm -rf ${GOMOD_ARTIFACT}

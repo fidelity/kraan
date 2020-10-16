@@ -89,7 +89,7 @@ godocs: ${GO_DOCS_ARTIFACTS}
 
 
 release:
-	git checkout gh-pages
+	git checkout gh-pages || exit
 	sed -i s/tag\:\ master/tag\:\ ${VERSION}/ chart/values.yaml
 	helm package --version ${VERSION} chart
 	git checkout chart/values.yaml

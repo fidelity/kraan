@@ -60,4 +60,4 @@ See [Developer Guide](docs/dev-guide.md) for development an usage instructions.
 
 ## Contributions
 
-Contributions are very welcome. We will be publishing a contributing guide soon to help.
+Contributions are very welcome. Please read the [contributing guide](CONTRIBUTING.md) or see the docs.

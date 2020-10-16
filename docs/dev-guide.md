@@ -13,8 +13,9 @@ This project requires the following software:
     mockgen = v1.4.4
     kubebuilder = v2.3.1
     gotk = latest
+    helm - v3.3.4
 
-You can install [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder), [golangci-lint](https://github.com/golangci/golangci-lint), [mockgen client](https://github.com/golang/mock) and [gotk](https://toolkit.fluxcd.io/) using the 'setup.sh' script:
+You can install [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder), [golangci-lint](https://github.com/golangci/golangci-lint), [mockgen](https://github.com/golang/mock), [helm](https://helm.sh/) and [gotk](https://toolkit.fluxcd.io/) using the 'setup.sh' script:
 
     source bin/setup.sh
 
@@ -23,6 +24,10 @@ You can install [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder), [
 The Makefile in the project's top level directory will compile, build and test all components.
 
     make
+
+If changes are made to go source imports you may need to perform a go mod vendor, type:
+
+    make gomod-update
 
 Alternatively you can run make in a docker container.
 
@@ -41,20 +46,21 @@ Then to deploy the docker container:
 
 If the `VERSION` is not set `master` is used. The REPO will default to `docker.pkg.github.com/fidelity/kraan` which only users with privileges on the `fidelity` organization will be able to push to. However if you fork the Kraan repository then the default will be `docker.pkg.github.com/<org/user you forked to>/kraan`.
 
-If changes are made to go source imports you may need to perform a go mod vendor, type:
-
-    make gomod-update
+## Releases
+The offical releases use docker hub reporistory: kraan/kraan-controller. The 'master' tag will be contain a version of kraan built from the master branch. Release versions will be deployed to this repository for public use. 
 
 ## Deployment Guide
 
-A shell script is provided to deploy the artifacts necessary to test the kraan-controller to a kubernetes cluster.
+A shell script is provided to deploy the artifacts necessary to test the kraan-controller to a kubernetes cluster. It does this using a helm client to install a helm chart containing the Kraan Controller and GitOps Toolkit (GOTK) components it uses.
 
     scripts/setup.sh --help
 
-    USAGE: setup.sh [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--no-kraan] [--no-gitops]
-        [--kraan-version] [--kraan-image-pull-secret auto | <filename>] [--kraan-image-repo <repo-name>]
-        [--gitops-image-pull-secret auto | <filename>] [--gitops-image-repo <repo-name>]
-        [--gitops-proxy auto | <proxy-url>] [--git-url <git-repo-url>] [--integration-test-data]
+    https://github.com/fidelity/kraan.git
+    USAGE: setup.sh [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--testdata]
+        [--kraan-image-reg <registry name>] [--kraan-image-repo <repo-name>] [--kraan-image-tag] 
+        [--kraan-image-pull-secret auto | <filename>] [--gitops-image-pull-secret auto | <filename>]
+        [--gitops-image-reg <repo-name>]
+        [--gitops-proxy auto | <proxy-url>] [--git-url <git-repo-url>] [--no-git-auth]
         [--git-user <git_username>] [--git-token <git_token_or_password>]
 
     Install the Kraan Addon Manager and gitops source controller to a Kubernetes cluster
@@ -62,38 +68,39 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
     Options:
     '--kraan-image-pull-secret' set to 'auto' to generate image pull secrets from ~/.docker/config.json
                                 or supply name of file containing image pull secret defintion to apply.
-                                the last element of the filename should also be the secret name, e.g.
-                                filename /tmp/regcred.yaml should define a secret called 'regcred'
-    '--gitops-image-pull-secret' as above for gitops components
-    '--kraan-image-repo' provide image repository to use for Kraan, defaults to docker.pkg.github.com/
-    '--kraan-version' the version of the kraan image to use.
-    '--gitops-image-repo' provide image repository to use for gitops components, defaults to docker.io/fluxcd
-    '--gitops-proxy' set to 'auto' to generate proxy setting for source controller using value of HTTPS_PROXY 
-                    environment variable or supply the proxy url to use.
+                                The secret should be called 'kraan-regcred'.
+    '--kraan-image-reg'   provide image registry to use for Kraan, defaults to empty for docker hub
+    '--kraan-image-repo'  provide image repository prefix to use for Kraan, defaults to 'kraan' for docker hub org.
+    '--kraan-tag'         the tag of the kraan image to use.
+
+    '--gitops-image-reg'  provide image registry to use for gitops toolkit components, defaults to 'ghcr.io'.
+    '--gitops-image-pull-secret' set to 'auto' to generate image pull secrets from ~/.docker/config.json
+                                or supply name of file containing image pull secret defintion to apply.
+                                The secret should be called 'gotk-regcred'.
+    '--gitops-proxy'    set to 'auto' to generate proxy setting for gotk components using value of HTTPS_PROXY 
+                        environment variable or supply the proxy url to use.
+
     '--deploy-kind' create a new kind cluster and deploy to it. Otherwise the script will deploy to an existing 
                     cluster. The KUBECONFIG environmental variable or ~/.kube/config should be set to a cluster 
                     admin user for the cluster you want to use. This cluster must be running API version 16 or 
                     greater.
-    '--no-kraan' do not deploy the Kraan runtime container to the target cluster. Useful when running controller out of cluster.
-    '--no-gitops' do not deploy the gitops system components to the target cluster. Useful if components are already installed"
-    '--no-testdata' do not deploy addons layers and source controller custom resources to the target cluster.
-    '--integration-testdata' add testdata required by integration tests to the target cluster.
-    '--git-user' set (or override) the GIT_USER environment variables.
-    '--git-token' set (or override) the GIT_CREDENTIALS environment variables.
-    '--git-url' set the URL for the git repository from which Kraan should pull AddonsLayer configs.
+    '--testdata'    deploy testdata comprising addons layers and source controller custom resources to the target cluster.
+    '--git-url'     set the URL for the git repository from which Kraan should pull AddonsLayer configs.
+    '--git-user'    set (or override) the GIT_USER environment variables.
+    '--git-token'   set (or override) the GIT_CREDENTIALS environment variables.
     '--no-git-auth' to indicate that no authorization is required to access git repository'
-    '--toolkit' to generate GitOps toolkit components.
-    '--debug' for verbose output.
-    '--dry-run' to generate yaml but not deploy to cluster. This option will retain temporary work directory.
+    '--toolkit'     to generate GitOps toolkit components.
+    '--debug'       for verbose output.
+    '--dry-run'     to generate yaml but not deploy to cluster. This option will retain temporary work directory.
 
-To deploy to a cluster build the docker image and then deploy to the cluster. Assuming you have already installed the GitOps Toolkit (see above) use the `setup.sh` script. The following will build the docker image and push it to the Github packages then deploy to your Kubernetes cluster.
+To deploy to a cluster build the docker image and then deploy to the cluster. The following will build the docker image and push it to the Github packages then deploy to your Kubernetes cluster.
     
     export VERSION=v0.1.xx
     make clean-build
     make build
     docker login docker.pkg.github.com -u <github user> -p <github token>
     make docker-push
-    scripts/setup.sh --kraan-version $VERSION --no-gitops --kraan-image-pull-secret auto
+    scripts/setup.sh --kraan-version $VERSION --kraan-image-pull-secret auto
 
 To deploy the image to your account in docker.io:
 

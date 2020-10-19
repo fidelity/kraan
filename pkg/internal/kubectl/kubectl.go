@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -77,9 +78,9 @@ func newCommandFactory(logger logr.Logger, execProvider ExecProvider, execProg s
 	}
 	factory.path, err = factory.getExecProvider().FindOnPath(execProg)
 	if err != nil {
-		err = fmt.Errorf("unable to find %s binary on system PATH: %w", execProg, err)
+		return nil, errors.Wrapf(err, "unable to find %s binary on system PATH", execProg)
 	}
-	return factory, err
+	return factory, nil
 }
 
 func (f CommandFactory) getLogger() logr.Logger {
@@ -159,15 +160,18 @@ func (c *abstractCommand) Run() (output []byte, err error) {
 	c.logInfo("executing kubectl")
 	c.output, err = c.factory.getExecProvider().ExecCmd(c.getPath(), c.getArgs()...)
 	if err != nil {
-		err = c.logError(err)
+		return nil, errors.WithMessage(err, "failed to execute kubectl")
 	}
-	return c.output, err
+	return c.output, nil
 }
 
 // createTempDir creates a temporary directory.
 func createTempDir() (buildDir string, err error) {
 	buildDir, err = ioutil.TempDir("", "build-*")
-	return buildDir, err
+	if err != nil {
+		return "", errors.WithMessage(err, "failed to create temporary directory")
+	}
+	return buildDir, nil
 }
 
 // Build executes the Kustomize command with all its arguments and returns the output.

@@ -13,6 +13,7 @@ import (
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 
 	"github.com/fidelity/kraan/pkg/internal/tarconsumer"
 )
@@ -211,24 +212,24 @@ func (r *repoData) LinkData(layerPath, sourcePath string) error {
 	defer r.Unlock()
 	addonsPath := fmt.Sprintf("%s/%s", r.GetDataPath(), sourcePath)
 	if err := isExistingDir(addonsPath); err != nil {
-		return fmt.Errorf("failed, target directory does not exist: %w", err)
+		return errors.Wrap(err, "failed, target directory does not exist")
 	}
 	layerPathParts := strings.Split(layerPath, "/")
 	layerPathDir := strings.Join(layerPathParts[:len(layerPathParts)-1], "/")
 
 	if err := os.MkdirAll(layerPathDir, os.ModePerm); err != nil {
-		return err
+		return errors.Wrapf(err, "failed to make directory: %s", layerPathDir)
 	}
 	if _, err := os.Lstat(layerPath); err == nil {
 		if e := os.RemoveAll(layerPath); e != nil {
-			return err
+			return errors.Wrapf(err, "failed to remove link: %s", layerPath)
 		}
 	} else if !os.IsNotExist(err) {
 		return err
 	}
 
 	if err := os.Symlink(addonsPath, layerPath); err != nil {
-		return err
+		return errors.Wrapf(err, "failed to create link: %s", layerPath)
 	}
 	return nil
 }
@@ -259,31 +260,31 @@ func (r *repoData) SyncRepo() error {
 
 	if _, err := os.Stat(r.loadPath); os.IsNotExist(err) {
 		if e := os.RemoveAll(r.loadPath); e != nil {
-			return fmt.Errorf("failed to remove dir, error: %w", e)
+			return errors.Wrap(e, "failed to remove directory")
 		}
 	} else if err != nil {
 		return err
 	}
 	if err := os.MkdirAll(r.loadPath, os.ModePerm); err != nil {
-		return err
+		return errors.Wrapf(err, "failed to make directory: %s", r.loadPath)
 	}
 
 	// download and extract artifact
 	if err := r.fetchArtifact(ctx); err != nil {
-		return err
+		return errors.Wrap(err, "failed to fetch repository tar file from source controller")
 	}
 
 	if err := os.MkdirAll(r.dataPath, os.ModePerm); err != nil {
-		return err
+		return errors.Wrapf(err, "failed to make directory: %s", r.dataPath)
 	}
 
 	r.Lock()
 	defer r.Unlock()
 	if e := os.RemoveAll(r.dataPath); e != nil {
-		return fmt.Errorf("failed to remove data path, error: %w", e)
+		return errors.Wrapf(e, "failed to remove data path: %s", r.dataPath)
 	}
 	if err := os.Rename(r.loadPath, r.dataPath); err != nil {
-		return err
+		return errors.Wrapf(err, "failed to rename load path: %s", r.loadPath)
 	}
 	return nil
 }
@@ -291,7 +292,7 @@ func (r *repoData) SyncRepo() error {
 func (r *repoData) fetchArtifact(ctx context.Context) error {
 	repo := r.repo
 	if repo.Status.Artifact == nil {
-		return fmt.Errorf("repository %s does not containt an artifact", r.path)
+		return fmt.Errorf("repository %s does not contain an artifact", r.path)
 	}
 
 	url := repo.Status.Artifact.URL
@@ -304,11 +305,13 @@ func (r *repoData) fetchArtifact(ctx context.Context) error {
 
 	tar, err := r.tarConsumer.GetTar(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to download artifact from %s, error: %w", url, err)
+		return errors.WithMessagef(err, "failed to download artifact from %s", url)
 	}
+	// Debugging for unzip error
+	r.log.V(4).Info("tar data", "length", len(tar))
 
 	if err := tarconsumer.UnpackTar(tar, r.GetLoadPath()); err != nil {
-		return fmt.Errorf("faild to untar artifact, error: %w", err)
+		return errors.WithMessage(err, "faild to untar artifact")
 	}
 
 	return nil
@@ -317,7 +320,7 @@ func (r *repoData) fetchArtifact(ctx context.Context) error {
 func isExistingDir(dataPath string) error {
 	info, err := os.Stat(dataPath)
 	if os.IsNotExist(err) {
-		return err
+		return errors.Wrapf(err, "failed to stat: %s", dataPath)
 	}
 	if err != nil {
 		return err

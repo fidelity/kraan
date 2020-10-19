@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 	"golang.org/x/mod/semver"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -334,7 +335,7 @@ func (l *KraanLayer) GetName() string {
 func (l *KraanLayer) getOtherAddonsLayer(name string) (*kraanv1alpha1.AddonsLayer, error) {
 	obj := &kraanv1alpha1.AddonsLayer{}
 	if err := l.client.Get(l.GetContext(), types.NamespacedName{Name: name}, obj); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to retrieve layer: %s", types.NamespacedName{Name: name})
 	}
 	return obj, nil
 }

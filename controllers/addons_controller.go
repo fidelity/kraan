@@ -218,7 +218,7 @@ func (r *AddonsLayerReconciler) checkSuccess(l layers.Layer) error {
 	applyWasSuccessful, err := applier.ApplyWasSuccessful(ctx, l)
 	if err != nil {
 		r.Log.Error(err, "check for apply required failed", "requestName", l.GetName())
-		return err
+		return errors.WithMessage(err, "check for apply required failed")
 	}
 	if !applyWasSuccessful {
 		l.SetDelayedRequeue()
@@ -242,7 +242,7 @@ func (r *AddonsLayerReconciler) waitForData(l layers.Layer, repo repos.Repo) (er
 	r.Log.Error(err, "unable to link AddonsLayer directory to repository data",
 		"kind", "gitrepositories.source.toolkit.fluxcd.io", "source", l.GetSpec().Source, "layer", l.GetName())
 	l.StatusUpdate(kraanv1alpha1.FailedCondition, kraanv1alpha1.AddonsLayerFailedReason, err.Error())
-	return err
+	return errors.WithMessage(err, "failed to link to layer data")
 }
 
 func (r *AddonsLayerReconciler) checkData(l layers.Layer) (bool, error) {
@@ -252,7 +252,7 @@ func (r *AddonsLayerReconciler) checkData(l layers.Layer) (bool, error) {
 		repo := r.Repos.Get(sourceRepoName)
 		if repo != nil {
 			if err := r.waitForData(l, repo); err != nil {
-				return false, err
+				return false, errors.WithMessage(err, "failed to wait for layer data")
 			}
 			return true, nil
 		}
@@ -336,6 +336,7 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (res ctrl.Result, er
 	err = r.processAddonLayer(l)
 	if err != nil {
 		l.StatusUpdate(kraanv1alpha1.FailedCondition, kraanv1alpha1.AddonsLayerFailedReason, err.Error())
+		log.Error(err, "failed to process addons layer")
 	}
 	r.updateRequeue(l, &res, &err)
 	return res, err

@@ -2,16 +2,16 @@ apiVersion: v1
 entries:
   kraan-controller:
   - apiVersion: v2
-    created: "2020-10-16T18:20:32.426290466+01:00"
+    created: "2020-10-19T13:32:52.249294444-04:00"
     description: A Helm chart for kraan controller
-    digest: fc9d6958bcc230aee3cfd3615d384f509ae1773a1d61e924a9d432a2dc7bc506
+    digest: 45236b5be2c9297178c1f6f36c131b6858c604f754cf5efb18c187f359da6b87
     name: kraan-controller
     type: application
     urls:
     - https://kraan.github.io/helm-chart/kraan-controller-v0.1.06.tgz
     version: v0.1.06
   - apiVersion: v2
-    created: "2020-10-16T18:20:32.425313727+01:00"
+    created: "2020-10-19T13:32:52.247992797-04:00"
     description: A Helm chart for kraan controller
     digest: 6aeb56173a175de2f46dd6860412ee37c2889f1c5ce17faf12cc65cc77ad8dc4
     name: kraan-controller
@@ -20,7 +20,7 @@ entries:
     - https://kraan.github.io/helm-chart/kraan-controller-v0.1.05.tgz
     version: v0.1.05
   - apiVersion: v2
-    created: "2020-10-16T18:20:32.424524544+01:00"
+    created: "2020-10-19T13:32:52.247214909-04:00"
     description: A Helm chart for kraan controller
     digest: 238dafe8801aa50e06086f4c1d889905b250ce65f52028ef7ba548ad754bbc83
     name: kraan-controller
@@ -28,4 +28,4 @@ entries:
     urls:
     - https://kraan.github.io/helm-chart/kraan-controller-v0.1.04.tgz
     version: v0.1.04
-generated: "2020-10-16T18:20:32.423470615+01:00"
+generated: "2020-10-19T13:32:52.246341906-04:00"

@@ -194,8 +194,8 @@ function toolkit_refresh() {
   local gitops_repo_arg=""
   local gitops_regcred_arg=""
   local secret_name=""
-  if [ -n "${gitops_repo}" ] ; then
-    gitops_repo_arg="--registry ${gitops_repo}"
+  if [ -n "${gitops_reg}" ] ; then
+    gitops_repo_arg="--registry ${gitops_reg}"
   fi
   if [ -n "${gitops_regcred}" ] ; then
     secret_name="regcred"
@@ -204,6 +204,7 @@ function toolkit_refresh() {
     fi
     gitops_regcred_arg="--image-pull-secret ${secret_name}"
   fi
+  mkdir -p ${work_dir}"/gitops"
   gotk install --export --components=source-controller,helm-controller ${gitops_repo_arg} ${gitops_regcred_arg} > "${work_dir}"/gitops/gitops.yaml
   echo "yaml for gitops toolkit is in ${work_dir}/gitops/gitops.yaml"
 }

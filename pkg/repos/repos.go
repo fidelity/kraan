@@ -256,7 +256,8 @@ func (r *repoData) SyncRepo() error {
 	ctx, cancel := context.WithTimeout(r.ctx, DefaultTimeOut)
 	defer cancel()
 
-	r.log.Info("New revision detected", "kind", "gitrepositories.source.toolkit.fluxcd.io", "revision", r.repo.Status.Artifact.Revision)
+	r.log.Info("New revision detected", "kind", "gitrepositories.source.toolkit.fluxcd.io",
+		"namespace", r.GetSourceNameSpace(), "name", r.GetSourceName(), "revision", r.repo.Status.Artifact.Revision)
 
 	if _, err := os.Stat(r.loadPath); os.IsNotExist(err) {
 		if e := os.RemoveAll(r.loadPath); e != nil {
@@ -308,7 +309,8 @@ func (r *repoData) fetchArtifact(ctx context.Context) error {
 		return errors.WithMessagef(err, "failed to download artifact from %s", url)
 	}
 	// Debugging for unzip error
-	r.log.V(4).Info("tar data", "length", len(tar))
+	r.log.V(2).Info("tar data", "length", len(tar),
+		"kind", "gitrepositories.source.toolkit.fluxcd.io", "namespace", r.GetSourceNameSpace(), "name", r.GetSourceName())
 
 	if err := tarconsumer.UnpackTar(tar, r.GetLoadPath()); err != nil {
 		return errors.WithMessage(err, "faild to untar artifact")

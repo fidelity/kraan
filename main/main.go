@@ -46,13 +46,11 @@ import (
 
 var (
 	scheme   = runtime.NewScheme()
-	setupLog = log.Log.WithName("kraan-setup")
+	setupLog = log.Log.WithName("initialization")
 )
 
 func init() {
 	log.SetLogger(zap.New())
-	setupLog.Info("Setting up kraan")
-
 	_ = corev1.AddToScheme(scheme)        // nolint:errcheck // ok
 	_ = helmctlv2.AddToScheme(scheme)     // nolint:errcheck // ok
 	_ = kraanv1alpha1.AddToScheme(scheme) // nolint:errcheck // ok
@@ -220,11 +218,11 @@ func createManager(metricsAddr string, healthAddr string, enableLeaderElection b
 }
 
 func readinessCheck(req *http.Request) error {
-	setupLog.V(5).Info("got readiness check", "header", req.Header)
+	setupLog.V(2).Info("got readiness check", "header", req.Header)
 	return nil
 }
 
 func livenessCheck(req *http.Request) error {
-	setupLog.V(5).Info("got liveness check", "header", req.Header)
+	setupLog.V(2).Info("got liveness check", "header", req.Header)
 	return nil
 }

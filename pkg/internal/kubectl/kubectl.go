@@ -119,7 +119,7 @@ type abstractCommand struct {
 	output     []byte
 }
 
-func (c *abstractCommand) logInfo(msg string, keysAndValues ...interface{}) {
+func (c *abstractCommand) logDebug(msg string, keysAndValues ...interface{}) {
 	c.logger.V(1).Info(msg, append(keysAndValues, "command", c.asString())...)
 }
 
@@ -157,7 +157,7 @@ func (c *abstractCommand) Run() (output []byte, err error) {
 	if c.jsonOutput {
 		c.args = append(c.args, "-o", "json")
 	}
-	c.logInfo("executing kubectl")
+	c.logDebug("executing kubectl")
 	c.output, err = c.factory.getExecProvider().ExecCmd(c.getPath(), c.getArgs()...)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to execute kubectl")
@@ -183,7 +183,7 @@ func (c *abstractCommand) Build() (buildDir string) {
 		return buildDir
 	}
 	c.args = append(c.args, "-o", buildDir)
-	c.logInfo("executing kustomize build")
+	c.logDebug("executing kustomize build")
 	c.output, err = c.factory.getExecProvider().ExecCmd(c.getPath(), c.getArgs()...)
 	if err != nil {
 		c.logError(err) // nolint:errcheck //ok

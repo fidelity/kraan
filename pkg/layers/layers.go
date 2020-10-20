@@ -85,18 +85,17 @@ type KraanLayer struct {
 
 // CreateLayer creates a layer object.
 func CreateLayer(ctx context.Context, client client.Client, k8client kubernetes.Interface, log logr.Logger, addonsLayer *kraanv1alpha1.AddonsLayer) Layer {
-	layerName := fmt.Sprintf("layer-%s", addonsLayer.ObjectMeta.Name)
 	l := &KraanLayer{
 		requeue:     false,
 		delayed:     false,
 		updated:     false,
 		ctx:         ctx,
+		log:         log,
 		client:      client,
 		k8client:    k8client,
 		addonsLayer: addonsLayer,
 	}
 	l.delay = l.addonsLayer.Spec.Interval.Duration
-	l.log = log.WithName(layerName).WithValues("layer", l)
 	return l
 }
 

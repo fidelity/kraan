@@ -7,6 +7,9 @@ kraan:
   imagePullSecrets:
     name:
 
+  args:
+    logLevel: 1
+
 gotk:
   image:
     registry: 

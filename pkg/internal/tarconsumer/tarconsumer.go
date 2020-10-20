@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/fluxcd/pkg/untar"
+	"github.com/pkg/errors"
 )
 
 type TarConsumer interface {
@@ -26,6 +27,7 @@ type tarConsumerData struct {
 	TarConsumer `json:"-"`
 }
 
+// NewTarConsumer creates a TarConsumer used to get tar file from source controller.
 func NewTarConsumer(ctx context.Context, client *http.Client, url string) TarConsumer {
 	return &tarConsumerData{
 		ctx:        ctx,
@@ -49,28 +51,29 @@ func (t *tarConsumerData) SetURL(url string) {
 func (t *tarConsumerData) GetTar(ctx context.Context) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, t.url, nil)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to create HTTP new request")
 	}
 
 	resp, err := t.httpClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to get tar data")
 	}
 	defer resp.Body.Close()
 	return streamToByte(resp.Body)
 }
 
+// UnpackTar unpacks tar data to specified path
 func UnpackTar(tar []byte, path string) (err error) {
 	r := bytes.NewReader(tar)
 	_, err = untar.Untar(r, path)
-	return err
+	return errors.Wrap(err, "failed to unpack tar data")
 }
 
 func streamToByte(stream io.Reader) ([]byte, error) {
 	buf := new(bytes.Buffer)
 	n, err := buf.ReadFrom(stream)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to read tar data")
 	}
 	if n <= 0 {
 		return nil, fmt.Errorf("tar data is empty")

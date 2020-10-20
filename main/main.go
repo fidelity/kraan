@@ -27,6 +27,7 @@ import (
 	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta1"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 	uzap "go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
@@ -45,13 +46,11 @@ import (
 
 var (
 	scheme   = runtime.NewScheme()
-	setupLog = log.Log.WithName("kraan-setup")
+	setupLog = log.Log.WithName("initialization")
 )
 
 func init() {
 	log.SetLogger(zap.New())
-	setupLog.Info("Setting up kraan")
-
 	_ = corev1.AddToScheme(scheme)        // nolint:errcheck // ok
 	_ = helmctlv2.AddToScheme(scheme)     // nolint:errcheck // ok
 	_ = kraanv1alpha1.AddToScheme(scheme) // nolint:errcheck // ok
@@ -115,7 +114,7 @@ func main() { //nolint:funlen // ok
 		leaderElectionNamespace string
 		logLevel                string
 		concurrent              int
-		syncPeriodStr           string
+		syncPeriod              time.Duration
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8282", "The address the metric endpoint binds to.")
@@ -137,10 +136,10 @@ func main() { //nolint:funlen // ok
 		"The address the health endpoint binds to.",
 	)
 
-	flag.StringVar(
-		&syncPeriodStr,
+	flag.DurationVar(
+		&syncPeriod,
 		"sync-period",
-		"30s",
+		time.Second*30,
 		"period between reprocessing of all AddonsLayers.",
 	)
 
@@ -155,12 +154,6 @@ func main() { //nolint:funlen // ok
 	loggerType := fmt.Sprintf("%T", logger)
 	lvl := CheckLogLevels(logger)
 	setupLog.Info("logger configured", "loggerType", loggerType, "logLevels", lvl)
-
-	syncPeriod, err := time.ParseDuration(syncPeriodStr)
-	if err != nil {
-		setupLog.Error(err, "unable to parse sync period")
-		os.Exit(1)
-	}
 
 	mgr, err := createManager(metricsAddr, healthAddr, enableLeaderElection, leaderElectionNamespace, syncPeriod, logger)
 	if err != nil {
@@ -210,26 +203,26 @@ func createManager(metricsAddr string, healthAddr string, enableLeaderElection b
 		SyncPeriod:              &syncPeriod,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("unable to start manager: %w", err)
+		return nil, errors.Wrap(err, "unable to start manager")
 	}
 
 	if err := mgr.AddReadyzCheck("ping", readinessCheck); err != nil {
-		return nil, fmt.Errorf("unable to create ready check: %w", err)
+		return nil, errors.Wrap(err, "unable to create ready check")
 	}
 
 	if err := mgr.AddHealthzCheck("ping", livenessCheck); err != nil {
-		return nil, fmt.Errorf("unable to create health check: %w", err)
+		return nil, errors.Wrap(err, "unable to create health check")
 	}
 
 	return mgr, nil
 }
 
 func readinessCheck(req *http.Request) error {
-	setupLog.V(5).Info("got readiness check", "header", req.Header)
+	setupLog.V(2).Info("got readiness check", "header", req.Header)
 	return nil
 }
 
 func livenessCheck(req *http.Request) error {
-	setupLog.V(5).Info("got liveness check", "header", req.Header)
+	setupLog.V(2).Info("got liveness check", "header", req.Header)
 	return nil
 }

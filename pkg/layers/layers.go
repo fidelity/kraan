@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 	"golang.org/x/mod/semver"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -84,18 +85,17 @@ type KraanLayer struct {
 
 // CreateLayer creates a layer object.
 func CreateLayer(ctx context.Context, client client.Client, k8client kubernetes.Interface, log logr.Logger, addonsLayer *kraanv1alpha1.AddonsLayer) Layer {
-	layerName := fmt.Sprintf("layer-%s", addonsLayer.ObjectMeta.Name)
 	l := &KraanLayer{
 		requeue:     false,
 		delayed:     false,
 		updated:     false,
 		ctx:         ctx,
+		log:         log,
 		client:      client,
 		k8client:    k8client,
 		addonsLayer: addonsLayer,
 	}
 	l.delay = l.addonsLayer.Spec.Interval.Duration
-	l.log = log.WithName(layerName).WithValues("layer", l)
 	return l
 }
 
@@ -334,7 +334,7 @@ func (l *KraanLayer) GetName() string {
 func (l *KraanLayer) getOtherAddonsLayer(name string) (*kraanv1alpha1.AddonsLayer, error) {
 	obj := &kraanv1alpha1.AddonsLayer{}
 	if err := l.client.Get(l.GetContext(), types.NamespacedName{Name: name}, obj); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to retrieve layer: %s", types.NamespacedName{Name: name})
 	}
 	return obj, nil
 }

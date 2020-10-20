@@ -377,7 +377,7 @@ spec:
           name: tmp
         args:
         - --enable-leader-election
-        - --zap-log-level=1
+        - --zap-log-level={{ .Values.kraan.args.logLevel }}
         - --zap-encoder=json
         env:
           - name: DATA_PATH

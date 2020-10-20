@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -77,9 +78,9 @@ func newCommandFactory(logger logr.Logger, execProvider ExecProvider, execProg s
 	}
 	factory.path, err = factory.getExecProvider().FindOnPath(execProg)
 	if err != nil {
-		err = fmt.Errorf("unable to find %s binary on system PATH: %w", execProg, err)
+		return nil, errors.Wrapf(err, "unable to find %s binary on system PATH", execProg)
 	}
-	return factory, err
+	return factory, nil
 }
 
 func (f CommandFactory) getLogger() logr.Logger {
@@ -118,7 +119,7 @@ type abstractCommand struct {
 	output     []byte
 }
 
-func (c *abstractCommand) logInfo(msg string, keysAndValues ...interface{}) {
+func (c *abstractCommand) logDebug(msg string, keysAndValues ...interface{}) {
 	c.logger.V(1).Info(msg, append(keysAndValues, "command", c.asString())...)
 }
 
@@ -156,18 +157,21 @@ func (c *abstractCommand) Run() (output []byte, err error) {
 	if c.jsonOutput {
 		c.args = append(c.args, "-o", "json")
 	}
-	c.logInfo("executing kubectl")
+	c.logDebug("executing kubectl")
 	c.output, err = c.factory.getExecProvider().ExecCmd(c.getPath(), c.getArgs()...)
 	if err != nil {
-		err = c.logError(err)
+		return nil, errors.WithMessage(err, "failed to execute kubectl")
 	}
-	return c.output, err
+	return c.output, nil
 }
 
 // createTempDir creates a temporary directory.
 func createTempDir() (buildDir string, err error) {
 	buildDir, err = ioutil.TempDir("", "build-*")
-	return buildDir, err
+	if err != nil {
+		return "", errors.WithMessage(err, "failed to create temporary directory")
+	}
+	return buildDir, nil
 }
 
 // Build executes the Kustomize command with all its arguments and returns the output.
@@ -179,7 +183,7 @@ func (c *abstractCommand) Build() (buildDir string) {
 		return buildDir
 	}
 	c.args = append(c.args, "-o", buildDir)
-	c.logInfo("executing kustomize build")
+	c.logDebug("executing kustomize build")
 	c.output, err = c.factory.getExecProvider().ExecCmd(c.getPath(), c.getArgs()...)
 	if err != nil {
 		c.logError(err) // nolint:errcheck //ok

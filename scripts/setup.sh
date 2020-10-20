@@ -19,7 +19,7 @@ USAGE: ${0##*/} [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--testdata]
 Install the Kraan Addon Manager and gitops source controller to a Kubernetes cluster
 
 Options:
-  '--upgrade' to perform helm upgrade rather than hlm install.
+  '--upgrade' to perform helm upgrade rather than helm install.
   '--kraan-image-pull-secret' set to 'auto' to generate image pull secrets from ~/.docker/config.json
                               or supply name of file containing image pull secret defintion to apply.
                               The secret should be called 'kraan-regcred'.
@@ -104,7 +104,6 @@ function args() {
   kraan_regcred=""
   gitops_regcred=""
   gitops_proxy=""
-  gitops_noproxy=""
   git_url
   apply_testdata=0
   kraan_tag="master"
@@ -194,8 +193,8 @@ function toolkit_refresh() {
   local gitops_repo_arg=""
   local gitops_regcred_arg=""
   local secret_name=""
-  if [ -n "${gitops_repo}" ] ; then
-    gitops_repo_arg="--registry ${gitops_repo}"
+  if [ -n "${gitops_reg}" ] ; then
+    gitops_repo_arg="--registry ${gitops_reg}"
   fi
   if [ -n "${gitops_regcred}" ] ; then
     secret_name="regcred"
@@ -204,6 +203,7 @@ function toolkit_refresh() {
     fi
     gitops_regcred_arg="--image-pull-secret ${secret_name}"
   fi
+  mkdir -p ${work_dir}"/gitops"
   gotk install --export --components=source-controller,helm-controller ${gitops_repo_arg} ${gitops_regcred_arg} > "${work_dir}"/gitops/gitops.yaml
   echo "yaml for gitops toolkit is in ${work_dir}/gitops/gitops.yaml"
 }
@@ -254,6 +254,18 @@ if [ -n "${gitops_reg}" ] ; then
   helm_args="${helm_args} --set gotk.image.registry=${gitops_reg}"
 fi
 if [ -n "${gitops_proxy}" ] ; then
+  if [ "${gitops_proxy}" == "auto" ] ; then
+    if [ -n "${HTTPS_PROXY:-}" ] ; then
+      gitops_proxy="${HTTPS_PROXY}"
+    else
+      if [ -n "${https_proxy:-}" ] ; then
+        gitops_proxy="${https_proxy}"
+      else
+        echo "error gitops-proxy set to auto but no https proxy environmental variables set"
+        exit 1
+      fi
+    fi
+  fi
   helm_args="${helm_args} --set gotk.env.httpsProxy=${gitops_proxy}"
 fi
 if [ -n "${kraan_regcred}" ] ; then

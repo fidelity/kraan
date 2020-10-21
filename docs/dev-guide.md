@@ -15,7 +15,7 @@ This project requires the following software:
     gotk = latest
     helm - v3.3.4
 
-You can install [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder), [golangci-lint](https://github.com/golangci/golangci-lint), [mockgen](https://github.com/golang/mock), [helm](https://helm.sh/) and [gotk](https://toolkit.fluxcd.io/) using the 'setup.sh' script:
+You can install [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder), [golangci-lint](https://github.com/golangci/golangci-lint), [mockgen](https://github.com/golang/mock), [helm](https://helm.sh/), [kind](https://kind.sigs.k8s.io/docs/) and [gotk](https://toolkit.fluxcd.io/) using the 'setup.sh' script:
 
     source bin/setup.sh
 
@@ -47,7 +47,7 @@ Then to deploy the docker container:
 If the `VERSION` is not set `master` is used. The REPO will default to `docker.pkg.github.com/fidelity/kraan` which only users with privileges on the `fidelity` organization will be able to push to. However if you fork the Kraan repository then the default will be `docker.pkg.github.com/<org/user you forked to>/kraan`.
 
 ## Releases
-The offical releases use docker hub reporistory: kraan/kraan-controller. The 'master' tag will be contain a version of kraan built from the master branch. Release versions will be deployed to this repository for public use.
+The offical releases use docker hub repository: kraan/kraan-controller. The 'master' tag will be contain a version of kraan built from the master branch. Release versions will be deployed to this repository for public use.
 
 Helm Charts are deployed to github pages so can be accessed via repo: kraan https://fidelity.github.io/kraan/
 
@@ -70,7 +70,7 @@ Finally use githuweb interface to create a tag.
 
 ## Deployment Guide
 
-A shell script is provided to deploy the artifacts necessary to test the kraan-controller to a kubernetes cluster. It does this using a helm client to install a helm chart containing the Kraan Controller and GitOps Toolkit (GOTK) components it uses.
+A shell script is provided to deploy the artifacts necessary to test the kraan-controller to a kubernetes cluster. It does this using a helm client to install a helm chart containing the Kraan Controller and the GitOps Toolkit (GOTK) components it uses.
 
     scripts/setup.sh --help
 
@@ -85,6 +85,7 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
     Install the Kraan Addon Manager and gitops source controller to a Kubernetes cluster
 
     Options:
+    '--upgrade' to perform helm upgrade rather than helm install.
     '--kraan-image-pull-secret' set to 'auto' to generate image pull secrets from ~/.docker/config.json
                                 or supply name of file containing image pull secret defintion to apply.
                                 The secret should be called 'kraan-regcred'.
@@ -112,6 +113,7 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
     '--debug'       for verbose output.
     '--dry-run'     to generate yaml but not deploy to cluster. This option will retain temporary work directory.
 
+
 To deploy to a cluster build the docker image and then deploy to the cluster. The following will build the docker image and push it to the Github packages then deploy to your Kubernetes cluster.
     
     export VERSION=v0.1.xx
@@ -119,7 +121,7 @@ To deploy to a cluster build the docker image and then deploy to the cluster. Th
     make build
     docker login docker.pkg.github.com -u <github user> -p <github token>
     make docker-push
-    scripts/setup.sh --kraan-version $VERSION --kraan-image-pull-secret auto
+    scripts/setup.sh --kraan-tag $VERSION --kraan-image-reg docker.pkg.github.com/fidelity --kraan-image-pull-secret auto
 
 To deploy the image to your account in docker.io:
 
@@ -128,7 +130,7 @@ To deploy the image to your account in docker.io:
     make build
     docker login -u <docker user> -p <docker password>
     make docker-push
-    scripts/setup.sh --kraan-version $VERSION --no-gitops --kraan-image-repo $REPO
+    scripts/setup.sh --kraan-tag $VERSION --kraan-image-repo $REPO
 
 Set `REPO` to `kraan` to push to the `kraan` organisation in docker.io.
 
@@ -138,9 +140,10 @@ To test the kraan-controller you can run it on your local machine against a kube
 
     scripts/run-controller.sh --help
 
-    USAGE: run-controller.sh [--debug]
+    USAGE: run-controller.sh [--log-level N] [--debug]
     Run the Kraan Addon Manager on local machine
     options:
+    '--log-level' N, where N is 1 for debug message or 2 for trace level debugging
     '--debug' for verbose output
     This script will create a temporary directory and copy the addons.yaml and addons-source.yam files from testdata/addons to
     the temporary directory. It will then set the environmental variable DATA_PATH to the temporary directory. This will cause the
@@ -177,7 +180,7 @@ The `SC_HOST` environmental variable can be used to set the host component of th
     kubectl -n gotk-system port-forward svc/source-controller 8090:80 &
 	export SC_HOST=localhost:8090
 
-If you elected to use the `--no-testdata` option when setting up the cluster then you will need to apply these files. You can do this by applying `.testdata/addons/addons-source.yaml` and `.testdata/addons/addons.yaml` to deploy the source controller custom resource and AddonsLayers custom resources respectively. This will cause the kraan-controller to operate on the testdata in the `./testdata` directory of this repository using the `master` branch. If you want to test against other branches use the copy of these files the `scripts/run-controller.sh` creates. Edit then apply those files.
+If you elected to use the `--testdata` option when setting up the cluster test data wil be added. Alternatively, you can do this by applying `.testdata/addons/addons-source.yaml` and `.testdata/addons/addons.yaml` to deploy the source controller custom resource and AddonsLayers custom resources respectively. This will cause the kraan-controller to operate on the testdata in the `./testdata` directory of this repository using the `master` branch. If you want to test against other branches use the copy of these files the `scripts/run-controller.sh` creates. Edit then apply those files.
 
 If you want to use the kraan-controller to deploy items defined in your own repository edit the 'addons-source.yaml' file in the temporary directory to reference the repository and branch containing your addons definitions and apply it to the cluster. Then edit the `.testdata/addons/addons.yaml` file to define the addons layers and apply that.
 

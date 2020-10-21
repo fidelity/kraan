@@ -12,7 +12,7 @@ function usage() {
 USAGE: ${0##*/} [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--testdata]
        [--kraan-image-reg <registry name>] [--kraan-image-repo <repo-name>] [--kraan-image-tag] 
        [--kraan-image-pull-secret auto | <filename>] [--gitops-image-pull-secret auto | <filename>]
-       [--gitops-image-reg <repo-name>]
+       [--gitops-image-reg <repo-name>] [--kraan-loglevel N]
        [--gitops-proxy auto | <proxy-url>] [--git-url <git-repo-url>] [--no-git-auth]
        [--git-user <git_username>] [--git-token <git_token_or_password>]
 
@@ -26,6 +26,7 @@ Options:
   '--kraan-image-reg'   provide image registry to use for Kraan, defaults to empty for docker hub
   '--kraan-image-repo'  provide image repository prefix to use for Kraan, defaults to 'kraan' for docker hub org.
   '--kraan-tag'         the tag of the kraan image to use.
+  '--kraan-loglevel'    loglevel to use for kraan controller, 0 for info, 1 for debug, 2 for trace.
 
   '--gitops-image-reg'  provide image registry to use for gitops toolkit components, defaults to 'ghcr.io'.
   '--gitops-image-pull-secret' set to 'auto' to generate image pull secrets from ~/.docker/config.json
@@ -107,6 +108,7 @@ function args() {
   git_url
   apply_testdata=0
   kraan_tag="master"
+  kraan_loglevel=""
   no_git_auth=0
   helm_action="install"
 
@@ -118,6 +120,7 @@ function args() {
           "--toolkit") toolkit=1;;
           "--deploy-kind") deploy_kind=1;;
           "--testdata") apply_testdata=1;;
+          "--kraan-loglevel") (( arg_index+=1 )); kraan_loglevel="${arg_list[${arg_index}]}";;
           "--kraan-tag") (( arg_index+=1 )); kraan_tag="${arg_list[${arg_index}]}";;
           "--kraan-image-pull-secret") (( arg_index+=1 )); kraan_regcred="${arg_list[${arg_index}]}";;
           "--gitops-image-pull-secret") (( arg_index+=1 )); gitops_regcred="${arg_list[${arg_index}]}";;
@@ -144,8 +147,8 @@ function args() {
     (( arg_index+=1 ))
   done
 
-  check_git_credentials
   if [ $no_git_auth -eq 0 ] ; then
+    check_git_credentials
     # If GIT_CREDENTIALS are not set warn the user but set up the cluster without a credentials secret
     if [ -z "${GIT_USER:-}" ] ; then 
       echo "GIT_USER is not set to the git user name"
@@ -279,6 +282,9 @@ if [ -n "${kraan_repo}" ] ; then
 fi
 if [ -n "${kraan_tag}" ] ; then
   helm_args="${helm_args} --set kraan.image.tag=${kraan_tag}"
+fi
+if [ -n "${kraan_loglevel}" ] ; then
+  helm_args="${helm_args} --set kraan.args.logLevel=${kraan_loglevel}"
 fi
 
 if [ -n "${dry_run}" ] ; then

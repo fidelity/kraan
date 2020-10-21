@@ -8,7 +8,7 @@ kraan:
     name:
 
   args:
-    logLevel: 1
+    logLevel: 0
 
 gotk:
   image:

@@ -4,6 +4,7 @@ linter_version=1.30.0
 kubebuilder_version=2.3.1
 mockgen_version=v1.4.4
 helm_version=v3.3.4
+kind_version=v0.9.0
 
 function usage()
 {
@@ -42,6 +43,12 @@ function install_kubebuilder() {
 function install_helm() {
     curl -L https://get.helm.sh/helm-${helm_version}-linux-amd64.tar.gz | tar -xz -C /tmp/
     $sudo mv /tmp/linux-amd64/helm /usr/local/bin
+}
+
+function install_kind() {
+    curl -Lo ./kind https://kind.sigs.k8s.io/dl/${kind_version}/kind-linux-amd64
+    chmod 755 kind
+    $sudo mv kind /usr/local/bin
 }
 
 args "${@}"
@@ -122,9 +129,24 @@ if [[ "${ret_code}" != "0" ]] ; then
     helm version 2>&1 | grep ${helm_version} >/dev/null
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then
-        echo "Failed to install mockgen"
+        echo "Failed to install helm"
         return
     fi
 else
     echo "helm version: `helm version`"
+fi
+
+kind version 2>&1 | grep ${kind_version} >/dev/null
+ret_code="${?}"
+if [[ "${ret_code}" != "0" ]] ; then
+    echo "installing kind version: ${kind_version}"
+    install_kind
+    kind version 2>&1 | grep ${kind_version} >/dev/null
+    ret_code="${?}"
+    if [ "${ret_code}" != "0" ] ; then
+        echo "Failed to install kind"
+        return
+    fi
+else
+    echo "kind version: `kind version`"
 fi

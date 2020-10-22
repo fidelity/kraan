@@ -12,7 +12,7 @@ function usage() {
 USAGE: ${0##*/} [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--testdata]
        [--kraan-image-reg <registry name>] [--kraan-image-repo <repo-name>] [--kraan-image-tag] 
        [--kraan-image-pull-secret auto | <filename>] [--gitops-image-pull-secret auto | <filename>]
-       [--gitops-image-reg <repo-name>] [--kraan-loglevel N]
+       [--gitops-image-reg <repo-name>] [--kraan-loglevel N] [--prometheus <namespace>]
        [--gitops-proxy auto | <proxy-url>] [--git-url <git-repo-url>] [--no-git-auth]
        [--git-user <git_username>] [--git-token <git_token_or_password>]
 
@@ -39,6 +39,7 @@ Options:
                   cluster. The KUBECONFIG environmental variable or ~/.kube/config should be set to a cluster 
                   admin user for the cluster you want to use. This cluster must be running API version 16 or 
                   greater.
+  '--prometheus'  install promethus stack in specified namespace
   '--testdata'    deploy testdata comprising addons layers and source controller custom resources to the target cluster.
   '--git-url'     set the URL for the git repository from which Kraan should pull AddonsLayer configs.
   '--git-user'    set (or override) the GIT_USER environment variables.
@@ -111,6 +112,7 @@ function args() {
   kraan_loglevel=""
   no_git_auth=0
   helm_action="install"
+  prometheus=""
 
   arg_list=( "$@" )
   arg_count=${#arg_list[@]}
@@ -120,6 +122,7 @@ function args() {
           "--toolkit") toolkit=1;;
           "--deploy-kind") deploy_kind=1;;
           "--testdata") apply_testdata=1;;
+          "--prometheus") (( arg_index+=1 )); prometheus="${arg_list[${arg_index}]}";;
           "--kraan-loglevel") (( arg_index+=1 )); kraan_loglevel="${arg_list[${arg_index}]}";;
           "--kraan-tag") (( arg_index+=1 )); kraan_tag="${arg_list[${arg_index}]}";;
           "--kraan-image-pull-secret") (( arg_index+=1 )); kraan_regcred="${arg_list[${arg_index}]}";;
@@ -234,6 +237,82 @@ function create_regcred() {
   fi
 }
 
+function install_namespace {
+  local ns="${1}"
+
+  set +e
+  kubectl get namespace "${ns}" 2>&1
+  if [ $? -ne 0 ] ; then
+    kubectl create namespace "${ns}"
+  else
+    echo "namespace ${ns} already exists"
+  fi
+  set -e
+}
+
+function wait_for_pods {
+  local ns="${1}"
+  for i in {1..30}
+  do
+    set +e
+    kubectl -n ${ns} get pods --field-selector=status.phase!=Running 2>&1 | grep "No resources found in ${ns} namespace" >/dev/null
+    if [ $? -eq 0 ] ; then
+      set -e
+      echo "all pods in namespace ${ns} running"
+      kubectl -n ${ns} get pods
+      return 0
+    fi
+    echo "all pods in namespace ${ns} not yet running"
+    kubectl -n ${ns} get pods --field-selector=status.phase!=Running
+    sleep 5
+  done
+  return 1
+}
+
+function install_prometheus_helm_repo {
+  set +e
+  helm repo list | grep "^prometheus-community[[:space:]]" >/dev/null
+  if [ $? -eq 1 ] ; then
+    set -e
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    return
+  fi
+  set -e  
+}
+
+function install_prometheus_helm_release {
+  local ns="${1}"
+  set +e
+  helm list -n "${ns}" | grep "^prometheus[[:space:]]" >/dev/null
+  if [ $? -eq 1 ] ; then
+    set -e
+    helm install prometheus prometheus-community/kube-prometheus-stack --namespace "${ns}"
+    return
+  fi
+  set -e 
+}
+
+function install_prometheus {
+  local ns="${1}"
+  install_prometheus_helm_repo
+  install_namespace "${ns}"
+  install_prometheus_helm_release "${ns}"
+  set +e
+  wait_for_pods "${ns}"
+  if [ $? -ne 0 ] ; then
+    echo "failed to deploy prometheus"
+    exit 1
+  fi
+  set -e
+  echo "running port-forward to prometheus: kubectl port-forward -n "${ns}" prometheus-prometheus-kube-prometheus-prometheus-0  9090"
+  kubectl port-forward -n "${ns}" prometheus-prometheus-kube-prometheus-prometheus-0  9090 &
+  echo "You can access prometheus at http:/127.0.0.1:9090"
+  grafana=$(kubectl -n ${ns} get pods --selector=app.kubernetes.io/name=grafana -o   jsonpath='{.items[*].metadata.name}')
+  echo "running port-forward to grafana: kubectl port-forward -n "${ns}" ${grafana} 3000"
+  kubectl port-forward -n "${ns}" ${grafana} 3000 &
+  echo "You can access grafana at http:/127.0.0.1:3000, grafana user: `kubectl get secret -n "${ns}" prometheus-grafana -o json | jq -r '.data["admin-user"]' | base64 -d`, grafana password: `kubectl get secret -n "${ns}" prometheus-grafana -o json | jq -r '.data["admin-password"]' | base64 -d`"
+}
+
 args "$@"
 
 base_dir="$(git rev-parse --show-toplevel)"
@@ -246,6 +325,10 @@ fi
 if [ -n "${toolkit}" ] ; then
   toolkit_refresh
   exit 0
+fi
+
+if [ -n "${prometheus}" ] ; then
+  install_prometheus "${prometheus}"
 fi
 
 helm_args=""

@@ -402,18 +402,9 @@ func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.
 		}
 	}
 	if len(addons) == 0 {
-		return []reconcile.Request{}
+		return addons
 	}
-	repo := r.Repos.Get(r.Repos.PathKey(srcRepo))
-	if repo == nil {
-		r.Log.V(1).Info("new repo object", "kind", "gitrepositories.source.toolkit.fluxcd.io", "namespace", srcRepo.Namespace, "name", srcRepo.Namespace)
-	} else {
-		if srcRepo.Status.Artifact.Revision == repo.GetGitRepo().Status.Artifact.Revision {
-			r.Log.V(1).Info("unchanged repo object", "kind", "gitrepositories.source.toolkit.fluxcd.io", "namespace", srcRepo.Namespace, "name", srcRepo.Namespace)
-		}
-		return []reconcile.Request{}
-	}
-	repo = r.Repos.Add(srcRepo)
+	repo := r.Repos.Add(srcRepo)
 	r.Log.V(1).Info("created repo object", "kind", "gitrepositories.source.toolkit.fluxcd.io", "namespace", srcRepo.Namespace, "name", srcRepo.Namespace)
 	if err := repo.SyncRepo(); err != nil {
 		r.Log.Error(err, "unable to sync repo, not requeuing", "kind", "gitrepositories.source.toolkit.fluxcd.io", "namespace", srcRepo.Namespace, "name", srcRepo.Name)

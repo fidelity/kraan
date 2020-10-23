@@ -34,7 +34,6 @@ type Repos interface {
 	SetHostName(hostName string)
 	SetTimeOut(timeOut time.Duration)
 	SetHTTPClient(client *http.Client)
-	PathKey(srcRepo *sourcev1.GitRepository) string
 }
 
 // reposData hold data about all repositories.
@@ -63,7 +62,7 @@ func NewRepos(ctx context.Context, log logr.Logger) Repos {
 	}
 }
 
-func (r *reposData) PathKey(repo *sourcev1.GitRepository) string {
+func (r *reposData) pathKey(repo *sourcev1.GitRepository) string {
 	return fmt.Sprintf("%s/%s", repo.GetNamespace(), repo.GetName())
 }
 
@@ -104,7 +103,7 @@ func (r *reposData) Get(name string) Repo {
 func (r *reposData) Add(repo *sourcev1.GitRepository) Repo {
 	r.Lock()
 	defer r.Unlock()
-	key := r.PathKey(repo)
+	key := r.pathKey(repo)
 	if _, found := r.repos[key]; !found {
 		r.repos[key] = r.newRepo(key, repo)
 	}
@@ -168,11 +167,9 @@ func (r *reposData) newRepo(path string, sourceRepo *sourcev1.GitRepository) Rep
 	return repo
 }
 
-func (r *repoData) GetGitRepo() *sourcev1.GitRepository {
-	r.RLock()
-	defer r.RUnlock()
+/*func (r *repoData) getGitRepo() *sourcev1.GitRepository {
 	return r.repo
-}
+}*/
 
 func (r *repoData) GetPath() string {
 	return r.path

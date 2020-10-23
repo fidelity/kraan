@@ -368,7 +368,7 @@ func (r *AddonsLayerReconciler) update(ctx context.Context, log logr.Logger,
 	return nil
 }
 
-func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.Request { // nolint: funlen,gocyclo // ok
+func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.Request {
 	/* Not sure why this test fails when it shouldn't
 	kind := a.Object.GetObjectKind().GroupVersionKind()
 	repoKind := sourcev1.GitRepositoryKind

@@ -438,8 +438,8 @@ func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.
 			continue
 		}
 	}
-	r.Log.Info("synced source", "kind", "gitrepositories.source.toolkit.fluxcd.io", 
-		"namespace", srcRepo.Namespace, "name", srcRepo.Name,"revision", srcRepo.Status.Artifact.Revision, "layers", addons)
+	r.Log.Info("synced source", "kind", "gitrepositories.source.toolkit.fluxcd.io",
+		"namespace", srcRepo.Namespace, "name", srcRepo.Name, "revision", srcRepo.Status.Artifact.Revision, "layers", addons)
 	return addons
 }
 

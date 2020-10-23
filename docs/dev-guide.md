@@ -146,25 +146,11 @@ To test the kraan-controller you can run it on your local machine against a kube
     options:
     '--log-level' N, where N is 1 for debug message or 2 for trace level debugging
     '--debug' for verbose output
-    This script will create a temporary directory and copy the addons.yaml and addons-source.yam files from testdata/addons to
-    the temporary directory. It will then set the environmental variable DATA_PATH to the temporary directory. This will cause the
-    kraan-controller to process the addons layers using the temporary directory as its root directory when storing files it retrieves
-    from this git repository's testdata/addons directory using the source controller.
-
-When you run the 'run-controller.sh' script it will copy some files to a temporary directory, emmit text as shown below and then prompt you as follow:
-
-    Running kraan-controller with DATA_PATH set to /tmp/kraan-XJQUWB
-    You may change files in /tmp/kraan-XJQUWB/testdata/addons to test kraan-controller
-    Edit and then kubectl apply /tmp/kraan-XJQUWB/testdata/addons/addons.yaml to cause kraan-controller to reprocess layers.
-    Edit and then kubectl apply /tmp/kraan-XJQUWB/testdata/addons/addons-source.yaml to cause kraan-controller to reprocess source controller data.
-    In order to allow for this scenario the temporary directory will not be deleted so you are responsible for deleting this directory
-
-    if you want change and rerun the kraan-controller you should type...
-    export DATA_PATH=/tmp/kraan-XJQUWB
-    kubectl -n gotk-system port-forward svc/source-controller 8090:80 &
-    export SC_HOST=localhost:8090
-    kraan-controller
-    Pausing to allow user to make manual changes to testdata in /tmp/kraan-XJQUWB/testdata/addons, press enter to continue
+    This script will create a temporary directory and copy the addons.yaml and addons-source.yaml
+    files from testdata/addons tothe temporary directory. It will then set the environmental
+    variable DATA_PATH to the temporary directory. This will cause the kraan-controller to process
+    the addons layers using the temporary directory as its root directory when storing files it
+    retrieves from this git repository's testdata/addons directory using the source controller.
 
 The kraan-controller will reprocess all AddonsLayers perioidically. This period defaults to 30 seconds but can be set using a command line argument.
 

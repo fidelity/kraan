@@ -140,6 +140,20 @@ func (mr *MockReposMockRecorder) SetHTTPClient(client interface{}) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetHTTPClient", reflect.TypeOf((*MockRepos)(nil).SetHTTPClient), client)
 }
 
+// PathKey mocks base method
+func (m *MockRepos) PathKey(srcRepo *v1beta1.GitRepository) string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PathKey", srcRepo)
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// PathKey indicates an expected call of PathKey
+func (mr *MockReposMockRecorder) PathKey(srcRepo interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PathKey", reflect.TypeOf((*MockRepos)(nil).PathKey), srcRepo)
+}
+
 // MockRepo is a mock of Repo interface
 type MockRepo struct {
 	ctrl     *gomock.Controller

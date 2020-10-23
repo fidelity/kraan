@@ -377,7 +377,7 @@ spec:
           name: tmp
         args:
         - --enable-leader-election
-        {{ if ne .Values.kraan.args.logLevel 0 }}
+        {{ if ne (.Values.kraan.args.logLevel | toString | atoi) 0 }}
         - --zap-log-level={{ .Values.kraan.args.logLevel }}
         {{ end }}
         - --zap-encoder=json

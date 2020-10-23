@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"golang.org/x/mod/semver"
@@ -249,6 +250,12 @@ func getNameVersion(nameVersion string) (string, string) {
 }
 
 func (l *KraanLayer) isOtherDeployed(otherVersion string, otherLayer *kraanv1alpha1.AddonsLayer) bool {
+	if otherLayer.Status.ObservedGeneration != otherLayer.Generation {
+		reason := fmt.Sprintf("waiting for layer: %s, version: %s to be applied.", otherLayer.ObjectMeta.Name, otherVersion)
+		message := fmt.Sprintf("Layer: %s, observed generation: %d, generation: %d", otherLayer.ObjectMeta.Name, otherLayer.Status.ObservedGeneration, otherLayer.Generation)
+		l.setStatus(kraanv1alpha1.ApplyPendingCondition, reason, message)
+		return false
+	}
 	if otherLayer.Status.Version != otherVersion {
 		reason := fmt.Sprintf("waiting for layer: %s, version: %s to be applied.", otherLayer.ObjectMeta.Name, otherVersion)
 		message := fmt.Sprintf("Layer: %s, current version is: %s, require version: %s.",
@@ -259,6 +266,27 @@ func (l *KraanLayer) isOtherDeployed(otherVersion string, otherLayer *kraanv1alp
 	if otherLayer.Status.State != kraanv1alpha1.DeployedCondition {
 		reason := fmt.Sprintf("waiting for layer: %s, version: %s to be applied.", otherLayer.ObjectMeta.Name, otherVersion)
 		message := fmt.Sprintf("Layer: %s, current state: %s.", otherLayer.ObjectMeta.Name, otherLayer.Status.State)
+		l.setStatus(kraanv1alpha1.ApplyPendingCondition, reason, message)
+		return false
+	}
+	otherSource, err := l.getSource(otherLayer.Spec.Source.NameSpace, otherLayer.Spec.Source.Name)
+	if err != nil {
+		reason := fmt.Sprintf("unable to obtain source revision for layer: %s", otherLayer.ObjectMeta.Name)
+		message := err.Error()
+		l.setStatus(kraanv1alpha1.FailedCondition, reason, message)
+		return false
+	}
+	if otherSource.Status.ObservedGeneration != otherSource.Generation {
+		reason := fmt.Sprintf("waiting for layer: %s, source: %s, to be reconciled.",
+			otherLayer.ObjectMeta.Name, otherSource.ObjectMeta.Name)
+		message := fmt.Sprintf("Layer: %s, source: %s, observed generation: %d, generation: %d",
+			otherLayer.ObjectMeta.Name, otherSource.ObjectMeta.Name, otherSource.Status.ObservedGeneration, otherSource.Generation)
+		l.setStatus(kraanv1alpha1.ApplyPendingCondition, reason, message)
+		return false
+	}
+	if otherLayer.Status.DeployedRevision != otherSource.Status.Artifact.Revision {
+		reason := fmt.Sprintf("waiting for layer: %s, to apply source revision: %s.", otherLayer.ObjectMeta.Name, otherSource.Status.Artifact.Revision)
+		message := fmt.Sprintf("Layer: %s, current state: %s, deployed revision: %s.", otherLayer.ObjectMeta.Name, otherLayer.Status.State, otherLayer.Status.DeployedRevision)
 		l.setStatus(kraanv1alpha1.ApplyPendingCondition, reason, message)
 		return false
 	}
@@ -330,11 +358,20 @@ func (l *KraanLayer) GetName() string {
 	return l.addonsLayer.ObjectMeta.Name
 }
 
-// GetAddonsLayers returns a map containing the current state of all AddonsLayers in this group.
+// getOtherAddonsLayer returns another addonsLayer.
 func (l *KraanLayer) getOtherAddonsLayer(name string) (*kraanv1alpha1.AddonsLayer, error) {
 	obj := &kraanv1alpha1.AddonsLayer{}
 	if err := l.client.Get(l.GetContext(), types.NamespacedName{Name: name}, obj); err != nil {
 		return nil, errors.Wrapf(err, "failed to retrieve layer: %s", types.NamespacedName{Name: name})
 	}
 	return obj, nil
+}
+
+// getSource returns a GitRepository Source.
+func (l *KraanLayer) getSource(namespace, name string) (*sourcev1.GitRepository, error) {
+	gitRepo := &sourcev1.GitRepository{}
+	if err := l.client.Get(l.GetContext(), types.NamespacedName{Namespace: namespace, Name: name}, gitRepo); err != nil {
+		return nil, errors.Wrapf(err, "failed to retrieve source: %s", types.NamespacedName{Namespace: namespace, Name: name})
+	}
+	return gitRepo, nil
 }

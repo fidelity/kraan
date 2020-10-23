@@ -16,6 +16,7 @@ import (
 	fakediscovery "k8s.io/client-go/discovery/fake"
 	fakeK8s "k8s.io/client-go/kubernetes/fake"
 	fakeTest "k8s.io/client-go/testing"
+
 	//k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -36,6 +37,7 @@ const (
 	emptyStatus  = "empty-status"
 	noDepends    = "no-depends"
 	oneDepends   = "one-depends"
+	oneDependsG  = "one-dependsG"
 	oneDependsV2 = "one-depends-v2"
 	twoDepends   = "two-depends"
 	k8sv16       = "k8s-v16"

@@ -6,7 +6,7 @@
             "kind": "GitRepository",
             "metadata": {
                 "generation": 1,
-                "name": "addons-config",
+                "name": "global-config",
                 "namespace": "gotk-system"
             },
             "spec": {

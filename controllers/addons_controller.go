@@ -38,6 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/apply"
 	layers "github.com/fidelity/kraan/pkg/layers"
@@ -207,20 +208,24 @@ func (r *AddonsLayerReconciler) processApply(l layers.Layer) (statusReconciled b
 	return false, nil
 }
 
-func (r *AddonsLayerReconciler) checkSuccess(l layers.Layer) error {
+func (r *AddonsLayerReconciler) checkSuccess(l layers.Layer) (string, error) {
 	ctx := r.Context
 	applier := r.Applier
 
 	applyWasSuccessful, err := applier.ApplyWasSuccessful(ctx, l)
 	if err != nil {
-		return errors.WithMessage(err, "check for apply required failed")
+		return "", errors.WithMessage(err, "check for apply required failed")
 	}
 	if !applyWasSuccessful {
 		l.SetDelayedRequeue()
-		return nil
+		return "", nil
 	}
 	l.SetStatusDeployed()
-	return nil
+	revision, err := r.getRevison(l)
+	if err != nil {
+		return "", errors.WithMessage(err, "failed to get revision")
+	}
+	return revision, nil
 }
 
 func (r *AddonsLayerReconciler) waitForData(l layers.Layer, repo repos.Repo) (err error) {
@@ -260,42 +265,51 @@ func (r *AddonsLayerReconciler) checkData(l layers.Layer) (bool, error) {
 	return false, nil
 }
 
-func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) error {
+func (r *AddonsLayerReconciler) getRevison(l layers.Layer) (string, error) {
+	sourceRepoName := l.GetSourceKey()
+	repo := r.Repos.Get(sourceRepoName)
+	if repo == nil {
+		return "", fmt.Errorf("unable to find repo object")
+	}
+	return repo.GetGitRepo().Status.Artifact.Revision, nil
+}
+
+func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error) {
 	l.GetLogger().Info("processing")
 
 	if l.IsHold() {
 		l.SetHold()
-		return nil
+		return "", nil
 	}
 
 	if !l.CheckK8sVersion() {
 		l.SetStatusK8sVersion()
 		l.SetDelayedRequeue()
-		return nil
+		return "", nil
 	}
 
 	layerDataReady, err := r.checkData(l)
 	if err != nil {
-		return errors.WithMessage(err, "failed to check layer data is ready")
+		return "", errors.WithMessage(err, "failed to check layer data is ready")
 	}
 	if !layerDataReady {
-		return nil
+		return "", nil
 	}
 
 	layerStatusUpdated, err := r.processPrune(l)
 	if err != nil {
-		return errors.WithMessage(err, "failed to perform prune processing")
+		return "", errors.WithMessage(err, "failed to perform prune processing")
 	}
 	if layerStatusUpdated {
-		return nil
+		return "", nil
 	}
 
 	layerStatusUpdated, err = r.processApply(l)
 	if err != nil {
-		return errors.WithMessage(err, "failed to perform apply processing")
+		return "", errors.WithMessage(err, "failed to perform apply processing")
 	}
 	if layerStatusUpdated {
-		return nil
+		return "", nil
 	}
 
 	return r.checkSuccess(l)
@@ -329,10 +343,18 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (res ctrl.Result, er
 	log := r.Log.WithValues("layer", req.NamespacedName.Name)
 
 	l := layers.CreateLayer(ctx, r.Client, r.k8client, log, addonsLayer)
-	err = r.processAddonLayer(l)
+	deployedRevision, err := r.processAddonLayer(l)
 	if err != nil {
 		l.StatusUpdate(kraanv1alpha1.FailedCondition, kraanv1alpha1.AddonsLayerFailedReason, err.Error())
 		log.Error(err, "failed to process addons layer")
+	}
+	if l.GetAddonsLayer().Generation != l.GetFullStatus().ObservedGeneration {
+		l.SetUpdated()
+		l.GetFullStatus().ObservedGeneration = l.GetAddonsLayer().Generation
+	}
+	if len(deployedRevision) > 0 && deployedRevision != l.GetFullStatus().DeployedRevision {
+		l.SetUpdated()
+		l.GetFullStatus().DeployedRevision = deployedRevision
 	}
 	r.updateRequeue(l, &res, &err)
 	return res, err

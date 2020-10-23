@@ -5,7 +5,8 @@
             "apiVersion": "kraan.io/v1alpha1",
             "kind": "AddonsLayer",
             "metadata": {
-                "name": "two-depends"
+                "name": "two-depends",
+                "generation": 1
             },
             "spec": {
                 "prereqs": {
@@ -26,7 +27,8 @@
             "apiVersion": "kraan.io/v1alpha1",
             "kind": "AddonsLayer",
             "metadata": {
-                "name": "no-depends"
+                "name": "no-depends",
+                "generation": 1
             },
             "spec": {
                 "hold": false,
@@ -49,14 +51,17 @@
                     }
                 ],
                 "state": "Deployed",
-                "version": "0.1.01"
+                "version": "0.1.01",
+                "observedGeneration": 1,
+                "revision": "master/abcdef"
             }
         },
         {
             "apiVersion": "kraan.io/v1alpha1",
             "kind": "AddonsLayer",
             "metadata": {
-                "name": "one-depends"
+                "name": "one-depends",
+                "generation": 1
             },
             "spec": {
                 "interval": "1m",
@@ -83,14 +88,17 @@
                     }
                 ],
                 "state": "Deployed",
-                "version": "0.1.01"
+                "version": "0.1.01",
+                "observedGeneration": 1,
+                "revision": "master/abcdef"
             }
         },  
         {
             "apiVersion": "kraan.io/v1alpha1",
             "kind": "AddonsLayer",
             "metadata": {
-                "name": "no-depends-v2"
+                "name": "no-depends-v2",
+                "generation": 1
             },
             "spec": {
                 "hold": false,
@@ -113,14 +121,17 @@
                     }
                 ],
                 "state": "Deployed",
-                "version": "0.1.01"
+                "version": "0.1.01",
+                "observedGeneration": 1,
+                "revision": "master/abcdef"
             }
         },
         {
             "apiVersion": "kraan.io/v1alpha1",
             "kind": "AddonsLayer",
             "metadata": {
-                "name": "one-depends-v2"
+                "name": "one-depends-v2",
+                "generation": 1
             },
             "spec": {
                 "interval": "1m",
@@ -147,7 +158,9 @@
                     }
                 ],
                 "state": "Deployed",
-                "version": "0.1.01"
+                "version": "0.1.01",
+                "observedGeneration": 1,
+                "revision": "master/abcdef"
             }
         }
     ],

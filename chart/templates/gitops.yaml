@@ -1278,9 +1278,9 @@ spec:
           value: {{ .Values.gotk.env.noProxy }}
         {{- end }}
         {{- if .Values.gotk.image.registry }}
-        image: {{ .Values.gotk.image.registry }}/fluxcd/helm-controller:v0.1.1
+        image: {{ .Values.gotk.image.registry }}/fluxcd/helm-controller:v0.1.3
         {{- else }}
-        image: ghcr.io/fluxcd/helm-controller:v0.1.1
+        image: ghcr.io/fluxcd/helm-controller:v0.1.3
         {{- end }}
         imagePullPolicy: IfNotPresent
         livenessProbe:

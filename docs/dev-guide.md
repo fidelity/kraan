@@ -78,7 +78,7 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
     USAGE: setup.sh [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--testdata]
         [--kraan-image-reg <registry name>] [--kraan-image-repo <repo-name>] [--kraan-image-tag] 
         [--kraan-image-pull-secret auto | <filename>] [--gitops-image-pull-secret auto | <filename>]
-        [--gitops-image-reg <repo-name>]
+        [--gitops-image-reg <repo-name>] [--kraan-loglevel N] [--prometheus <namespace>]
         [--gitops-proxy auto | <proxy-url>] [--git-url <git-repo-url>] [--no-git-auth]
         [--git-user <git_username>] [--git-token <git_token_or_password>]
 
@@ -92,6 +92,7 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
     '--kraan-image-reg'   provide image registry to use for Kraan, defaults to empty for docker hub
     '--kraan-image-repo'  provide image repository prefix to use for Kraan, defaults to 'kraan' for docker hub org.
     '--kraan-tag'         the tag of the kraan image to use.
+    '--kraan-loglevel'    loglevel to use for kraan controller, 0 for info, 1 for debug, 2 for trace.
 
     '--gitops-image-reg'  provide image registry to use for gitops toolkit components, defaults to 'ghcr.io'.
     '--gitops-image-pull-secret' set to 'auto' to generate image pull secrets from ~/.docker/config.json
@@ -104,6 +105,7 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
                     cluster. The KUBECONFIG environmental variable or ~/.kube/config should be set to a cluster 
                     admin user for the cluster you want to use. This cluster must be running API version 16 or 
                     greater.
+    '--prometheus'  install promethus stack in specified namespace
     '--testdata'    deploy testdata comprising addons layers and source controller custom resources to the target cluster.
     '--git-url'     set the URL for the git repository from which Kraan should pull AddonsLayer configs.
     '--git-user'    set (or override) the GIT_USER environment variables.
@@ -113,9 +115,8 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
     '--debug'       for verbose output.
     '--dry-run'     to generate yaml but not deploy to cluster. This option will retain temporary work directory.
 
-
 To deploy to a cluster build the docker image and then deploy to the cluster. The following will build the docker image and push it to the Github packages then deploy to your Kubernetes cluster.
-    
+
     export VERSION=v0.1.xx
     make clean-build
     make build
@@ -145,25 +146,11 @@ To test the kraan-controller you can run it on your local machine against a kube
     options:
     '--log-level' N, where N is 1 for debug message or 2 for trace level debugging
     '--debug' for verbose output
-    This script will create a temporary directory and copy the addons.yaml and addons-source.yam files from testdata/addons to
-    the temporary directory. It will then set the environmental variable DATA_PATH to the temporary directory. This will cause the
-    kraan-controller to process the addons layers using the temporary directory as its root directory when storing files it retrieves
-    from this git repository's testdata/addons directory using the source controller.
-
-When you run the 'run-controller.sh' script it will copy some files to a temporary directory, emmit text as shown below and then prompt you as follow:
-
-    Running kraan-controller with DATA_PATH set to /tmp/kraan-XJQUWB
-    You may change files in /tmp/kraan-XJQUWB/testdata/addons to test kraan-controller
-    Edit and then kubectl apply /tmp/kraan-XJQUWB/testdata/addons/addons.yaml to cause kraan-controller to reprocess layers.
-    Edit and then kubectl apply /tmp/kraan-XJQUWB/testdata/addons/addons-source.yaml to cause kraan-controller to reprocess source controller data.
-    In order to allow for this scenario the temporary directory will not be deleted so you are responsible for deleting this directory
-
-    if you want change and rerun the kraan-controller you should type...
-    export DATA_PATH=/tmp/kraan-XJQUWB
-    kubectl -n gotk-system port-forward svc/source-controller 8090:80 &
-    export SC_HOST=localhost:8090
-    kraan-controller
-    Pausing to allow user to make manual changes to testdata in /tmp/kraan-XJQUWB/testdata/addons, press enter to continue
+    This script will create a temporary directory and copy the addons.yaml and addons-source.yaml
+    files from testdata/addons tothe temporary directory. It will then set the environmental
+    variable DATA_PATH to the temporary directory. This will cause the kraan-controller to process
+    the addons layers using the temporary directory as its root directory when storing files it
+    retrieves from this git repository's testdata/addons directory using the source controller.
 
 The kraan-controller will reprocess all AddonsLayers perioidically. This period defaults to 30 seconds but can be set using a command line argument.
 

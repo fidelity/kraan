@@ -387,7 +387,8 @@ func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.
 		return []reconcile.Request{}
 	}
 	r.Log.V(1).Info("monitoring", "kind", "gitrepositories.source.toolkit.fluxcd.io", "namespace",
-		srcRepo.Namespace, "name", srcRepo.Name, "data", apply.LogJSON(srcRepo))
+		srcRepo.Namespace, "name", srcRepo.Name, srcRepo.Name, "generation", srcRepo.Generation,
+		"observed", srcRepo.Status.ObservedGeneration, "revision", srcRepo.Status.Artifact.Revision)
 	addonsList := &kraanv1alpha1.AddonsLayerList{}
 	if err := r.List(r.Context, addonsList); err != nil {
 		r.Log.Error(err, "unable to list AddonsLayers", "kind", "gitrepositories.source.toolkit.fluxcd.io",
@@ -400,7 +401,8 @@ func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.
 		layer := layers.CreateLayer(r.Context, r.Client, r.k8client, r.Log, &addon) //nolint:scopelint // ok
 		if layer.GetSpec().Source.Name == srcRepo.Name && layer.GetSpec().Source.NameSpace == srcRepo.Namespace {
 			r.Log.V(1).Info("layer is using this source", "kind", "gitrepositories.source.toolkit.fluxcd.io", "namespace",
-				srcRepo.Namespace, "name", srcRepo.Name, "revision", srcRepo.Status.Artifact.Revision, "layer", addon.Name)
+				srcRepo.Namespace, "name", srcRepo.Name, "generation", srcRepo.Generation, "observed", srcRepo.Status.ObservedGeneration,
+				"revision", srcRepo.Status.Artifact.Revision, "layer", addon.Name)
 			layerList = append(layerList, layer)
 			addons = append(addons, reconcile.Request{NamespacedName: types.NamespacedName{Name: layer.GetName(), Namespace: ""}})
 		}
@@ -411,30 +413,40 @@ func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.
 	repo := r.Repos.Get(r.Repos.PathKey(srcRepo))
 	if repo == nil {
 		r.Log.V(1).Info("new repo object", "kind", "gitrepositories.source.toolkit.fluxcd.io",
-			"namespace", srcRepo.Namespace, "name", srcRepo.Name, "revision", srcRepo.Status.Artifact.Revision)
+			"namespace", srcRepo.Namespace, "name", srcRepo.Name,
+			"generation", srcRepo.Generation, "observed", srcRepo.Status.ObservedGeneration,
+			"revision", srcRepo.Status.Artifact.Revision)
 	} else {
 		if srcRepo.Status.Artifact.Revision == repo.GetGitRepo().Status.Artifact.Revision {
 			r.Log.V(1).Info("unchanged repo object", "kind", "gitrepositories.source.toolkit.fluxcd.io",
-				"namespace", srcRepo.Namespace, "name", srcRepo.Name, "revision", srcRepo.Status.Artifact.Revision)
+				"namespace", srcRepo.Namespace, "name", srcRepo.Name,
+				"generation", srcRepo.Generation, "observed", srcRepo.Status.ObservedGeneration,
+				"revision", srcRepo.Status.Artifact.Revision)
+			return []reconcile.Request{}
 		}
-		return []reconcile.Request{}
 	}
 	repo = r.Repos.Add(srcRepo)
 	r.Log.V(1).Info("created repo object", "kind", "gitrepositories.source.toolkit.fluxcd.io",
 		"namespace", srcRepo.Namespace, "name", srcRepo.Namespace, "revision", srcRepo.Status.Artifact.Revision)
 	if err := repo.SyncRepo(); err != nil {
 		r.Log.Error(err, "unable to sync repo, not requeuing", "kind", "gitrepositories.source.toolkit.fluxcd.io",
-			"namespace", srcRepo.Namespace, "name", srcRepo.Name, "revision", srcRepo.Status.Artifact.Revision)
+			"namespace", srcRepo.Namespace, "name", srcRepo.Name,
+			"generation", srcRepo.Generation, "observed", srcRepo.Status.ObservedGeneration,
+			"revision", srcRepo.Status.Artifact.Revision)
 		return []reconcile.Request{}
 	}
 	r.Log.V(1).Info("synced repo", "kind", "gitrepositories.source.toolkit.fluxcd.io",
-		"namespace", srcRepo.Namespace, "name", srcRepo.Name, "revision", srcRepo.Status.Artifact.Revision)
+		"namespace", srcRepo.Namespace, "name", srcRepo.Name,
+		"generation", srcRepo.Generation, "observed", srcRepo.Status.ObservedGeneration,
+		"revision", srcRepo.Status.Artifact.Revision)
 
 	for _, layer := range layerList {
 		if err := repo.LinkData(layer.GetSourcePath(), layer.GetSpec().Source.Path); err != nil {
 			r.Log.Error(err, "unable to link referencing AddonsLayer directory to repository data",
 				"kind", "gitrepositories.source.toolkit.fluxcd.io", "namespace", srcRepo.Namespace, "name", srcRepo.Name,
-				"data", apply.LogJSON(srcRepo), "layer", layer.GetName())
+				"generation", srcRepo.Generation, "observed", srcRepo.Status.ObservedGeneration,
+				"revision", srcRepo.Status.Artifact.Revision,
+				"layer", layer.GetName())
 			continue
 		}
 	}

@@ -84,19 +84,19 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 			ToRequests: handler.ToRequestsFunc(r.repoMapperFunc),
 		},
 		predicate.Funcs{CreateFunc: func(e event.CreateEvent) bool {
-			r.Log.V(2).Info("create event for GitRepository", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(e))
+			r.Log.V(3).Info("create event for GitRepository", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(e))
 			return true
 		},
 			UpdateFunc: func(e event.UpdateEvent) bool {
-				r.Log.V(2).Info("update event for GitRepository", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(e))
+				r.Log.V(3).Info("update event for GitRepository", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(e))
 				return true
 			},
 			DeleteFunc: func(e event.DeleteEvent) bool {
-				r.Log.V(2).Info("delete event for GitRepository", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(e))
+				r.Log.V(3).Info("delete event for GitRepository", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(e))
 				return true
 			},
 			GenericFunc: func(e event.GenericEvent) bool {
-				r.Log.V(2).Info("generic event for GitRepository", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(e))
+				r.Log.V(3).Info("generic event for GitRepository", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(e))
 				return true
 			},
 		},
@@ -106,15 +106,15 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 func predicates(logger logr.Logger) predicate.Funcs {
 	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			logger.V(2).Info("create event", "data", apply.LogJSON(e))
+			logger.V(3).Info("create event", "data", apply.LogJSON(e))
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			logger.V(2).Info("update event", "data", apply.LogJSON(e))
+			logger.V(3).Info("update event", "data", apply.LogJSON(e))
 			return true
 		},
 		GenericFunc: func(e event.GenericEvent) bool {
-			logger.V(2).Info("generic event", "data", apply.LogJSON(e))
+			logger.V(3).Info("generic event", "data", apply.LogJSON(e))
 			return true
 		},
 	}
@@ -383,16 +383,17 @@ func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.
 	*/
 	srcRepo, ok := a.Object.(*sourcev1.GitRepository)
 	if !ok {
-		r.Log.Error(fmt.Errorf("unable to cast object to GitRepository"), "skipping processing", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(srcRepo))
+		r.Log.Error(fmt.Errorf("unable to cast object to GitRepository"), "skipping processing", apply.GetObjKindNamespaceName(a.Object)...)
 		return []reconcile.Request{}
 	}
 	r.Log.V(1).Info("monitoring", "kind", "gitrepositories.source.toolkit.fluxcd.io", "namespace",
-		srcRepo.Namespace, "name", srcRepo.Name, srcRepo.Name, "generation", srcRepo.Generation,
+		srcRepo.Namespace, "name", srcRepo.Name, "generation", srcRepo.Generation,
 		"observed", srcRepo.Status.ObservedGeneration, "revision", srcRepo.Status.Artifact.Revision)
 	addonsList := &kraanv1alpha1.AddonsLayerList{}
 	if err := r.List(r.Context, addonsList); err != nil {
 		r.Log.Error(err, "unable to list AddonsLayers", "kind", "gitrepositories.source.toolkit.fluxcd.io",
-			"namespace", srcRepo.Namespace, "name", srcRepo.Name, "data", apply.LogJSON(srcRepo))
+			"namespace", srcRepo.Namespace, "name", srcRepo.Name, "data", "generation", srcRepo.Generation,
+			"observed", srcRepo.Status.ObservedGeneration, "revision", srcRepo.Status.Artifact.Revision)
 		return []reconcile.Request{}
 	}
 	layerList := []layers.Layer{}
@@ -456,21 +457,21 @@ func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.
 }
 
 func (r *AddonsLayerReconciler) indexHelmReleaseByOwner(o runtime.Object) []string {
-	r.Log.V(2).Info("indexing", "kind", "helmreleases.helm.toolkit.fluxcd.io", "data", apply.LogJSON(o))
+	r.Log.V(2).Info("indexing", apply.GetObjKindNamespaceName(o)...)
 	hr, ok := o.(*helmctlv2.HelmRelease)
 	if !ok {
 		r.Log.Error(fmt.Errorf("failed to cast to helmrelease"), "failed to cast object to expected kind",
-			"kind", "helmreleases.helm.toolkit.fluxcd.io", "data", apply.LogJSON(o))
+			apply.GetObjKindNamespaceName(o)...)
 		return nil
 	}
 	owner := metav1.GetControllerOf(hr)
 	if owner == nil {
-		r.Log.Error(fmt.Errorf("no owner information"), "failed to process owner information",
+		r.Log.Info("unexpected helmrelease passed to indexer, no owner information",
 			"kind", "helmreleases.helm.toolkit.fluxcd.io", "namespace", hr.Namespace, "name", hr.Name)
 		return nil
 	}
 	if owner.APIVersion != kraanv1alpha1.GroupVersion.String() || owner.Kind != "AddonsLayer" {
-		r.Log.Error(fmt.Errorf("helmrelease not owned by an AddonsLayer"), "unexpected helmrelease passed to indexer",
+		r.Log.Info("unexpected helmrelease passed to indexer, not owned by an AddonsLayer",
 			"kind", "helmreleases.helm.toolkit.fluxcd.io", "namespace", hr.Namespace, "name", hr.Name)
 		return nil
 	}
@@ -480,21 +481,21 @@ func (r *AddonsLayerReconciler) indexHelmReleaseByOwner(o runtime.Object) []stri
 }
 
 func (r *AddonsLayerReconciler) indexHelmRepoByOwner(o runtime.Object) []string {
-	r.Log.V(2).Info("indexing", "kind", "helmrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(o))
+	r.Log.V(2).Info("indexing", apply.GetObjKindNamespaceName(o)...)
 	hr, ok := o.(*sourcev1.HelmRepository)
 	if !ok {
 		r.Log.Error(fmt.Errorf("failed to cast to helmrepository"), "unable cast object to expected kind",
-			"kind", "helmrepositories.helm.toolkit.fluxcd.io", "data", apply.LogJSON(o))
+			apply.GetObjKindNamespaceName(o)...)
 		return nil
 	}
 	owner := metav1.GetControllerOf(hr)
 	if owner == nil {
-		r.Log.Error(fmt.Errorf("no owner information"), "failed to process owner information",
+		r.Log.Info("unexpected helmrepository passed to indexer, no owner information",
 			"kind", "helmrepositories.source.toolkit.fluxcd.io", "namespace", hr.Namespace, "name", hr.Name)
 		return nil
 	}
 	if owner.APIVersion != kraanv1alpha1.GroupVersion.String() || owner.Kind != "AddonsLayer" {
-		r.Log.Error(fmt.Errorf("helmrepository not owned by an AddonsLayer"), "unexpected helmrepository passed to indexer",
+		r.Log.Info("unexpected helmrepository passed to indexer, not owned by an AddonsLayer",
 			"kind", "helmrepositories.source.toolkit.fluxcd.io", "namespace", hr.Namespace, "name", hr.Name)
 		return nil
 	}

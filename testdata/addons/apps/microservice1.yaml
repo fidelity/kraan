@@ -4,6 +4,12 @@ metadata:
   name: microservice-1
   namespace: apps
 spec:
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    remediation:
+      retries: -1
   chart:
     spec:
       chart: podinfo
@@ -15,7 +21,7 @@ spec:
   test:
     enable: false
     ignoreFailures: false
-    timeout: "1m"
+    timeout: "2m"
   values:
     preHookBackoffLimit: 1
     preHookActiveDeadlineSeconds: 60

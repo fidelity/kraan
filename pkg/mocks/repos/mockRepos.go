@@ -301,6 +301,18 @@ func (mr *MockRepoMockRecorder) SetHostName(hostName interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetHostName", reflect.TypeOf((*MockRepo)(nil).SetHostName), hostName)
 }
 
+// SetGitRepo mocks base method
+func (m *MockRepo) SetGitRepo(src *v1beta1.GitRepository) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetGitRepo", src)
+}
+
+// SetGitRepo indicates an expected call of SetGitRepo
+func (mr *MockRepoMockRecorder) SetGitRepo(src interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetGitRepo", reflect.TypeOf((*MockRepo)(nil).SetGitRepo), src)
+}
+
 // SetHTTPClient mocks base method
 func (m *MockRepo) SetHTTPClient(client *http.Client) {
 	m.ctrl.T.Helper()

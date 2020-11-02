@@ -1,5 +1,4 @@
 ---
-# GitOps Toolkit revision latest 2020-10-05T08:48:16+01:00
 # Components: source-controller,helm-controller
 apiVersion: v1
 kind: Namespace
@@ -198,7 +197,7 @@ spec:
                 description: The bucket endpoint address.
                 type: string
               ignore:
-                description: Ignore overrides the set of excluded patterns in the .sourceignore format (which is the same as .gitignore).
+                description: Ignore overrides the set of excluded patterns in the .sourceignore format (which is the same as .gitignore). If not provided, a default will be used, consult the documentation for your version to find out what those are.
                 type: string
               insecure:
                 description: Insecure allows connecting to a non-TLS S3 HTTP endpoint.
@@ -223,7 +222,7 @@ spec:
                     type: string
                 type: object
               timeout:
-                description: The timeout for download operations, default ('20s').
+                description: The timeout for download operations, defaults to 20s.
                 type: string
             required:
             - bucketName
@@ -247,7 +246,7 @@ spec:
                     description: Path is the relative file path of this artifact.
                     type: string
                   revision:
-                    description: Revision is a human readable identifier traceable in the origin source system. It can be a Git commit sha, Git tag, a Helm index timestamp, a Helm chart version, etc.
+                    description: Revision is a human readable identifier traceable in the origin source system. It can be a Git commit SHA, Git tag, a Helm index timestamp, a Helm chart version, etc.
                     type: string
                   url:
                     description: URL is the HTTP address of this artifact.
@@ -357,19 +356,19 @@ spec:
                 description: The interval at which to check for repository updates.
                 type: string
               ref:
-                description: The git reference to checkout and monitor for changes, defaults to master branch.
+                description: The Git reference to checkout and monitor for changes, defaults to master branch.
                 properties:
                   branch:
-                    description: The git branch to checkout, defaults to master.
+                    description: The Git branch to checkout, defaults to master.
                     type: string
                   commit:
-                    description: The git commit sha to checkout, if specified tag filters will be ignored.
+                    description: The Git commit SHA to checkout, if specified Tag filters will be ignored.
                     type: string
                   semver:
-                    description: The git tag semver expression, takes precedence over tag.
+                    description: The Git tag semver expression, takes precedence over Tag.
                     type: string
                   tag:
-                    description: The git tag to checkout, takes precedence over branch.
+                    description: The Git tag to checkout, takes precedence over Branch.
                     type: string
                 type: object
               secretRef:
@@ -380,14 +379,14 @@ spec:
                     type: string
                 type: object
               timeout:
-                description: The timeout for remote git operations like cloning, default to 20s.
+                description: The timeout for remote Git operations like cloning, defaults to 20s.
                 type: string
               url:
-                description: The repository URL, can be a HTTP or SSH address.
+                description: The repository URL, can be a HTTP/S or SSH address.
                 pattern: ^(http|https|ssh)://
                 type: string
               verify:
-                description: Verify OpenPGP signature for the commit that HEAD points to.
+                description: Verify OpenPGP signature for the Git commit HEAD points to.
                 properties:
                   mode:
                     description: Mode describes what git object should be verified, currently ('head').
@@ -395,7 +394,7 @@ spec:
                     - head
                     type: string
                   secretRef:
-                    description: The secret name containing the public keys of all trusted git authors.
+                    description: The secret name containing the public keys of all trusted Git authors.
                     properties:
                       name:
                         description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
@@ -425,7 +424,7 @@ spec:
                     description: Path is the relative file path of this artifact.
                     type: string
                   revision:
-                    description: Revision is a human readable identifier traceable in the origin source system. It can be a Git commit sha, Git tag, a Helm index timestamp, a Helm chart version, etc.
+                    description: Revision is a human readable identifier traceable in the origin source system. It can be a Git commit SHA, Git tag, a Helm index timestamp, a Helm chart version, etc.
                     type: string
                   url:
                     description: URL is the HTTP address of this artifact.
@@ -591,7 +590,7 @@ spec:
                     description: Path is the relative file path of this artifact.
                     type: string
                   revision:
-                    description: Revision is a human readable identifier traceable in the origin source system. It can be a Git commit sha, Git tag, a Helm index timestamp, a Helm chart version, etc.
+                    description: Revision is a human readable identifier traceable in the origin source system. It can be a Git commit SHA, Git tag, a Helm index timestamp, a Helm chart version, etc.
                     type: string
                   url:
                     description: URL is the HTTP address of this artifact.
@@ -698,7 +697,7 @@ spec:
                 description: The interval at which to check the upstream for updates.
                 type: string
               secretRef:
-                description: The name of the secret containing authentication credentials for the Helm repository. For HTTP/S basic auth the secret must contain username and password fields. For TLS the secret must contain caFile, keyFile and caCert fields.
+                description: The name of the secret containing authentication credentials for the Helm repository. For HTTP/S basic auth the secret must contain username and password fields. For TLS the secret must contain a certFile and keyFile, and/or caCert fields.
                 properties:
                   name:
                     description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
@@ -731,7 +730,7 @@ spec:
                     description: Path is the relative file path of this artifact.
                     type: string
                   revision:
-                    description: Revision is a human readable identifier traceable in the origin source system. It can be a Git commit sha, Git tag, a Helm index timestamp, a Helm chart version, etc.
+                    description: Revision is a human readable identifier traceable in the origin source system. It can be a Git commit SHA, Git tag, a Helm index timestamp, a Helm chart version, etc.
                     type: string
                   url:
                     description: URL is the HTTP address of this artifact.
@@ -851,9 +850,9 @@ spec:
           value: {{ .Values.gotk.env.noProxy }}
         {{- end }}
         {{- if .Values.gotk.image.registry }}
-        image: {{ .Values.gotk.image.registry }}/fluxcd/source-controller:v0.1.1
+        image: {{ .Values.gotk.image.registry }}/fluxcd/source-controller:v0.2.1
         {{- else }}
-        image: ghcr.io/fluxcd/source-controller:v0.1.1
+        image: ghcr.io/fluxcd/source-controller:v0.2.1
         {{- end }}
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1046,6 +1045,17 @@ spec:
               interval:
                 description: Interval at which to reconcile the Helm release.
                 type: string
+              kubeConfig:
+                description: KubeConfig for reconciling the HelmRelease on a remote cluster.
+                properties:
+                  secretRef:
+                    description: SecretRef holds the name to a secret that contains a 'value' key with the kubeconfig file as the value. It must be in the same namespace as the HelmRelease. It is recommended that the kubeconfig is self-contained, and the secret is regularly updated if credentials such as a cloud-access-token expire. Cloud specific `cmd-path` auth helpers will not function without adding binaries and credentials to the Pod that is responsible for reconciling the HelmRelease.
+                    properties:
+                      name:
+                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                        type: string
+                    type: object
+                type: object
               maxHistory:
                 description: MaxHistory is the number of revisions saved by Helm for this HelmRelease. Use '0' for an unlimited number of revisions; defaults to '10'.
                 type: integer
@@ -1244,7 +1254,7 @@ spec:
                 description: LastAttemptedValuesChecksum is the SHA1 checksum of the values of the last reconciliation attempt.
                 type: string
               lastHandledReconcileAt:
-                description: LastHandledReconcileAt is the last manual reconciliation request (by annotating the HelmRelease) handled by the reconciler.
+                description: LastHandledReconcileAt holds the value of the most recent reconcile request value, so a change can be detected.
                 type: string
               lastReleaseRevision:
                 description: LastReleaseRevision is the revision of the last successful Helm release.
@@ -1315,9 +1325,9 @@ spec:
           value: {{ .Values.gotk.env.noProxy }}
         {{- end }}
         {{- if .Values.gotk.image.registry }}
-        image: {{ .Values.gotk.image.registry }}/fluxcd/helm-controller:v0.1.3
+        image: {{ .Values.gotk.image.registry }}/fluxcd/helm-controller:v0.2.0
         {{- else }}
-        image: ghcr.io/fluxcd/helm-controller:v0.1.3
+        image: ghcr.io/fluxcd/helm-controller:v0.2.0
         {{- end }}        
         imagePullPolicy: IfNotPresent
         livenessProbe:

@@ -34,6 +34,7 @@ GO_CHECK_PACKAGES:=$(shell echo $(subst $() $(),\\n,$(ALL_GO_PACKAGES)) | \
 
 CHECK_ARTIFACT:=${BUILD_DIR}${PROJECT}-check-${VERSION}-docker.tar
 BUILD_ARTIFACT:=${BUILD_DIR}${PROJECT}-build-${VERSION}-docker.tar
+DEV_BUILD_ARTIFACT:=${BUILD_DIR}${PROJECT}-dev-build-${VERSION}-docker.tar
 
 GOMOD_CACHE_ARTIFACT:=${GOMOD_CACHE_DIR}._gomod
 GOMOD_ARTIFACT:=_gomod
@@ -61,10 +62,11 @@ NC:=\033[0m
 
 all: ${PROJECT}-check ${PROJECT}-build go-generate
 build: gomod ${PROJECT}-check ${PROJECT}-build
+dev-build: gomod ${PROJECT}-check ${PROJECT}-build
 integration: gomod ${PROJECT}-integration
 clean: clean-gomod clean-godocs clean-${PROJECT}-check \
 	clean-${PROJECT}-build clean-check clean-build \
-	clean-${BUILD_DIR}
+	clean-dev-build clean-${BUILD_DIR}
 
 
 # Specific CI targets.
@@ -157,6 +159,22 @@ clean-build:
 build: DOCKER_SOURCES=Dockerfile ${MAKE_SOURCES} ${PROJECT_SOURCES}
 build: IMG=${REPO}/${PROJECT}:${VERSION}
 build: ${BUILD_DIR} ${BUILD_ARTIFACT}
+
+%-docker.tar: $${DOCKER_SOURCES}
+	docker build --rm --pull=true \
+		${DOCKER_BUILD_OPTIONS} \
+		${DOCKER_BUILD_PROXYS} \
+		--tag ${IMG} \
+		--file $< \
+		. && \
+	docker save --output $@ ${IMG}
+
+clean-dev-build:
+	rm -f ${DEV_BUILD_ARTIFACT}
+
+dev-build: DOCKER_SOURCES=Dockerfile-dev ${MAKE_SOURCES} ${PROJECT_SOURCES}
+dev-build: IMG=${REPO}/${PROJECT}:${VERSION}
+dev-build: ${BUILD_DIR} ${DEV_BUILD_ARTIFACT}
 
 %-docker.tar: $${DOCKER_SOURCES}
 	docker build --rm --pull=true \

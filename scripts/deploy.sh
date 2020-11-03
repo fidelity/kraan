@@ -10,7 +10,7 @@ function usage() {
     set +x
     cat <<EOF
 USAGE: ${0##*/} [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--testdata]
-       [--kraan-image-reg <registry name>] [--kraan-image-repo <repo-name>] [--kraan-image-tag] 
+       [--kraan-image-reg <registry name>] [--kraan-image-repo <repo-name>] [--kraan-image-tag] [--kraan-dev]
        [--kraan-image-pull-secret auto | <filename>] [--gitops-image-pull-secret auto | <filename>]
        [--gitops-image-reg <repo-name>] [--kraan-loglevel N] [--prometheus <namespace>]
        [--gitops-proxy auto | <proxy-url>] [--git-url <git-repo-url>] [--no-git-auth]
@@ -27,6 +27,7 @@ Options:
   '--kraan-image-repo'  provide image repository prefix to use for Kraan, defaults to 'kraan' for docker hub org.
   '--kraan-tag'         the tag of the kraan image to use.
   '--kraan-loglevel'    loglevel to use for kraan controller, 0 for info, 1 for debug, 2 for trace.
+  '--kraan-dev'         select development mode, makes pod filesystem writable for debugging purposes.
 
   '--gitops-image-reg'  provide image registry to use for gitops toolkit components, defaults to 'ghcr.io'.
   '--gitops-image-pull-secret' set to 'auto' to generate image pull secrets from ~/.docker/config.json
@@ -113,6 +114,7 @@ function args() {
   no_git_auth=0
   helm_action="install"
   prometheus=""
+  kraan_dev=""
 
   arg_list=( "$@" )
   arg_count=${#arg_list[@]}
@@ -122,6 +124,7 @@ function args() {
           "--toolkit") toolkit=1;;
           "--deploy-kind") deploy_kind=1;;
           "--testdata") apply_testdata=1;;
+          "--kraan-dev") kraan_dev=1;;
           "--prometheus") (( arg_index+=1 )); prometheus="${arg_list[${arg_index}]}";;
           "--kraan-loglevel") (( arg_index+=1 )); kraan_loglevel="${arg_list[${arg_index}]}";;
           "--kraan-tag") (( arg_index+=1 )); kraan_tag="${arg_list[${arg_index}]}";;
@@ -286,7 +289,7 @@ function install_prometheus_helm_release {
   helm list -n "${ns}" | grep "^prometheus[[:space:]]" >/dev/null
   if [ $? -eq 1 ] ; then
     set -e
-    helm install prometheus prometheus-community/kube-prometheus-stack --namespace "${ns}"
+    helm install prometheus prometheus-community/prometheus --namespace "${ns}"
     return
   fi
   set -e 
@@ -305,12 +308,13 @@ function install_prometheus {
   fi
   set -e
   echo "running port-forward to prometheus: kubectl port-forward -n "${ns}" prometheus-prometheus-kube-prometheus-prometheus-0  9090"
-  kubectl port-forward -n "${ns}" prometheus-prometheus-kube-prometheus-prometheus-0  9090 &
-  echo "You can access prometheus at http:/127.0.0.1:9090"
-  grafana=$(kubectl -n ${ns} get pods --selector=app.kubernetes.io/name=grafana -o   jsonpath='{.items[*].metadata.name}')
-  echo "running port-forward to grafana: kubectl port-forward -n "${ns}" ${grafana} 3000"
-  kubectl port-forward -n "${ns}" ${grafana} 3000 &
-  echo "You can access grafana at http:/127.0.0.1:3000, grafana user: `kubectl get secret -n "${ns}" prometheus-grafana -o json | jq -r '.data["admin-user"]' | base64 -d`, grafana password: `kubectl get secret -n "${ns}" prometheus-grafana -o json | jq -r '.data["admin-password"]' | base64 -d`"
+  kubectl port-forward -n "${ns}" service/prometheus-server  8081:80 &
+  echo "You can access prometheus at http:/127.0.0.1:8081"
+  # May add Grafana later
+  #grafana=$(kubectl -n ${ns} get pods --selector=app.kubernetes.io/name=grafana -o   jsonpath='{.items[*].metadata.name}')
+  #echo "running port-forward to grafana: kubectl port-forward -n "${ns}" ${grafana} 3000"
+  #kubectl port-forward -n "${ns}" ${grafana} 3000 &
+  #echo "You can access grafana at http:/127.0.0.1:3000, grafana user: `kubectl get secret -n "${ns}" prometheus-grafana -o json | jq -r '.data["admin-user"]' | base64 -d`, grafana password: `kubectl get secret -n "${ns}" prometheus-grafana -o json | jq -r '.data["admin-password"]' | base64 -d`"
 }
 
 args "$@"
@@ -368,6 +372,10 @@ if [ -n "${kraan_tag}" ] ; then
 fi
 if [ -n "${kraan_loglevel}" ] ; then
   helm_args="${helm_args} --set kraan.args.logLevel=${kraan_loglevel}"
+fi
+
+if [ -n "${kraan_dev}" ] ; then
+  helm_args="${helm_args} --set kraan.devmode=false"
 fi
 
 if [ -n "${dry_run}" ] ; then

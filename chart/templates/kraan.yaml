@@ -380,7 +380,7 @@ spec:
         imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
+          readOnlyRootFilesystem: {{ .Values.kraan.devmode }}
         volumeMounts:
         - mountPath: /controller/data
           name: data
@@ -399,6 +399,9 @@ spec:
         - containerPort: 9440
           name: healthz
           protocol: TCP
+        - containerPort: 8080
+          name: http-prom
+          protocol: TCP
         readinessProbe:
           httpGet:
             path: /readyz
@@ -408,13 +411,14 @@ spec:
           failureThreshold: 5
           timeoutSeconds: 15
         livenessProbe:
+          failureThreshold: 3
           httpGet:
-            path: /healthz
-            port: healthz
-          initialDelaySeconds: 10
+            path: /metrics
+            port: http-prom
+            scheme: HTTP
           periodSeconds: 10
-          failureThreshold: 5
-          timeoutSeconds: 15
+          successThreshold: 1
+          timeoutSeconds: 1
         resources:
           limits:
             cpu: 1000m

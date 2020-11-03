@@ -10,6 +10,8 @@ kraan:
   args:
     logLevel: 0
 
+  devmode: false
+
 gotk:
   image:
     registry: 

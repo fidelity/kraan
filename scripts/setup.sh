@@ -389,6 +389,7 @@ if [ $apply_testdata -gt 0 ]; then
   create_addons_source_yaml "${base_dir}/testdata/addons/addons-source.yaml" "${work_dir}/addons-source.yaml"
   # Create namespaces for each addon layer
   kubectl apply ${dry_run} -f "${base_dir}"/testdata/namespaces.yaml
+  kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/addons-repo.yaml
   kubectl apply ${dry_run} -f "${base_dir}"/testdata/addons/addons.yaml
 fi
 

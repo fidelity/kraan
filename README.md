@@ -13,7 +13,7 @@ kraan is an [operator](https://kubernetes.io/docs/concepts/extend-kubernetes/ope
 is deployed into the cluster and works constantly to reconcile the state of the
 layer custom resource.
 
-kraan is powered by [gitops-toolkit](https://toolkit.fluxcd.io/) and builds on
+kraan is powered by [flux2](https://toolkit.fluxcd.io/) and builds on
 top of projects like [source-controller](https://github.com/fluxcd/source-controller)
 and [helm-controller](https://github.com/fluxcd/helm-controller).
 

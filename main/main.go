@@ -117,7 +117,7 @@ func main() { //nolint:funlen // ok
 		syncPeriod              time.Duration
 	)
 
-	flag.StringVar(&metricsAddr, "metrics-addr", ":8282", "The address the metric endpoint binds to.")
+	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(
 		&leaderElectionNamespace,
 		"leader-election-namespace",

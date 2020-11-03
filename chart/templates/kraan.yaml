@@ -362,7 +362,7 @@ spec:
         app: kraan-controller
       annotations:
         prometheus.io/scrape: "true"
-        prometheus.io/port: "9090"
+        prometheus.io/port: "8080"
     spec:
       serviceAccountName: kraan
       terminationGracePeriodSeconds: 10

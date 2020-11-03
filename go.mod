@@ -5,7 +5,8 @@ go 1.14
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/fluxcd/helm-controller/api v0.1.1
-	github.com/fluxcd/pkg/apis/meta v0.0.2
+	github.com/fluxcd/pkg/apis/meta v0.1.0
+	github.com/fluxcd/pkg/runtime v0.1.2
 	github.com/fluxcd/pkg/untar v0.0.5
 	github.com/fluxcd/source-controller/api v0.1.0
 	github.com/go-delve/delve v1.5.0 // indirect
@@ -22,6 +23,7 @@ require (
 	github.com/paulcarlton-ww/go-utils v0.0.0-20200729094929-4657992b390c // indirect
 	github.com/peterh/liner v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1
+	github.com/prometheus/client_golang v1.0.0
 	github.com/sirupsen/logrus v1.7.0 // indirect
 	github.com/spf13/cobra v1.0.0 // indirect
 	go.starlark.net v0.0.0-20200929122913-88a10930eb75 // indirect

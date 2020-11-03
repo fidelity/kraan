@@ -25,6 +25,7 @@ import (
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -41,7 +42,8 @@ import (
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/apply"
-	layers "github.com/fidelity/kraan/pkg/layers"
+	"github.com/fidelity/kraan/pkg/layers"
+	"github.com/fidelity/kraan/pkg/metrics"
 	"github.com/fidelity/kraan/pkg/repos"
 )
 
@@ -130,6 +132,7 @@ type AddonsLayerReconciler struct {
 	Context  context.Context
 	Applier  apply.LayerApplier
 	Repos    repos.Repos
+	Metrics  metrics.Metrics
 }
 
 // NewReconciler returns an AddonsLayerReconciler instance
@@ -152,6 +155,8 @@ func NewReconciler(config *rest.Config, client client.Client, logger logr.Logger
 		return nil, errors.WithMessage(err, "failed to create applier")
 	}
 	reconciler.Repos = repos.NewRepos(reconciler.Context, reconciler.Log)
+
+	reconciler.Metrics = metrics.NewMetrics()
 	return reconciler, err
 }
 
@@ -334,6 +339,7 @@ func (r *AddonsLayerReconciler) updateRequeue(l layers.Layer, res *ctrl.Result, 
 // +kubebuilder:rbac:groups=kraan.io,resources=addons/status,verbs=get;update;patch
 func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (res ctrl.Result, err error) {
 	ctx := r.Context
+	reconcileStart := time.Now()
 
 	var addonsLayer *kraanv1alpha1.AddonsLayer = &kraanv1alpha1.AddonsLayer{}
 	if err = r.Get(ctx, req.NamespacedName, addonsLayer); err != nil {
@@ -348,6 +354,7 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (res ctrl.Result, er
 		l.StatusUpdate(kraanv1alpha1.FailedCondition, kraanv1alpha1.AddonsLayerFailedReason, err.Error())
 		log.Error(err, "failed to process addons layer")
 	}
+
 	if l.GetAddonsLayer().Generation != l.GetFullStatus().ObservedGeneration {
 		l.SetUpdated()
 		l.GetFullStatus().ObservedGeneration = l.GetAddonsLayer().Generation
@@ -356,8 +363,23 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (res ctrl.Result, er
 		l.SetUpdated()
 		l.GetFullStatus().DeployedRevision = deployedRevision
 	}
+
+	r.Metrics.RecordDuration(l.GetAddonsLayer(), reconcileStart)
+	r.recordReadiness(l.GetAddonsLayer(), false)
+
 	r.updateRequeue(l, &res, &err)
 	return res, err
+}
+
+func (r *AddonsLayerReconciler) recordReadiness(al *kraanv1alpha1.AddonsLayer, deleted bool) {
+	status := corev1.ConditionUnknown
+	if al.Status.State == kraanv1alpha1.DeployedCondition {
+		status = corev1.ConditionTrue
+	}
+	r.Metrics.RecordCondition(al, kraanv1alpha1.Condition{
+		Type:   kraanv1alpha1.DeployedCondition,
+		Status: status,
+	}, deleted)
 }
 
 func (r *AddonsLayerReconciler) update(ctx context.Context, log logr.Logger,

@@ -10,10 +10,11 @@ function usage()
     echo "options:"
    echo "'--log-level' N, where N is 1 for debug message and 2 or higher for trace level debugging"
    echo "'--debug' for verbose output"
-   echo "This script will create a temporary directory and copy the addons.yaml and addons-source.yam files from testdata/addons to"
-   echo "the temporary directory. It will then set the environmental variable DATA_PATH to the temporary directory. This will cause the"
-   echo "kraan-controller to process the addons layers using the temporary directory as its root directory when storing files it retrieves"
-   echo "from this git repository's testdata/addons directory using the source controller."
+   echo "This script will create a temporary directory and copy the addons.yaml and addons-source.yaml"
+   echo " files from testdata/addons tothe temporary directory. It will then set the environmental"
+   echo "variable DATA_PATH to the temporary directory. This will cause the kraan-controller to process"
+   echo "the addons layers using the temporary directory as its root directory when storing files it"
+   echo "retrieves from this git repository's testdata/addons directory using the source controller."
 }
 
 function args() {

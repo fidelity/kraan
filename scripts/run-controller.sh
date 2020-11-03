@@ -8,7 +8,7 @@ function usage()
     echo "USAGE: ${0##*/} [--log-level N] [--debug]"
     echo "Run the Kraan Addon Manager on local machine"
     echo "options:"
-   echo "'--log-level' N, where N is 1 for debug message or 2 for trace level debugging"
+   echo "'--log-level' N, where N is 1 for debug message and 2 or higher for trace level debugging"
    echo "'--debug' for verbose output"
    echo "This script will create a temporary directory and copy the addons.yaml and addons-source.yam files from testdata/addons to"
    echo "the temporary directory. It will then set the environmental variable DATA_PATH to the temporary directory. This will cause the"

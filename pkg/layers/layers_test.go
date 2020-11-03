@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"testing"
 
+	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
 	"github.com/go-logr/logr"
 	testlogr "github.com/go-logr/logr/testing"
 	corev1 "k8s.io/api/core/v1"
@@ -36,20 +37,25 @@ const (
 	emptyStatus  = "empty-status"
 	noDepends    = "no-depends"
 	oneDepends   = "one-depends"
+	oneDependsG  = "one-dependsG"
+	oneDependsSG = "one-dependsSG"
+	oneDependsSR = "one-dependsSR"
+	oneDependsND = "one-depends-not-deployed"
 	oneDependsV2 = "one-depends-v2"
 	twoDepends   = "two-depends"
 	k8sv16       = "k8s-v16"
 	k8sv16_2     = "k8s-v16-2"
 	//maxConditions = "max-conditions"
 	layersData  = "testdata/layersdata.json"
+	reposData   = "testdata/reposdata.json"
 	versionOne  = "0.1.01"
 	layersData1 = "testdata/layersdata1.json"
 	layersData2 = "testdata/layersdata2.json"
 )
 
 func init() {
-	_ = corev1.AddToScheme(testScheme) // nolint:errcheck // ok
-	//_ = k8sscheme.AddToScheme(testScheme)     // nolint:errcheck // ok
+	_ = corev1.AddToScheme(testScheme)        // nolint:errcheck // ok
+	_ = sourcev1.AddToScheme(testScheme)      // nolint:errcheck // ok
 	_ = kraanv1alpha1.AddToScheme(testScheme) // nolint:errcheck // ok
 }
 
@@ -59,6 +65,19 @@ func fakeLogger() logr.Logger {
 
 func TestCreateLayer(t *testing.T) {
 
+}
+
+func getGitReposFromFile(fileName string) (*sourcev1.GitRepositoryList, error) {
+	buffer, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		return nil, err
+	}
+	gitRepos := &sourcev1.GitRepositoryList{}
+	err = json.Unmarshal(buffer, gitRepos)
+	if err != nil {
+		return nil, err
+	}
+	return gitRepos, nil
 }
 
 func getLayersFromFile(fileName string) (*kraanv1alpha1.AddonsLayerList, error) {
@@ -83,13 +102,17 @@ func getFromList(name string, layerList *kraanv1alpha1.AddonsLayerList) *kraanv1
 	return nil
 }
 
-func getLayer(layerName, testDataFileName string) (layers.Layer, error) {
+func getLayer(layerName, testDataFileName, reposDataFileName string) (layers.Layer, error) { // nolint: unparam // ok
 	logger := fakeLogger()
 	layerList, err := getLayersFromFile(testDataFileName)
 	if err != nil {
 		return nil, err
 	}
-	client := fake.NewFakeClientWithScheme(testScheme, layerList)
+	gitReposList, err := getGitReposFromFile(reposDataFileName)
+	if err != nil {
+		return nil, err
+	}
+	client := fake.NewFakeClientWithScheme(testScheme, layerList, gitReposList)
 	fakeK8sClient = fakeK8s.NewSimpleClientset()
 	data := getFromList(layerName, layerList)
 	if data == nil {
@@ -125,7 +148,7 @@ func testDelayedRequeue(t *testing.T, l layers.Layer) bool {
 }
 
 func TestSetDelayedRequeue(t *testing.T) {
-	l, e := getLayer(emptyStatus, layersData)
+	l, e := getLayer(emptyStatus, layersData, reposData)
 	if e != nil {
 		t.Fatalf("failed to create layer, error: %s", e.Error())
 	}
@@ -156,7 +179,7 @@ func testRequeue(t *testing.T, l layers.Layer) bool {
 }
 
 func TestSetRequeue(t *testing.T) {
-	l, e := getLayer(emptyStatus, layersData)
+	l, e := getLayer(emptyStatus, layersData, reposData)
 	if e != nil {
 		t.Fatalf("failed to create layer, error: %s", e.Error())
 	}
@@ -187,7 +210,7 @@ func testUpdated(t *testing.T, l layers.Layer) bool {
 }
 
 func TestSetUpdated(t *testing.T) {
-	l, e := getLayer(emptyStatus, layersData)
+	l, e := getLayer(emptyStatus, layersData, reposData)
 	if e != nil {
 		t.Fatalf("failed to create layer, error: %s", e.Error())
 	}
@@ -263,7 +286,7 @@ func TestSetStatusSetting(t *testing.T) { // nolint:funlen // ok
 		expected *kraanv1alpha1.AddonsLayerStatus
 	}
 
-	l, e := getLayer(emptyStatus, layersData)
+	l, e := getLayer(emptyStatus, layersData, reposData)
 	if e != nil {
 		t.Fatalf("failed to create layer, error: %s", e.Error())
 	}
@@ -345,7 +368,7 @@ func TestSetStatusUpdate(t *testing.T) {
 		message = "the message"
 	)
 
-	l, e := getLayer(emptyStatus, layersData)
+	l, e := getLayer(emptyStatus, layersData, reposData)
 	if e != nil {
 		t.Fatalf("failed to create layer, error: %s", e.Error())
 	}
@@ -402,7 +425,7 @@ func TestHold(t *testing.T) {
 		}},
 	}
 	for number, test := range tests {
-		l, e := getLayer(test.layerName, layersData)
+		l, e := getLayer(test.layerName, layersData, reposData)
 		if e != nil {
 			t.Fatalf("failed to create layer, error: %s", e.Error())
 		}
@@ -553,7 +576,7 @@ func TestHold(t *testing.T) {
 			}}}}
 
 	for _, test := range tests {
-		l, e := getLayer(test.layerName, layersData)
+		l, e := getLayer(test.layerName, layersData, reposData)
 		if e != nil {
 			t.Fatalf("test: %s, failed to create layer, error: %s", test.name, e.Error())
 		}
@@ -610,7 +633,7 @@ func TestCheckK8sVersion(t *testing.T) { // nolint:funlen // ok
 	}
 
 	for _, test := range tests {
-		l, e := getLayer(test.layerName, layersData)
+		l, e := getLayer(test.layerName, layersData, reposData)
 		if e != nil {
 			t.Fatalf("test: %s, failed to create layer, error: %s", test.name, e.Error())
 		}
@@ -632,7 +655,7 @@ func TestCheckK8sVersion(t *testing.T) { // nolint:funlen // ok
 	}
 }
 
-func TestDependenciesDeployed(t *testing.T) {
+func TestDependenciesDeployed(t *testing.T) { // nolint: funlen // ok
 	type testsData struct {
 		name       string
 		layerName  string
@@ -670,11 +693,31 @@ func TestDependenciesDeployed(t *testing.T) {
 		layerName:  twoDepends,
 		layersData: layersData2,
 		expected:   false,
+	}, {
+		name:       "check dependencies with one dependsOn, observed Generation not equal to generation",
+		layerName:  oneDependsG,
+		layersData: layersData1,
+		expected:   false,
+	}, {
+		name:       "check dependencies with one dependsOn, dependency source observed Generation not equal to generation",
+		layerName:  oneDependsSG,
+		layersData: layersData1,
+		expected:   false,
+	}, {
+		name:       "check dependencies with one dependsOn, dependency source revision not equal to deployed revision",
+		layerName:  oneDependsSR,
+		layersData: layersData1,
+		expected:   false,
+	}, {
+		name:       "check dependencies with one dependsOn, dependency not deployed",
+		layerName:  oneDependsND,
+		layersData: layersData1,
+		expected:   false,
 	},
 	}
 
 	for _, test := range tests {
-		l, e := getLayer(test.layerName, test.layersData)
+		l, e := getLayer(test.layerName, test.layersData, reposData)
 		if e != nil {
 			t.Fatalf("test: %s, failed to create layer, error: %s", test.name, e.Error())
 		}

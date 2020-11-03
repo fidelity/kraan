@@ -105,10 +105,13 @@ func (r *reposData) Add(repo *sourcev1.GitRepository) Repo {
 	r.Lock()
 	defer r.Unlock()
 	key := r.PathKey(repo)
-	if _, found := r.repos[key]; !found {
+	rp, found := r.repos[key]
+	if !found {
 		r.repos[key] = r.newRepo(key, repo)
+		return r.repos[key]
 	}
-	return r.repos[key]
+	rp.SetGitRepo(repo)
+	return rp
 }
 
 // Delete deletes a repo from the map of active repos
@@ -131,6 +134,7 @@ type Repo interface {
 	GetDataPath() string
 	GetLoadPath() string
 	SetHostName(hostName string)
+	SetGitRepo(src *sourcev1.GitRepository)
 	SetHTTPClient(client *http.Client)
 	SetTarConsumer(tarConsumer tarconsumer.TarConsumer)
 	fetchArtifact(ctx context.Context) error
@@ -188,6 +192,12 @@ func (r *repoData) GetLoadPath() string {
 
 func (r *repoData) SetHostName(hostName string) {
 	r.hostName = hostName
+}
+
+func (r *repoData) SetGitRepo(src *sourcev1.GitRepository) {
+	r.syncLock.Lock()
+	defer r.syncLock.Unlock()
+	r.repo = src
 }
 
 func (r *repoData) SetHTTPClient(client *http.Client) {
@@ -260,7 +270,9 @@ func (r *repoData) SyncRepo() error {
 	defer cancel()
 
 	r.log.Info("New revision detected", "kind", "gitrepositories.source.toolkit.fluxcd.io",
-		"namespace", r.GetSourceNameSpace(), "name", r.GetSourceName(), "revision", r.repo.Status.Artifact.Revision)
+		"namespace", r.GetSourceNameSpace(), "name", r.GetSourceName(),
+		"generation", r.repo.Generation, "observed", r.repo.Status.ObservedGeneration,
+		"revision", r.repo.Status.Artifact.Revision)
 
 	if _, err := os.Stat(r.loadPath); os.IsNotExist(err) {
 		if e := os.RemoveAll(r.loadPath); e != nil {
@@ -313,7 +325,9 @@ func (r *repoData) fetchArtifact(ctx context.Context) error {
 	}
 	// Debugging for unzip error
 	r.log.V(2).Info("tar data", "length", len(tar),
-		"kind", "gitrepositories.source.toolkit.fluxcd.io", "namespace", r.GetSourceNameSpace(), "name", r.GetSourceName())
+		"kind", "gitrepositories.source.toolkit.fluxcd.io", "namespace", r.GetSourceNameSpace(), "name", r.GetSourceName(),
+		"generation", r.repo.Generation, "observed", r.repo.Status.ObservedGeneration,
+		"revision", r.repo.Status.Artifact.Revision)
 
 	if err := tarconsumer.UnpackTar(tar, r.GetLoadPath()); err != nil {
 		return errors.WithMessage(err, "faild to untar artifact")

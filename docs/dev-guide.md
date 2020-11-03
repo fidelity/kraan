@@ -144,7 +144,7 @@ To test the kraan-controller you can run it on your local machine against a kube
     USAGE: run-controller.sh [--log-level N] [--debug]
     Run the Kraan Addon Manager on local machine
     options:
-    '--log-level' N, where N is 1 for debug message or 2 for trace level debugging
+    '--log-level' N, where N is 1 for debug messages and 2 or higher for trace level debugging
     '--debug' for verbose output
     This script will create a temporary directory and copy the addons.yaml and addons-source.yaml
     files from testdata/addons tothe temporary directory. It will then set the environmental

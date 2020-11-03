@@ -165,6 +165,14 @@ type AddonsLayerStatus struct {
 	// Version, the version the state relates to.
 	// +required
 	Version string `json:"version,omitempty"`
+
+	// ObservedGeneration is the last reconciled generation.
+	// +required
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// DeployedRevision is the source revsion that has been deployed.
+	// +required
+	DeployedRevision string `json:"revision"`
 }
 
 const (

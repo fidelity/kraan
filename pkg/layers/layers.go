@@ -250,22 +250,21 @@ func getNameVersion(nameVersion string) (string, string) {
 }
 
 func (l *KraanLayer) isOtherDeployed(otherVersion string, otherLayer *kraanv1alpha1.AddonsLayer) bool {
+	l.GetLogger().V(1).Info("checking dependency", "dependson", otherLayer.Name, "layer", l.GetName())
 	if otherLayer.Status.ObservedGeneration != otherLayer.Generation {
+		l.GetLogger().V(2).Info("waiting for observed generation", "dependson", otherLayer.Name,
+			"observed", otherLayer.Status.ObservedGeneration, "generation", otherLayer.Generation, "layer", l.GetName())
 		reason := fmt.Sprintf("waiting for layer: %s, version: %s to be applied.", otherLayer.ObjectMeta.Name, otherVersion)
 		message := fmt.Sprintf("Layer: %s, observed generation: %d, generation: %d", otherLayer.ObjectMeta.Name, otherLayer.Status.ObservedGeneration, otherLayer.Generation)
 		l.setStatus(kraanv1alpha1.ApplyPendingCondition, reason, message)
 		return false
 	}
 	if otherLayer.Status.Version != otherVersion {
+		l.GetLogger().V(2).Info("waiting for version", "dependson", otherLayer.Name,
+			"version", otherLayer.Status.Version, "required", otherVersion, "layer", l.GetName())
 		reason := fmt.Sprintf("waiting for layer: %s, version: %s to be applied.", otherLayer.ObjectMeta.Name, otherVersion)
 		message := fmt.Sprintf("Layer: %s, current version is: %s, require version: %s.",
 			otherLayer.ObjectMeta.Name, otherLayer.Status.Version, otherVersion)
-		l.setStatus(kraanv1alpha1.ApplyPendingCondition, reason, message)
-		return false
-	}
-	if otherLayer.Status.State != kraanv1alpha1.DeployedCondition {
-		reason := fmt.Sprintf("waiting for layer: %s, version: %s to be applied.", otherLayer.ObjectMeta.Name, otherVersion)
-		message := fmt.Sprintf("Layer: %s, current state: %s.", otherLayer.ObjectMeta.Name, otherLayer.Status.State)
 		l.setStatus(kraanv1alpha1.ApplyPendingCondition, reason, message)
 		return false
 	}
@@ -277,6 +276,8 @@ func (l *KraanLayer) isOtherDeployed(otherVersion string, otherLayer *kraanv1alp
 		return false
 	}
 	if otherSource.Status.ObservedGeneration != otherSource.Generation {
+		l.GetLogger().V(2).Info("waiting for source generation", "dependson", otherLayer.Name, "source", otherSource.ObjectMeta.Name,
+			"observed", otherSource.Status.ObservedGeneration, "generation", otherSource.Generation, "layer", l.GetName())
 		reason := fmt.Sprintf("waiting for layer: %s, source: %s, to be reconciled.",
 			otherLayer.ObjectMeta.Name, otherSource.ObjectMeta.Name)
 		message := fmt.Sprintf("Layer: %s, source: %s, observed generation: %d, generation: %d",
@@ -285,8 +286,18 @@ func (l *KraanLayer) isOtherDeployed(otherVersion string, otherLayer *kraanv1alp
 		return false
 	}
 	if otherLayer.Status.DeployedRevision != otherSource.Status.Artifact.Revision {
+		l.GetLogger().V(2).Info("waiting for source revision", "dependson", otherLayer.Name, "source", otherSource.ObjectMeta.Name,
+			"deployed", otherLayer.Status.DeployedRevision, "revision", otherSource.Status.Artifact.Revision, "layer", l.GetName())
 		reason := fmt.Sprintf("waiting for layer: %s, to apply source revision: %s.", otherLayer.ObjectMeta.Name, otherSource.Status.Artifact.Revision)
 		message := fmt.Sprintf("Layer: %s, current state: %s, deployed revision: %s.", otherLayer.ObjectMeta.Name, otherLayer.Status.State, otherLayer.Status.DeployedRevision)
+		l.setStatus(kraanv1alpha1.ApplyPendingCondition, reason, message)
+		return false
+	}
+	if otherLayer.Status.State != kraanv1alpha1.DeployedCondition {
+		l.GetLogger().V(2).Info("waiting for deployed", "dependson", otherLayer.Name,
+			"state", otherLayer.Status.State, "layer", l.GetName())
+		reason := fmt.Sprintf("waiting for layer: %s, version: %s to be applied.", otherLayer.ObjectMeta.Name, otherVersion)
+		message := fmt.Sprintf("Layer: %s, current state: %s.", otherLayer.ObjectMeta.Name, otherLayer.Status.State)
 		l.setStatus(kraanv1alpha1.ApplyPendingCondition, reason, message)
 		return false
 	}

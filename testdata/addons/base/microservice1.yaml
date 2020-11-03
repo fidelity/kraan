@@ -3,6 +3,12 @@ kind: HelmRelease
 metadata:
   name: microservice-1
 spec:
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    remediation:
+      retries: -1
   chart:
     spec:
       chart: podinfo

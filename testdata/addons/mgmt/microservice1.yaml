@@ -4,6 +4,12 @@ metadata:
   name: microservice-1
   namespace: mgmt
 spec:
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    remediation:
+      retries: -1
   chart:
     spec:
       chart: podinfo

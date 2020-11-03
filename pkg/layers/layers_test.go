@@ -38,6 +38,9 @@ const (
 	noDepends    = "no-depends"
 	oneDepends   = "one-depends"
 	oneDependsG  = "one-dependsG"
+	oneDependsSG = "one-dependsSG"
+	oneDependsSR = "one-dependsSR"
+	oneDependsND = "one-depends-not-deployed"
 	oneDependsV2 = "one-depends-v2"
 	twoDepends   = "two-depends"
 	k8sv16       = "k8s-v16"
@@ -652,7 +655,7 @@ func TestCheckK8sVersion(t *testing.T) { // nolint:funlen // ok
 	}
 }
 
-func TestDependenciesDeployed(t *testing.T) {
+func TestDependenciesDeployed(t *testing.T) { // nolint: funlen // ok
 	type testsData struct {
 		name       string
 		layerName  string
@@ -693,6 +696,21 @@ func TestDependenciesDeployed(t *testing.T) {
 	}, {
 		name:       "check dependencies with one dependsOn, observed Generation not equal to generation",
 		layerName:  oneDependsG,
+		layersData: layersData1,
+		expected:   false,
+	}, {
+		name:       "check dependencies with one dependsOn, dependency source observed Generation not equal to generation",
+		layerName:  oneDependsSG,
+		layersData: layersData1,
+		expected:   false,
+	}, {
+		name:       "check dependencies with one dependsOn, dependency source revision not equal to deployed revision",
+		layerName:  oneDependsSR,
+		layersData: layersData1,
+		expected:   false,
+	}, {
+		name:       "check dependencies with one dependsOn, dependency not deployed",
+		layerName:  oneDependsND,
 		layersData: layersData1,
 		expected:   false,
 	},

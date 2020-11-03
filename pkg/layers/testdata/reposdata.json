@@ -6,7 +6,7 @@
             "kind": "GitRepository",
             "metadata": {
                 "generation": 1,
-                "name": "global-config",
+                "name": "gen-rev-ok",
                 "namespace": "gotk-system"
             },
             "spec": {
@@ -37,6 +37,82 @@
                     }
                 ],
                 "observedGeneration": 1,
+                "url": "http://source-controller.gotk-system/gitrepository/gotk-system/addons-config/latest.tar.gz"
+            }
+        },{
+            "apiVersion": "source.toolkit.fluxcd.io/v1beta1",
+            "kind": "GitRepository",
+            "metadata": {
+                "generation": 2,
+                "name": "gen-not-equal",
+                "namespace": "gotk-system"
+            },
+            "spec": {
+                "interval": "1m0s",
+                "ref": {
+                    "branch": "master"
+                },
+                "secretRef": {
+                    "name": "kraan-http"
+                },
+                "url": "https://github.com/fidelity/kraan.git"
+            },
+            "status": {
+                "artifact": {
+                    "checksum": "ed8b375c560461014ba7cb85259cfe990c40a787",
+                    "lastUpdateTime": "2020-10-23T13:39:58Z",
+                    "path": "gitrepository/gotk-system/addons-config/abcdef.tar.gz",
+                    "revision": "master/abcdef",
+                    "url": "http://source-controller.gotk-system/gitrepository/gotk-system/addons-config/abcdef.tar.gz"
+                },
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2020-10-23T13:39:58Z",
+                        "message": "Fetched revision: master/abcdef",
+                        "reason": "GitOperationSucceed",
+                        "status": "True",
+                        "type": "Ready"
+                    }
+                ],
+                "observedGeneration": 1,
+                "url": "http://source-controller.gotk-system/gitrepository/gotk-system/addons-config/latest.tar.gz"
+            }
+        },{
+            "apiVersion": "source.toolkit.fluxcd.io/v1beta1",
+            "kind": "GitRepository",
+            "metadata": {
+                "generation": 2,
+                "name": "rev-not-equal",
+                "namespace": "gotk-system"
+            },
+            "spec": {
+                "interval": "1m0s",
+                "ref": {
+                    "branch": "master"
+                },
+                "secretRef": {
+                    "name": "kraan-http"
+                },
+                "url": "https://github.com/fidelity/kraan.git"
+            },
+            "status": {
+                "artifact": {
+                    "checksum": "ed8b375c560461014ba7cb85259cfe990c40a787",
+                    "lastUpdateTime": "2020-10-23T13:39:58Z",
+                    "path": "gitrepository/gotk-system/addons-config/abcdef.tar.gz",
+                    "revision": "master/uvwxyz",
+                    "url": "http://source-controller.gotk-system/gitrepository/gotk-system/addons-config/abcdef.tar.gz"
+                },
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2020-10-23T13:39:58Z",
+                        "message": "Fetched revision: master/abcdef",
+                        "reason": "GitOperationSucceed",
+                        "status": "True",
+                        "type": "Ready"
+                    }
+                ],
+                "observedGeneration": 2,
                 "url": "http://source-controller.gotk-system/gitrepository/gotk-system/addons-config/latest.tar.gz"
             }
         }

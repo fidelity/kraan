@@ -4,13 +4,19 @@ metadata:
   name: microservice-2
   namespace: bootstrap
 spec:
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    remediation:
+      retries: -1
   chart:
     spec:
       chart: podinfo
       sourceRef:
         kind: HelmRepository
-        name: microservice-2
-        namespace: bootstrap
+        name: podinfo
+        namespace: gotk-system
       version: '>4.0.0'
   test:
     enable: false

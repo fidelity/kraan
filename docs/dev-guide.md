@@ -72,10 +72,10 @@ Finally use githuweb interface to create a tag.
 
 A shell script is provided to deploy the artifacts necessary to test the kraan-controller to a kubernetes cluster. It does this using a helm client to install a helm chart containing the Kraan Controller and the GitOps Toolkit (GOTK) components it uses.
 
-    scripts/setup.sh --help
+    scripts/deploy.sh --help
 
     https://github.com/fidelity/kraan.git
-    USAGE: setup.sh [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--testdata]
+    USAGE: deploy.sh [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--testdata]
         [--kraan-image-reg <registry name>] [--kraan-image-repo <repo-name>] [--kraan-image-tag] 
         [--kraan-image-pull-secret auto | <filename>] [--gitops-image-pull-secret auto | <filename>]
         [--gitops-image-reg <repo-name>] [--kraan-loglevel N] [--prometheus <namespace>]
@@ -122,7 +122,7 @@ To deploy to a cluster build the docker image and then deploy to the cluster. Th
     make build
     docker login docker.pkg.github.com -u <github user> -p <github token>
     make docker-push
-    scripts/setup.sh --kraan-tag $VERSION --kraan-image-reg docker.pkg.github.com/fidelity --kraan-image-pull-secret auto
+    scripts/deploy.sh --kraan-tag $VERSION --kraan-image-reg docker.pkg.github.com/fidelity --kraan-image-pull-secret auto
 
 To deploy the image to your account in docker.io:
 
@@ -131,7 +131,7 @@ To deploy the image to your account in docker.io:
     make build
     docker login -u <docker user> -p <docker password>
     make docker-push
-    scripts/setup.sh --kraan-tag $VERSION --kraan-image-repo $REPO
+    scripts/deploy.sh --kraan-tag $VERSION --kraan-image-repo $REPO
 
 Set `REPO` to `kraan` to push to the `kraan` organisation in docker.io.
 

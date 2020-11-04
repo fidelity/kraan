@@ -39,6 +39,8 @@ To build docker image type:
     export VERSION=<version>
     make build
 
+For security reasons the image created uses `gcr.io/distroless/static:latest` with user `nobody`. When debugging issues it is sometimes useful to be able to access a shell in the pod container and install additional tools. To facilitate this a `dev-build` make target is provided which builds an image using `ubuntu` and allows root access. When deploying this development image use the `--kraan-dev` option when running the `scripts/deploy.sh` utility (see Deployment section below) to allow writes to the container filesystem.
+
 Then to deploy the docker container:
 
     docker login <docker repository>
@@ -76,7 +78,7 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
 
     https://github.com/fidelity/kraan.git
     USAGE: deploy.sh [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--testdata]
-        [--kraan-image-reg <registry name>] [--kraan-image-repo <repo-name>] [--kraan-image-tag] 
+        [--kraan-image-reg <registry name>] [--kraan-image-repo <repo-name>] [--kraan-image-tag] [--kraan-dev]
         [--kraan-image-pull-secret auto | <filename>] [--gitops-image-pull-secret auto | <filename>]
         [--gitops-image-reg <repo-name>] [--kraan-loglevel N] [--prometheus <namespace>]
         [--gitops-proxy auto | <proxy-url>] [--git-url <git-repo-url>] [--no-git-auth]
@@ -93,6 +95,7 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
     '--kraan-image-repo'  provide image repository prefix to use for Kraan, defaults to 'kraan' for docker hub org.
     '--kraan-tag'         the tag of the kraan image to use.
     '--kraan-loglevel'    loglevel to use for kraan controller, 0 for info, 1 for debug, 2 for trace.
+    '--kraan-dev'         select development mode, makes pod filesystem writable for debugging purposes.
 
     '--gitops-image-reg'  provide image registry to use for gitops toolkit components, defaults to 'ghcr.io'.
     '--gitops-image-pull-secret' set to 'auto' to generate image pull secrets from ~/.docker/config.json
@@ -114,7 +117,6 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
     '--toolkit'     to generate GitOps toolkit components.
     '--debug'       for verbose output.
     '--dry-run'     to generate yaml but not deploy to cluster. This option will retain temporary work directory.
-
 To deploy to a cluster build the docker image and then deploy to the cluster. The following will build the docker image and push it to the Github packages then deploy to your Kubernetes cluster.
 
     export VERSION=v0.1.xx

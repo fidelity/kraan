@@ -1,0 +1,34 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    app.kubernetes.io/instance: {{ .Values.kraan.namespace }}
+    app.kubernetes.io/version: latest
+  name: allow-scraping
+  namespace: {{ .Values.kraan.namespace }}
+spec:
+  ingress:
+  - from:
+    - namespaceSelector: {}
+    ports:
+    - port: 8080
+      protocol: TCP
+  podSelector: {}
+  policyTypes:
+  - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    app.kubernetes.io/instance: {{ .Values.kraan.namespace }}
+    app.kubernetes.io/version: latest
+  name: deny-ingress
+  namespace: {{ .Values.kraan.namespace }}
+spec:
+  ingress:
+  - from:
+    - podSelector: {}
+  podSelector: {}
+  policyTypes:
+  - Ingress

@@ -30,3 +30,18 @@ Create chart name and version as used by the chart label.
 {{- define "kraan-controller.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
+
+{{- define "global.common.labels" -}}
+{{- end -}}
+
+{{- define "kraan.server.labels" -}}
+{{ include "kraan.server.metalabels" . }}
+{{ include "global.common.labels" . }}
+{{- end -}}
+
+{{- define "global.datadog.annotations" -}}
+{{ .datadog.url }}/{{ .name }}.logs: '[ { "source":"{{ .name }}-source", "service":"{{ .name }}-service"}]'
+{{ .datadog.url }}/{{ .name }}.check_names: '["openmetrics"]'
+{{ .datadog.url }}/{{ .name }}.init_configs: '[{}]'
+{{ .datadog.url }}/{{ .name }}.instances: '[{"prometheus_url": "http://%%host%%:%%port%%/actuator/prometheus", "namespace": {{ .name | quote }}, "metrics": ["*"], "ssl_ca_cert": false}]'
+{{- end -}}

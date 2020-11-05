@@ -1,0 +1,101 @@
+{{- if .Values.kraan.controller.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kraan-controller
+  namespace: {{ .Values.kraan.namespace }}
+  labels:
+    control-plane: controller
+spec:
+  selector:
+    matchLabels:
+      app: kraan-controller
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: kraan-controller
+      annotations:
+        {{- if .Values.kraan.controller.datadog.enabled -}}
+{{- include "global.datadog.annotations" .Values.kraan.controller | nindent 8 }}
+        {{- end }}
+        {{- if .Values.global.extraPodAnnotations }}
+{{ toYaml .Values.global.extraPodAnnotations | indent 8 }}
+        {{- end }}
+        {{- if .Values.kraan.controller.prometheus.enabled }}
+{{ toYaml .Values.global.prometheusAnnotations | indent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: kraan
+      containers:
+      - name: manager
+        {{- if .Values.kraan.controller.image.registry }}
+        image: {{ .Values.kraan.controller.image.registry }}/{{ .Values.kraan.controller.image.repository | default "kraan" }}/kraan-controller:{{ .Values.kraan.controller.image.tag }}
+        {{- else }}
+        image: "{{ .Values.kraan.controller.image.repository | default "kraan" }}/kraan-controller:{{ .Values.kraan.controller.image.tag }}"
+        {{- end }}
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: {{ .Values.kraan.controller.devmode }}
+        volumeMounts:
+        - mountPath: /controller/data
+          name: data
+        - mountPath: /tmp
+          name: tmp
+        args:
+        - --enable-leader-election
+        {{ if ne (.Values.kraan.controller.args.logLevel | toString | atoi) 0 }}
+        - --zap-log-level={{ .Values.kraan.controller.args.logLevel }}
+        {{ end }}
+        - --zap-encoder=json
+        env:
+          - name: DATA_PATH
+            value: /controller/data
+        ports:
+        - containerPort: 9440
+          name: healthz
+          protocol: TCP
+        - containerPort: 8080
+          name: http-prom
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: healthz
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+          timeoutSeconds: 15
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /metrics
+            port: http-prom
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+{{ toYaml .Values.kraan.controller.resources | indent 10 }}
+      terminationGracePeriodSeconds: 10
+      {{- if .Values.kraan.controller.imagePullSecrets.name }}
+      imagePullSecrets:
+      - name: {{ .Values.kraan.controller.imagePullSecrets.name }}
+      {{- end }}
+    {{- if .Values.kraan.controller.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.kraan.controller.nodeSelector | indent 8 }}
+    {{- end }}
+    {{- if .Values.kraan.controller.tolerations }}
+      tolerations:
+{{ toYaml .Values.kraan.controller.tolerations | indent 8 }}
+    {{- end }}
+    {{- if .Values.kraan.controller.affinity }}
+      affinity:
+{{ toYaml .Values.kraan.controller.affinity | indent 8 }}
+    {{- end }}
+      volumes:
+      - name: data
+      - name: tmp
+{{- end }}

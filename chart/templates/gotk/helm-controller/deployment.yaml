@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: gotk-system
+    app.kubernetes.io/version: latest
+    control-plane: controller
+  name: helm-controller
+  namespace: gotk-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: helm-controller
+  template:
+    metadata:
+      annotations:
+        prometheus.io/port: "8080"
+        prometheus.io/scrape: "true"
+      labels:
+        app: helm-controller
+    spec:
+      containers:
+      - args:
+        - --events-addr=
+        - --watch-all-namespaces=true
+        - --log-level=info
+        - --log-json
+        - --enable-leader-election
+        env:
+        - name: RUNTIME_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        {{- if .Values.gotk.helm-controller.proxy }}
+        - name: HTTPS_PROXY
+          value: {{ .Values.global.env.httpsProxy }}
+        - name: NO_PROXY
+          value: {{ .Values.global.env.noProxy }}
+        {{- end }}
+        {{- if .Values.gotk.helm-controller.image.registry }}
+        image: {{ .Values.gotk.helm-controller.image.registry }}/{{ .Values.gotk.helm-controller.image.repository | default "fluxcd" }}/helm-controller:{{ .Values.gotk.helm-controller.image.tag }}
+        {{- else }}
+        image: "ghcr.io/{{ .Values.gotk.helm-controller.image.repository | default "fluxcd" }}/helm-controller:{{ .Values.gotk.helm-controller.image.tag }}"
+        {{- end }}       
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: http-prom
+        name: manager
+        ports:
+        - containerPort: 8080
+          name: http-prom
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /tmp
+          name: temp
+        resources:
+{{ toYaml .Values.gotk.helm-controller.resources | indent 10 }}
+      terminationGracePeriodSeconds: 10
+      {{- if .Values.gotk.helm-controller.imagePullSecrets.name }}
+      imagePullSecrets:
+      - name: {{ .Values.gotk.helm-controller.imagePullSecrets.name }}
+      {{- end }}
+    {{- if .Values.gotk.helm-controller.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.gotk.helm-controller.nodeSelector | indent 8 }}
+    {{- end }}
+    {{- if .Values.gotk.helm-controller.tolerations }}
+      tolerations:
+{{ toYaml .Values.gotk.helm-controller.tolerations | indent 8 }}
+    {{- end }}
+    {{- if .Values.gotk.helm-controller.affinity }}
+      affinity:
+{{ toYaml .Values.gotk.helm-controller.affinity | indent 8 }}
+    {{- end }}
+      volumes:
+      - emptyDir: {}
+        name: temp

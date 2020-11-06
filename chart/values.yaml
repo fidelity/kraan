@@ -1,3 +1,5 @@
+createReleaseNamespace: true
+
 global:
   extraPodAnnotations: {}
 

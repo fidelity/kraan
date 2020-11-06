@@ -339,13 +339,26 @@ if [ -n "${prometheus}" ] ; then
   install_prometheus "${prometheus}"
 fi
 
+kubectl apply ${dry_run} -f "${base_dir}"/samples/namespace.yaml
+
+create_git_credentials_secret "${base_dir}/testdata/templates/template-http.yaml" "${work_dir}/kraan-http.yaml"
+
+if [ -n "${gitops_regcred}" ] ; then
+  create_regcred gotk-system "${gitops_regcred}" gotk
+fi
+if [ -n "${kraan_regcred}" ] ; then
+  create_regcred gotk-system "${kraan_regcred}" kraan
+fi
+
 helm_args=""
 
 if [ -n "${gitops_regcred}" ] ; then
-  helm_args="${helm_args} --set gotk.imagePullSecrets.name=gotk-regcred"
+  helm_args="${helm_args} --set gotk.sourceController.imagePullSecrets.name=gotk-regcred"
+  helm_args="${helm_args} --set gotk.helmController.imagePullSecrets.name=gotk-regcred"
 fi
 if [ -n "${gitops_reg}" ] ; then
-  helm_args="${helm_args} --set gotk.image.repository=${gitops_reg}/fluxcd"
+  helm_args="${helm_args} --set gotk.sourceController.image.repository=${gitops_reg}/fluxcd"
+  helm_args="${helm_args} --set gotk.helmController.image.repository=${gitops_reg}/fluxcd"
 fi
 if [ -n "${gitops_proxy}" ] ; then
   if [ "${gitops_proxy}" == "auto" ] ; then
@@ -360,26 +373,28 @@ if [ -n "${gitops_proxy}" ] ; then
       fi
     fi
   fi
-  helm_args="${helm_args} --set gotk.env.httpsProxy=${gitops_proxy}"
+  helm_args="${helm_args} --set global.env.httpsProxy=${gitops_proxy}"
+  helm_args="${helm_args} --set gotk.sourceController.proxy=true"
+  helm_args="${helm_args} --set gotk.helmController.proxy=true"
 fi
 if [ -n "${kraan_regcred}" ] ; then
-  helm_args="${helm_args} --set kraan.imagePullSecrets.name=kraan-regcred"
+  helm_args="${helm_args} --set kraan.kraanController.imagePullSecrets.name=kraan-regcred"
 fi
 if [ -n "${kraan_reg}" ] ; then
   kraan_reg="${kraan_reg}/"
 fi
 if [ -n "${kraan_repo}" ] ; then
-  helm_args="${helm_args} --set kraan.image.repository=${kraan_reg}${kraan_repo}"
+  helm_args="${helm_args} --set kraan.kraanController.image.repository=${kraan_reg}${kraan_repo}"
 fi
 if [ -n "${kraan_tag}" ] ; then
-  helm_args="${helm_args} --set kraan.image.tag=${kraan_tag}"
+  helm_args="${helm_args} --set kraan.kraanController.image.tag=${kraan_tag}"
 fi
 if [ -n "${kraan_loglevel}" ] ; then
-  helm_args="${helm_args} --set kraan.args.logLevel=${kraan_loglevel}"
+  helm_args="${helm_args} --set kraan.kraanController.args.logLevel=${kraan_loglevel}"
 fi
 
 if [ -n "${kraan_dev}" ] ; then
-  helm_args="${helm_args} --set kraan.devmode=false"
+  helm_args="${helm_args} --set kraan.kraanController.devmode=false"
 fi
 
 if [ -n "${values_files}" ] ; then
@@ -391,15 +406,6 @@ if [ -n "${dry_run}" ] ; then
 fi
 
 helm ${helm_action} kraan chart ${helm_args} --namespace gotk-system
-
-create_git_credentials_secret "${base_dir}/testdata/templates/template-http.yaml" "${work_dir}/kraan-http.yaml"
-
-if [ -n "${gitops_regcred}" ] ; then
-  create_regcred gotk-system "${gitops_regcred}" gotk
-fi
-if [ -n "${kraan_regcred}" ] ; then
-  create_regcred gotk-system "${kraan_regcred}" kraan
-fi
 
 if [ $apply_testdata -gt 0 ]; then
   create_addons_source_yaml "${base_dir}/testdata/addons/addons-source.yaml" "${work_dir}/addons-source.yaml"

@@ -13,6 +13,13 @@ spec:
   selector:
     matchLabels:
       app: helm-controller
+  template:
+    metadata:
+      annotations:
+        prometheus.io/port: "8080"
+        prometheus.io/scrape: "true"
+      labels:
+        app: helm-controller
         {{- if .Values.global.extraLabels }}   
 {{ toYaml .Values.global.extraLabels | indent 8 }}
         {{- end }}
@@ -31,13 +38,6 @@ spec:
         {{- if .Values.gotk.helmController.prometheus.enabled }}
 {{ toYaml .Values.global.prometheusAnnotations | indent 8 }}
         {{- end }}
-  template:
-    metadata:
-      annotations:
-        prometheus.io/port: "8080"
-        prometheus.io/scrape: "true"
-      labels:
-        app: helm-controller
     spec:
       containers:
       - name: manager

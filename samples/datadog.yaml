@@ -1,0 +1,24 @@
+kraan:
+  kraanController:
+    extraPodAnnotations:
+      ad.datadoghq.com/kraan-controller.logs: '[ { "source":"kraan-controller-source", "service":"kraan-controller-service"}]'
+      ad.datadoghq.com/kraan-controller.check_names: '["openmetrics"]'
+      ad.datadoghq.com/kraan-controller.init_configs: '[{}]'
+      ad.datadoghq.com/kraan-controller.instances: '[{"prometheus_url": "http://%%host%%:%%port%%/actuator/prometheus", "namespace": "kraan-controller", "metrics": ["*"], "ssl_ca_cert": false}]'
+
+gotk:
+  sourceController:
+    extraPodAnnotations:
+      ad.datadoghq.com/source-controller.logs: '[ { "source":"source-controller-source", "service":"source-controller-service"}]'
+      ad.datadoghq.com/source-controller.check_names: '["openmetrics"]'
+      ad.datadoghq.com/source-controller.init_configs: '[{}]'
+      ad.datadoghq.com/source-controller.instances: '[{"prometheus_url": "http://%%host%%:%%port%%/actuator/prometheus", "namespace": "source-controller", "metrics": ["*"], "ssl_ca_cert": false}]'
+
+  helmController:
+    extraPodAnnotations:
+      ad.datadoghq.com/helm-controller.logs: '[ { "source":"helm-controller-source", "service":"helm-controller-service"}]'
+      ad.datadoghq.com/helm-controller.check_names: '["openmetrics"]'
+      ad.datadoghq.com/helm-controller.init_configs: '[{}]'
+      ad.datadoghq.com/helm-controller.instances: '[{"prometheus_url": "http://%%host%%:%%port%%/actuator/prometheus", "namespace": "helm-controller", "metrics": ["*"], "ssl_ca_cert": false}]'
+
+

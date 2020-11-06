@@ -1,0 +1,8 @@
+global:
+  extraPodAnnotations:
+    created_by: "userid"
+    org: "acme"
+    app_id: "4321"
+    env: "dev"
+    csp: "aks"
+    index_id: "1234"

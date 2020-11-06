@@ -1,24 +1,165 @@
-kraan:
-  image:
-    registry: 
-    repository: kraan
-    tag: master
+createReleaseNamespace: true
 
-  imagePullSecrets:
-    name:
+global:
+  extraPodAnnotations: {}
 
-  args:
-    logLevel: 0
+  extraLabels: {}
 
-  devmode: false
-
-gotk:
-  image:
-    registry: 
-
-  imagePullSecrets:
-    name:
+  prometheusAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
 
   env:
     httpsProxy:
     noProxy: 10.0.0.0/8,172.0.0.0/8
+
+kraan:
+  crd:
+    enabled: true
+  rbac:
+    enabled: true
+  netpolicy:
+    enabled: true
+  kraanController:
+    enabled: true
+    name: kraan-controller
+  
+    extraPodAnnotations: {}
+    
+    extraLabels: {}
+
+    prometheus:
+      enabled: true
+
+    imagePullSecrets:
+        name:
+
+    image:
+      repository: kraan/kraan-controller
+      tag: master
+
+    args:
+      logLevel: 0
+
+    devmode: false
+
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 500m
+        memory: 128Mi
+
+    tolerations: []
+      # - key: "key"
+      #   operator: "Equal|Exists"
+      #   value: "value"
+      #   effect: "NoSchedule|PreferNoSchedule|NoExecute(1.6 only)"
+
+    ## Node labels for alertmanager pod assignment
+    ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
+    ##
+    nodeSelector: {}
+
+    ## Pod affinity
+    ##
+    affinity: {}
+
+gotk:
+  rbac:
+    enabled: true
+  netpolicy:
+    enabled: true
+
+  sourceController:
+    crd:
+      enabled: true
+    enabled: true
+
+    name: source-controller
+  
+    extraPodAnnotations: {}
+    
+    extraLabels: {}
+
+    prometheus:
+      enabled: true
+
+    image:
+      repository: ghcr.io/fluxcd
+      tag: v0.2.1
+
+    imagePullSecrets:
+        name:
+    
+    proxy: true
+
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 500m
+        memory: 128Mi
+
+    tolerations: []
+      # - key: "key"
+      #   operator: "Equal|Exists"
+      #   value: "value"
+      #   effect: "NoSchedule|PreferNoSchedule|NoExecute(1.6 only)"
+
+    ## Node labels for alertmanager pod assignment
+    ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
+    ##
+    nodeSelector: {}
+
+    ## Pod affinity
+    ##
+    affinity: {}
+
+  helmController:
+    crd:
+      enabled: true
+    enabled: true
+
+    name: helm-controller
+
+    extraPodAnnotations: {}
+
+    extraLabels: {}
+
+    prometheus:
+      enabled: true
+
+    imagePullSecrets:
+        name:
+
+    image:
+      repository: ghcr.io/fluxcd
+      tag: v0.2.0
+    
+    proxy: true
+
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 500m
+        memory: 128Mi
+
+    tolerations: []
+      # - key: "key"
+      #   operator: "Equal|Exists"
+      #   value: "value"
+      #   effect: "NoSchedule|PreferNoSchedule|NoExecute(1.6 only)"
+
+    ## Node labels for alertmanager pod assignment
+    ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
+    ##
+    nodeSelector: {}
+
+    ## Pod affinity
+    ##
+    affinity: {}

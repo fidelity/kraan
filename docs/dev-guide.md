@@ -70,7 +70,7 @@ The 'release' target will update the tag in the values file, package the chart a
 
 Finally use githuweb interface to create a tag.
 
-## Deployment Guide
+## Deployment
 
 A shell script is provided to deploy the artifacts necessary to test the kraan-controller to a kubernetes cluster. It does this using a helm client to install a helm chart containing the Kraan Controller and the GitOps Toolkit (GOTK) components it uses.
 
@@ -80,7 +80,7 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
     USAGE: deploy.sh [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--testdata]
         [--kraan-image-reg <registry name>] [--kraan-image-repo <repo-name>] [--kraan-image-tag] [--kraan-dev]
         [--kraan-image-pull-secret auto | <filename>] [--gitops-image-pull-secret auto | <filename>]
-        [--gitops-image-reg <repo-name>] [--kraan-loglevel N] [--prometheus <namespace>]
+        [--gitops-image-reg <repo-name>] [--kraan-loglevel N] [--prometheus <namespace>] [--values-files <file names>]
         [--gitops-proxy auto | <proxy-url>] [--git-url <git-repo-url>] [--no-git-auth]
         [--git-user <git_username>] [--git-token <git_token_or_password>]
 
@@ -103,6 +103,8 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
                                 The secret should be called 'gotk-regcred'.
     '--gitops-proxy'    set to 'auto' to generate proxy setting for gotk components using value of HTTPS_PROXY 
                         environment variable or supply the proxy url to use.
+    '--values-files'    provide a comma separated list of yaml files containing values you want to set.
+                        see samples directory for examples.
 
     '--deploy-kind' create a new kind cluster and deploy to it. Otherwise the script will deploy to an existing 
                     cluster. The KUBECONFIG environmental variable or ~/.kube/config should be set to a cluster 
@@ -117,6 +119,7 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
     '--toolkit'     to generate GitOps toolkit components.
     '--debug'       for verbose output.
     '--dry-run'     to generate yaml but not deploy to cluster. This option will retain temporary work directory.
+
 To deploy to a cluster build the docker image and then deploy to the cluster. The following will build the docker image and push it to the Github packages then deploy to your Kubernetes cluster.
 
     export VERSION=v0.1.xx

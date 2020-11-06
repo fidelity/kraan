@@ -21,9 +21,7 @@ spec:
         {{- if .Values.kraan.kraanController.extraLabels }}   
 {{ toYaml .Values.kraan.kraanController.extraLabels | indent 8 }}
         {{- end }}
-      {{- if or .Values.kraan.kraanController.extraPodAnnotations .Values.global.extraPodAnnotations .Values.kraan.kraanController.prometheus.enabled }}
       annotations:
-      {{- end }}
         {{- if .Values.global.extraPodAnnotations }}   
 {{ toYaml .Values.global.extraPodAnnotations | indent 8 }}
         {{- end }}

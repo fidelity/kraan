@@ -26,9 +26,7 @@ spec:
         {{- if .Values.gotk.helmController.extraLabels }}   
 {{ toYaml .Values.gotk.helmController.extraLabels | indent 8 }}
         {{- end }}
-      {{- if or .Values.gotk.helmController.extraPodAnnotations .Values.global.extraPodAnnotations .Values.gotk.helmController.prometheus.enabled }}
       annotations:
-      {{- end }}
         {{- if .Values.global.extraPodAnnotations }}   
 {{ toYaml .Values.global.extraPodAnnotations | indent 8 }}
         {{- end }}

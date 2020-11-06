@@ -23,9 +23,7 @@ spec:
         {{- if .Values.gotk.sourceController.extraLabels }}   
 {{ toYaml .Values.gotk.sourceController.extraLabels | indent 8 }}
         {{- end }}
-      {{- if or .Values.gotk.sourceController.extraPodAnnotations .Values.global.extraPodAnnotations .Values.gotk.sourceController.prometheus.enabled }}
       annotations:
-      {{- end }}
         {{- if .Values.global.extraPodAnnotations }}   
 {{ toYaml .Values.global.extraPodAnnotations | indent 8 }}
         {{- end }}

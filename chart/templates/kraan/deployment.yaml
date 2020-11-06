@@ -1,9 +1,9 @@
-{{- if .Values.kraan.controller.enabled -}}
+{{- if .Values.kraan.kraanController.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kraan-controller
-  namespace: {{ .Values.kraan.namespace }}
+  namespace: {{.Release.Namespace}}
   labels:
     control-plane: controller
 spec:
@@ -15,29 +15,33 @@ spec:
     metadata:
       labels:
         app: kraan-controller
-      annotations:
-        {{- if .Values.kraan.controller.datadog.enabled -}}
-{{- include "global.datadog.annotations" .Values.kraan.controller | nindent 8 }}
+        {{- if .Values.global.extraLabels }}   
+{{ toYaml .Values.global.extraLabels | indent 8 }}
         {{- end }}
-        {{- if .Values.global.extraPodAnnotations }}
+        {{- if .Values.kraan.kraanController.extraLabels }}   
+{{ toYaml .Values.kraan.kraanController.extraLabels | indent 8 }}
+        {{- end }}
+      {{- if or .Values.kraan.kraanController.extraPodAnnotations .Values.global.extraPodAnnotations .Values.kraan.kraanController.prometheus.enabled }}
+      annotations:
+      {{- end }}
+        {{- if .Values.global.extraPodAnnotations }}   
 {{ toYaml .Values.global.extraPodAnnotations | indent 8 }}
         {{- end }}
-        {{- if .Values.kraan.controller.prometheus.enabled }}
+        {{- if .Values.kraan.kraanController.extraPodAnnotations }}
+{{ toYaml .Values.kraan.kraanController.extraPodAnnotations | indent 8 }}
+        {{- end }}
+        {{- if .Values.kraan.kraanController.prometheus.enabled }}
 {{ toYaml .Values.global.prometheusAnnotations | indent 8 }}
         {{- end }}
     spec:
       serviceAccountName: kraan
       containers:
       - name: manager
-        {{- if .Values.kraan.controller.image.registry }}
-        image: {{ .Values.kraan.controller.image.registry }}/{{ .Values.kraan.controller.image.repository | default "kraan" }}/kraan-controller:{{ .Values.kraan.controller.image.tag }}
-        {{- else }}
-        image: "{{ .Values.kraan.controller.image.repository | default "kraan" }}/kraan-controller:{{ .Values.kraan.controller.image.tag }}"
-        {{- end }}
+        image: {{ .Values.kraan.kraanController.image.repository }}/kraan-controller:{{ .Values.kraan.kraanController.image.tag }}
         imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: {{ .Values.kraan.controller.devmode }}
+          readOnlyRootFilesystem: {{ .Values.kraan.kraanController.devmode }}
         volumeMounts:
         - mountPath: /controller/data
           name: data
@@ -45,13 +49,13 @@ spec:
           name: tmp
         args:
         - --enable-leader-election
-        {{ if ne (.Values.kraan.controller.args.logLevel | toString | atoi) 0 }}
-        - --zap-log-level={{ .Values.kraan.controller.args.logLevel }}
+        {{ if ne (.Values.kraan.kraanController.args.logLevel | toString | atoi) 0 }}
+        - --zap-log-level={{ .Values.kraan.kraanController.args.logLevel }}
         {{ end }}
         - --zap-encoder=json
         env:
-          - name: DATA_PATH
-            value: /controller/data
+        - name: DATA_PATH
+          value: /controller/data
         ports:
         - containerPort: 9440
           name: healthz
@@ -77,23 +81,23 @@ spec:
           successThreshold: 1
           timeoutSeconds: 1
         resources:
-{{ toYaml .Values.kraan.controller.resources | indent 10 }}
+{{ toYaml .Values.kraan.kraanController.resources | indent 10 }}
       terminationGracePeriodSeconds: 10
-      {{- if .Values.kraan.controller.imagePullSecrets.name }}
+      {{- if .Values.kraan.kraanController.imagePullSecrets.name }}
       imagePullSecrets:
-      - name: {{ .Values.kraan.controller.imagePullSecrets.name }}
+      - name: {{ .Values.kraan.kraanController.imagePullSecrets.name }}
       {{- end }}
-    {{- if .Values.kraan.controller.nodeSelector }}
+    {{- if .Values.kraan.kraanController.nodeSelector }}
       nodeSelector:
-{{ toYaml .Values.kraan.controller.nodeSelector | indent 8 }}
+{{ toYaml .Values.kraan.kraanController.nodeSelector | indent 8 }}
     {{- end }}
-    {{- if .Values.kraan.controller.tolerations }}
+    {{- if .Values.kraan.kraanController.tolerations }}
       tolerations:
-{{ toYaml .Values.kraan.controller.tolerations | indent 8 }}
+{{ toYaml .Values.kraan.kraanController.tolerations | indent 8 }}
     {{- end }}
-    {{- if .Values.kraan.controller.affinity }}
+    {{- if .Values.kraan.kraanController.affinity }}
       affinity:
-{{ toYaml .Values.kraan.controller.affinity | indent 8 }}
+{{ toYaml .Values.kraan.kraanController.affinity | indent 8 }}
     {{- end }}
       volumes:
       - name: data

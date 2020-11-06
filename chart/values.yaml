@@ -1,10 +1,7 @@
 global:
-  namespace: &global-namespace gotk-system
-  datadog:
-    enabled: true
-    url: &datadog-url ad.datadoghq.com
-  
   extraPodAnnotations: {}
+
+  extraLabels: {}
 
   prometheusAnnotations:
     prometheus.io/scrape: "true"
@@ -15,21 +12,20 @@ global:
     noProxy: 10.0.0.0/8,172.0.0.0/8
 
 kraan:
-  namespace: *global-namespace
   crd:
     enabled: true
   rbac:
     enabled: true
   netpolicy:
     enabled: true
-  controller:
+  kraanController:
     enabled: true
-
     name: kraan-controller
-    datadog:
-      enabled: true 
-      url: *datadog-url
+  
+    extraPodAnnotations: {}
     
+    extraLabels: {}
+
     prometheus:
       enabled: true
 
@@ -37,16 +33,13 @@ kraan:
         name:
 
     image:
-      registry: 
-      repository: kraan
+      repository: kraan/kraan-controller
       tag: master
 
     args:
       logLevel: 0
 
     devmode: false
-
-    proxy: false
 
     resources:
       limits:
@@ -72,28 +65,27 @@ kraan:
     affinity: {}
 
 gotk:
-  namespace: *global-namespace
   rbac:
     enabled: true
   netpolicy:
     enabled: true
 
-  source-controller:
+  sourceController:
     crd:
       enabled: true
     enabled: true
 
     name: source-controller
-    datadog:
-      enabled: true 
-      url: *datadog-url
+  
+    extraPodAnnotations: {}
     
+    extraLabels: {}
+
     prometheus:
       enabled: true
 
     image:
-      registry: ghcr.io
-      repository: fluxcd
+      repository: ghcr.io/fluxcd
       tag: v0.2.1
 
     imagePullSecrets:
@@ -124,26 +116,25 @@ gotk:
     ##
     affinity: {}
 
-  helm-controller:
+  helmController:
     crd:
       enabled: true
     enabled: true
 
     name: helm-controller
-    datadog:
-      enabled: true 
-      url: *datadog-url
-    
+
+    extraPodAnnotations: {}
+
+    extraLabels: {}
+
     prometheus:
       enabled: true
 
     imagePullSecrets:
         name:
 
-
     image:
-      registry: ghcr.io
-      repository: fluxcd
+      repository: ghcr.io/fluxcd
       tag: v0.2.0
     
     proxy: true

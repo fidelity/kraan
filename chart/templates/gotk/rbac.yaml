@@ -2,10 +2,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   labels:
-    app.kubernetes.io/instance: gotk-system
+    app.kubernetes.io/instance: {{.Release.Namespace}}
     app.kubernetes.io/version: latest
-  name: crd-controller-gotk-system
-  namespace: gotk-system
+  name: crd-controller-{{.Release.Namespace}}
+  namespace: {{.Release.Namespace}}
 rules:
 - apiGroups:
   - source.toolkit.fluxcd.io
@@ -50,26 +50,26 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   labels:
-    app.kubernetes.io/instance: gotk-system
+    app.kubernetes.io/instance: {{.Release.Namespace}}
     app.kubernetes.io/version: latest
-  name: crd-controller-gotk-system
-  namespace: gotk-system
+  name: crd-controller-{{.Release.Namespace}}
+  namespace: {{.Release.Namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: crd-controller-gotk-system
+  name: crd-controller-{{.Release.Namespace}}
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: gotk-system
+  namespace: {{.Release.Namespace}}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   labels:
-    app.kubernetes.io/instance: gotk-system
+    app.kubernetes.io/instance: {{.Release.Namespace}}
     app.kubernetes.io/version: latest
-  name: cluster-reconciler-gotk-system
+  name: cluster-reconciler-{{.Release.Namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -77,4 +77,4 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: gotk-system
+  namespace: {{.Release.Namespace}}

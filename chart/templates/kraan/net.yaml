@@ -2,10 +2,10 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   labels:
-    app.kubernetes.io/instance: {{ .Values.kraan.namespace }}
+    app.kubernetes.io/instance: {{.Release.Namespace}}
     app.kubernetes.io/version: latest
   name: allow-scraping
-  namespace: {{ .Values.kraan.namespace }}
+  namespace: {{.Release.Namespace}}
 spec:
   ingress:
   - from:
@@ -21,10 +21,10 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   labels:
-    app.kubernetes.io/instance: {{ .Values.kraan.namespace }}
+    app.kubernetes.io/instance: {{.Release.Namespace}}
     app.kubernetes.io/version: latest
   name: deny-ingress
-  namespace: {{ .Values.kraan.namespace }}
+  namespace: {{.Release.Namespace}}
 spec:
   ingress:
   - from:

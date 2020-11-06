@@ -12,7 +12,7 @@ function usage() {
 USAGE: ${0##*/} [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--testdata]
        [--kraan-image-reg <registry name>] [--kraan-image-repo <repo-name>] [--kraan-image-tag] [--kraan-dev]
        [--kraan-image-pull-secret auto | <filename>] [--gitops-image-pull-secret auto | <filename>]
-       [--gitops-image-reg <repo-name>] [--kraan-loglevel N] [--prometheus <namespace>]
+       [--gitops-image-reg <repo-name>] [--kraan-loglevel N] [--prometheus <namespace>] [--values-files <file names>]
        [--gitops-proxy auto | <proxy-url>] [--git-url <git-repo-url>] [--no-git-auth]
        [--git-user <git_username>] [--git-token <git_token_or_password>]
 
@@ -35,6 +35,8 @@ Options:
                                The secret should be called 'gotk-regcred'.
   '--gitops-proxy'    set to 'auto' to generate proxy setting for gotk components using value of HTTPS_PROXY 
                       environment variable or supply the proxy url to use.
+  '--values-files'    provide a comma separated list of yaml files containing values you want to set.
+                      see samples directory for examples.
 
   '--deploy-kind' create a new kind cluster and deploy to it. Otherwise the script will deploy to an existing 
                   cluster. The KUBECONFIG environmental variable or ~/.kube/config should be set to a cluster 
@@ -115,6 +117,7 @@ function args() {
   helm_action="install"
   prometheus=""
   kraan_dev=""
+  values_files=""
 
   arg_list=( "$@" )
   arg_count=${#arg_list[@]}
@@ -134,6 +137,7 @@ function args() {
           "--kraan-image-repo") (( arg_index+=1 )); kraan_repo="${arg_list[${arg_index}]}";;
           "--kraan-image-reg") (( arg_index+=1 )); kraan_reg="${arg_list[${arg_index}]}";;
           "--gitops-image-reg") (( arg_index+=1 )); gitops_reg="${arg_list[${arg_index}]}";;
+          "--values-files") (( arg_index+=1 )); values_files="${arg_list[${arg_index}]}";;
           "--git-url") (( arg_index+=1 )); GIT_URL="${arg_list[${arg_index}]}";;
           "--git-user") (( arg_index+=1 )); GIT_USER="${arg_list[${arg_index}]}";;
           "--git-token") (( arg_index+=1 )); GIT_CREDENTIALS="${arg_list[${arg_index}]}";;
@@ -341,7 +345,7 @@ if [ -n "${gitops_regcred}" ] ; then
   helm_args="${helm_args} --set gotk.imagePullSecrets.name=gotk-regcred"
 fi
 if [ -n "${gitops_reg}" ] ; then
-  helm_args="${helm_args} --set gotk.image.registry=${gitops_reg}"
+  helm_args="${helm_args} --set gotk.image.repository=${gitops_reg}/fluxcd"
 fi
 if [ -n "${gitops_proxy}" ] ; then
   if [ "${gitops_proxy}" == "auto" ] ; then
@@ -362,10 +366,10 @@ if [ -n "${kraan_regcred}" ] ; then
   helm_args="${helm_args} --set kraan.imagePullSecrets.name=kraan-regcred"
 fi
 if [ -n "${kraan_reg}" ] ; then
-  helm_args="${helm_args} --set kraan.image.registry=${kraan_reg}"
+  kraan_reg="${kraan_reg}/"
 fi
 if [ -n "${kraan_repo}" ] ; then
-  helm_args="${helm_args} --set kraan.image.repository=${kraan_repo}"
+  helm_args="${helm_args} --set kraan.image.repository=${kraan_reg}${kraan_repo}"
 fi
 if [ -n "${kraan_tag}" ] ; then
   helm_args="${helm_args} --set kraan.image.tag=${kraan_tag}"
@@ -378,11 +382,15 @@ if [ -n "${kraan_dev}" ] ; then
   helm_args="${helm_args} --set kraan.devmode=false"
 fi
 
+if [ -n "${values_files}" ] ; then
+  helm_args="${helm_args} --values ${values_files}"
+fi
+
 if [ -n "${dry_run}" ] ; then
   helm_args="${helm_args} --dry-run"
 fi
 
-helm ${helm_action} kraan chart ${helm_args}
+helm ${helm_action} kraan chart ${helm_args} --namespace gotk-system
 
 create_git_credentials_secret "${base_dir}/testdata/templates/template-http.yaml" "${work_dir}/kraan-http.yaml"
 

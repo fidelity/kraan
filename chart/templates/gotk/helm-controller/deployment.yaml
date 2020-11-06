@@ -1,17 +1,36 @@
+{{- if .Values.gotk.helmController.enabled -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app.kubernetes.io/instance: gotk-system
+    app.kubernetes.io/instance: {{.Release.Namespace}}
     app.kubernetes.io/version: latest
     control-plane: controller
   name: helm-controller
-  namespace: gotk-system
+  namespace: {{.Release.Namespace}}
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: helm-controller
+        {{- if .Values.global.extraLabels }}   
+{{ toYaml .Values.global.extraLabels | indent 8 }}
+        {{- end }}
+        {{- if .Values.gotk.helmController.extraLabels }}   
+{{ toYaml .Values.gotk.helmController.extraLabels | indent 8 }}
+        {{- end }}
+      {{- if or .Values.gotk.helmController.extraPodAnnotations .Values.global.extraPodAnnotations .Values.gotk.helmController.prometheus.enabled }}
+      annotations:
+      {{- end }}
+        {{- if .Values.global.extraPodAnnotations }}   
+{{ toYaml .Values.global.extraPodAnnotations | indent 8 }}
+        {{- end }}
+        {{- if .Values.gotk.helmController.extraPodAnnotations }}
+{{ toYaml .Values.gotk.helmController.extraPodAnnotations | indent 8 }}
+        {{- end }}
+        {{- if .Values.gotk.helmController.prometheus.enabled }}
+{{ toYaml .Values.global.prometheusAnnotations | indent 8 }}
+        {{- end }}
   template:
     metadata:
       annotations:
@@ -21,7 +40,8 @@ spec:
         app: helm-controller
     spec:
       containers:
-      - args:
+      - name: manager
+        args:
         - --events-addr=
         - --watch-all-namespaces=true
         - --log-level=info
@@ -32,23 +52,18 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        {{- if .Values.gotk.helm-controller.proxy }}
+        {{- if .Values.gotk.helmController.proxy }}
         - name: HTTPS_PROXY
           value: {{ .Values.global.env.httpsProxy }}
         - name: NO_PROXY
           value: {{ .Values.global.env.noProxy }}
         {{- end }}
-        {{- if .Values.gotk.helm-controller.image.registry }}
-        image: {{ .Values.gotk.helm-controller.image.registry }}/{{ .Values.gotk.helm-controller.image.repository | default "fluxcd" }}/helm-controller:{{ .Values.gotk.helm-controller.image.tag }}
-        {{- else }}
-        image: "ghcr.io/{{ .Values.gotk.helm-controller.image.repository | default "fluxcd" }}/helm-controller:{{ .Values.gotk.helm-controller.image.tag }}"
-        {{- end }}       
+        image: {{ .Values.gotk.helmController.image.repository }}/helm-controller:{{ .Values.gotk.helmController.image.tag }}    
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
             path: /metrics
             port: http-prom
-        name: manager
         ports:
         - containerPort: 8080
           name: http-prom
@@ -59,24 +74,25 @@ spec:
         - mountPath: /tmp
           name: temp
         resources:
-{{ toYaml .Values.gotk.helm-controller.resources | indent 10 }}
+{{ toYaml .Values.gotk.helmController.resources | indent 10 }}
       terminationGracePeriodSeconds: 10
-      {{- if .Values.gotk.helm-controller.imagePullSecrets.name }}
+      {{- if .Values.gotk.helmController.imagePullSecrets.name }}
       imagePullSecrets:
-      - name: {{ .Values.gotk.helm-controller.imagePullSecrets.name }}
+      - name: {{ .Values.gotk.helmController.imagePullSecrets.name }}
       {{- end }}
-    {{- if .Values.gotk.helm-controller.nodeSelector }}
+    {{- if .Values.gotk.helmController.nodeSelector }}
       nodeSelector:
-{{ toYaml .Values.gotk.helm-controller.nodeSelector | indent 8 }}
+{{ toYaml .Values.gotk.helmController.nodeSelector | indent 8 }}
     {{- end }}
-    {{- if .Values.gotk.helm-controller.tolerations }}
+    {{- if .Values.gotk.helmController.tolerations }}
       tolerations:
-{{ toYaml .Values.gotk.helm-controller.tolerations | indent 8 }}
+{{ toYaml .Values.gotk.helmController.tolerations | indent 8 }}
     {{- end }}
-    {{- if .Values.gotk.helm-controller.affinity }}
+    {{- if .Values.gotk.helmController.affinity }}
       affinity:
-{{ toYaml .Values.gotk.helm-controller.affinity | indent 8 }}
+{{ toYaml .Values.gotk.helmController.affinity | indent 8 }}
     {{- end }}
       volumes:
       - emptyDir: {}
         name: temp
+{{- end }}

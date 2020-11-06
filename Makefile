@@ -95,7 +95,7 @@ release:
 	sed -i s/tag\:\ master/tag\:\ ${VERSION}/ chart/values.yaml
 	helm package --version ${VERSION} chart
 	git checkout chart/values.yaml
-	helm repo index --url https://kraan.github.io/helm-chart/ .
+	helm repo index --url https://fidelity.github.io/kraan/ .
 	git add kraan-controller-${VERSION}.tgz
 	git commit -a -m "release chart version ${VERSION}"
 	git push

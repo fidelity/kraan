@@ -35,8 +35,8 @@ kraan:
         name:
 
     image:
-      repository: kraan/kraan-controller
-      tag: master
+      repository: kraan
+      tag: v0.1.07
 
     args:
       logLevel: 0

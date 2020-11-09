@@ -26,7 +26,6 @@ export VERSION?=master
 export REPO ?=docker.pkg.github.com/${GITHUB_ORG}/${GITHUB_REPO}
 # Image URL to use all building/pushing image targets
 IMG ?= ${REPO}/${PROJECT}:${VERSION}
-
 ALL_GO_PACKAGES:=$(shell find ${CURDIR}/main/ ${CURDIR}/controllers/ ${CURDIR}/api/ ${CURDIR}/pkg/ \
 	-type f -name *.go -exec dirname {} \; | sort --uniq)
 GO_CHECK_PACKAGES:=$(shell echo $(subst $() $(),\\n,$(ALL_GO_PACKAGES)) | \
@@ -91,15 +90,22 @@ godocs: ${GO_DOCS_ARTIFACTS}
 
 
 release:
+ifndef CHART_VERSION
+$(error CHART_VERSION is not set)
+endif
+	git checkout -b build-release-${CHART_VERSION} || exit
+	sed -i s/appVersion\:\ v0.1.x/appVersion\:\ ${VERSION}/ chart/Chart.yaml
+	sed -i s/version\:\ v0.1.x/version\:\ ${CHART_VERSION}/ chart/Chart.yaml
+	helm package --version ${CHART_VERSION} chart
+	git add -A
+	git commit -a -m "create release for chart version ${CHART_VERSION}"
 	git checkout gh-pages || exit
-	sed -i s/tag\:\ master/tag\:\ ${VERSION}/ chart/values.yaml
-	helm package --version ${VERSION} chart
-	git checkout chart/values.yaml
-	helm repo index --url https://kraan.github.io/helm-chart/ .
-	git add kraan-controller-${VERSION}.tgz
-	git commit -a -m "release chart version ${VERSION}"
+	git merge build-release-${CHART_VERSION} -m "package chart version ${CHART_VERSION}"
+	helm repo index --url https://fidelity.github.io/kraan/ .
+	git commit -a -m "release chart version ${CHART_VERSION}"
 	git push
 	git checkout master
+	git branch -D build-release-${CHART_VERSION}
 
 clean-gomod:
 	rm -rf ${GOMOD_ARTIFACT}

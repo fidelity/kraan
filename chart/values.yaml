@@ -36,7 +36,11 @@ kraan:
 
     image:
       repository: kraan
+<<<<<<< HEAD
       tag: v0.1.07
+=======
+      tag: v0.1.06
+>>>>>>> build-release-v0.1.06
 
     args:
       logLevel: 0

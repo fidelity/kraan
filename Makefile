@@ -91,15 +91,17 @@ godocs: ${GO_DOCS_ARTIFACTS}
 
 
 release:
-	git checkout gh-pages || exit
+	git checkout -b build-release-${VERSION} || exit
 	sed -i s/tag\:\ master/tag\:\ ${VERSION}/ chart/values.yaml
 	helm package --version ${VERSION} chart
 	git checkout chart/values.yaml
+	git checkout gh-pages || exit
 	helm repo index --url https://fidelity.github.io/kraan/ .
 	git add kraan-controller-${VERSION}.tgz
 	git commit -a -m "release chart version ${VERSION}"
 	git push
 	git checkout master
+	git branch -D build-release-${VERSION}
 
 clean-gomod:
 	rm -rf ${GOMOD_ARTIFACT}

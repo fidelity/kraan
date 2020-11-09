@@ -97,8 +97,8 @@ release:
 	git add -A
 	git commit -a -m "create release for chart version ${VERSION}"
 	git checkout gh-pages || exit
+	git merge build-release-${VERSION} -m "package chart version ${VERSION}"
 	helm repo index --url https://fidelity.github.io/kraan/ .
-	git add kraan-controller-${VERSION}.tgz
 	git commit -a -m "release chart version ${VERSION}"
 	git push
 	git checkout master

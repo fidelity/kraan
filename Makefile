@@ -94,7 +94,8 @@ release:
 	git checkout -b build-release-${VERSION} || exit
 	sed -i s/tag\:\ master/tag\:\ ${VERSION}/ chart/values.yaml
 	helm package --version ${VERSION} chart
-	git checkout chart/values.yaml
+	git add -A
+	git commit -a -m "create release for chart version ${VERSION}"
 	git checkout gh-pages || exit
 	helm repo index --url https://fidelity.github.io/kraan/ .
 	git add kraan-controller-${VERSION}.tgz

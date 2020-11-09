@@ -98,7 +98,7 @@ release:
 	git commit -a -m "create release for chart version ${VERSION}"
 	git checkout gh-pages || exit
 	helm repo index --url https://fidelity.github.io/kraan/ .
-	git add kraan-controller-${VERSION}.tgz
+	#git add kraan-controller-${VERSION}.tgz
 	git commit -a -m "release chart version ${VERSION}"
 	git push
 	git checkout master

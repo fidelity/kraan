@@ -99,10 +99,6 @@ release:
 	git checkout gh-pages || exit
 	git merge build-release-${VERSION} -m "package chart version ${VERSION}"
 	helm repo index --url https://fidelity.github.io/kraan/ .
-<<<<<<< HEAD
-	#git add kraan-controller-${VERSION}.tgz
-=======
->>>>>>> build-release-v0.1.06
 	git commit -a -m "release chart version ${VERSION}"
 	git push
 	git checkout master

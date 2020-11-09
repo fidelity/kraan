@@ -57,27 +57,26 @@ Helm Charts are deployed to github pages so can be accessed via repo: kraan http
     helm search repo --regexp kraan --versions
 
 ## Creating a Release
-To create a release set `VERSION` to the release version and `REPO` to 'kraan' then build and push the image:
+To create a release set `VERSION` to the Kraan-Controller version, `REPO` to 'kraan' and `CHART_VERSION` to the chart version, then build and push the image:
 
-    export VERSION=vx.y.z
+    export VERSION=v0.1.xx
     export REPO=kraan
     make clean-build
     make build
     make docker-push
+    export CHART_VERSION=v0.1.xx
     make release
 
 The 'release' target will update the tag in the values file, package the chart and deploy it to gh-pages.
 
-Finally use githuweb interface to create a tag.
+Finally use github web interface to create a tag.
 
 ## Deployment
 
 A shell script is provided to deploy the artifacts necessary to test the kraan-controller to a kubernetes cluster. It does this using a helm client to install a helm chart containing the Kraan Controller and the GitOps Toolkit (GOTK) components it uses.
 
-    scripts/deploy.sh --help
-
     https://github.com/fidelity/kraan.git
-    USAGE: deploy.sh [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--testdata]
+    USAGE: deploy.sh [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--testdata] [--helm <upgrade| install>]
         [--kraan-image-reg <registry name>] [--kraan-image-repo <repo-name>] [--kraan-image-tag] [--kraan-dev]
         [--kraan-image-pull-secret auto | <filename>] [--gitops-image-pull-secret auto | <filename>]
         [--gitops-image-reg <repo-name>] [--kraan-loglevel N] [--prometheus <namespace>] [--values-files <file names>]
@@ -87,7 +86,7 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
     Install the Kraan Addon Manager and gitops source controller to a Kubernetes cluster
 
     Options:
-    '--upgrade' to perform helm upgrade rather than helm install.
+    '--helm' perform helm upgrade or install, if you don't specify either script will not deploy helm chart.
     '--kraan-image-pull-secret' set to 'auto' to generate image pull secrets from ~/.docker/config.json
                                 or supply name of file containing image pull secret defintion to apply.
                                 The secret should be called 'kraan-regcred'.

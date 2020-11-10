@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/fidelity/kraan/pkg/internal/tarconsumer"
+	"github.com/fidelity/kraan/pkg/utils"
 )
 
 var (
@@ -31,10 +32,10 @@ type Repos interface {
 	Delete(name string)
 	List() map[string]Repo
 	SetRootPath(path string)
+	GetRootPath() string
 	SetHostName(hostName string)
 	SetTimeOut(timeOut time.Duration)
 	SetHTTPClient(client *http.Client)
-	PathKey(srcRepo *sourcev1.GitRepository) string
 }
 
 // reposData hold data about all repositories.
@@ -63,12 +64,16 @@ func NewRepos(ctx context.Context, log logr.Logger) Repos {
 	}
 }
 
-func (r *reposData) PathKey(repo *sourcev1.GitRepository) string {
+func PathKey(repo *sourcev1.GitRepository) string {
 	return fmt.Sprintf("%s/%s", repo.GetNamespace(), repo.GetName())
 }
 
 func (r *reposData) SetRootPath(path string) {
 	r.rootPath = path
+}
+
+func (r *reposData) GetRootPath() string {
+	return r.rootPath
 }
 
 func (r *reposData) SetHostName(hostName string) {
@@ -104,13 +109,13 @@ func (r *reposData) Get(name string) Repo {
 func (r *reposData) Add(repo *sourcev1.GitRepository) Repo {
 	r.Lock()
 	defer r.Unlock()
-	key := r.PathKey(repo)
+	key := PathKey(repo)
 	rp, found := r.repos[key]
 	if !found {
 		r.repos[key] = r.newRepo(key, repo)
 		return r.repos[key]
 	}
-	rp.SetGitRepo(repo)
+	rp.SetGitRepo(repo, r.GetRootPath())
 	return rp
 }
 
@@ -134,7 +139,7 @@ type Repo interface {
 	GetDataPath() string
 	GetLoadPath() string
 	SetHostName(hostName string)
-	SetGitRepo(src *sourcev1.GitRepository)
+	SetGitRepo(src *sourcev1.GitRepository, rootPath string)
 	SetHTTPClient(client *http.Client)
 	SetTarConsumer(tarConsumer tarconsumer.TarConsumer)
 	fetchArtifact(ctx context.Context) error
@@ -158,16 +163,22 @@ type repoData struct {
 
 // newRepo creates a repo.
 func (r *reposData) newRepo(path string, sourceRepo *sourcev1.GitRepository) Repo {
+	url := "not set"
+	revision := "none"
+	if sourceRepo.Status.Artifact != nil {
+		url = sourceRepo.Status.Artifact.URL
+		revision = sourceRepo.Status.Artifact.Revision
+	}
 	repo := &repoData{
 		ctx:         r.ctx,
 		log:         r.log,
 		client:      r.client,
 		hostName:    r.hostName,
-		dataPath:    fmt.Sprintf("%s/%s", r.rootPath, path),
-		loadPath:    fmt.Sprintf("%s/load/%s", r.rootPath, path),
+		dataPath:    fmt.Sprintf("%s/%s/%s", r.rootPath, path, revision),
+		loadPath:    fmt.Sprintf("%s/load/%s/%s", r.rootPath, path, revision),
 		path:        path,
 		repo:        sourceRepo,
-		tarConsumer: tarconsumer.NewTarConsumer(r.ctx, r.client, sourceRepo.Status.Artifact.URL),
+		tarConsumer: tarconsumer.NewTarConsumer(r.ctx, r.client, url),
 	}
 	return repo
 }
@@ -194,10 +205,16 @@ func (r *repoData) SetHostName(hostName string) {
 	r.hostName = hostName
 }
 
-func (r *repoData) SetGitRepo(src *sourcev1.GitRepository) {
+func (r *repoData) SetGitRepo(src *sourcev1.GitRepository, rootPath string) {
 	r.syncLock.Lock()
 	defer r.syncLock.Unlock()
 	r.repo = src
+	revision := "none"
+	if r.repo.Status.Artifact != nil {
+		revision = r.repo.Status.Artifact.Revision
+	}
+	r.dataPath = fmt.Sprintf("%s/%s/%s", rootPath, PathKey(src), revision)
+	r.loadPath = fmt.Sprintf("%s/load/%s/%s", rootPath, PathKey(src), revision)
 }
 
 func (r *repoData) SetHTTPClient(client *http.Client) {
@@ -263,27 +280,40 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+func isExistingDir(dataPath string) error {
+	info, err := os.Stat(dataPath)
+	if os.IsNotExist(err) {
+		return errors.Wrapf(err, "failed to stat: %s", dataPath)
+	}
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("addons Data path: %s, is not a directory", dataPath)
+	}
+
+	return nil
+}
+
 func (r *repoData) SyncRepo() error {
 	r.syncLock.Lock()
 	defer r.syncLock.Unlock()
+
+	if r.repo.Status.Artifact == nil {
+		return fmt.Errorf("repository %s does not contain an artifact", r.path)
+	}
+	if err := isExistingDir(r.dataPath); err == nil {
+		r.log.V(1).Info("Revision already synced", utils.GetGitRepoInfo(r.repo)...)
+		return nil
+	}
+	r.log.V(1).Info("New revision detected", utils.GetGitRepoInfo(r.repo)...)
+
+	if err := utils.RemoveRecreateDir(r.loadPath); err != nil {
+		return errors.WithMessage(err, "failed to remove and recreate load directory")
+	}
+
 	ctx, cancel := context.WithTimeout(r.ctx, DefaultTimeOut)
 	defer cancel()
-
-	r.log.Info("New revision detected", "kind", "gitrepositories.source.toolkit.fluxcd.io",
-		"namespace", r.GetSourceNameSpace(), "name", r.GetSourceName(),
-		"generation", r.repo.Generation, "observed", r.repo.Status.ObservedGeneration,
-		"revision", r.repo.Status.Artifact.Revision)
-
-	if _, err := os.Stat(r.loadPath); os.IsNotExist(err) {
-		if e := os.RemoveAll(r.loadPath); e != nil {
-			return errors.Wrap(e, "failed to remove directory")
-		}
-	} else if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(r.loadPath, os.ModePerm); err != nil {
-		return errors.Wrapf(err, "failed to make directory: %s", r.loadPath)
-	}
 
 	// download and extract artifact
 	if err := r.fetchArtifact(ctx); err != nil {
@@ -302,6 +332,7 @@ func (r *repoData) SyncRepo() error {
 	if err := os.Rename(r.loadPath, r.dataPath); err != nil {
 		return errors.Wrapf(err, "failed to rename load path: %s", r.loadPath)
 	}
+	r.log.V(1).Info("synced repo", utils.GetGitRepoInfo(r.repo)...)
 	return nil
 }
 
@@ -324,28 +355,10 @@ func (r *repoData) fetchArtifact(ctx context.Context) error {
 		return errors.WithMessagef(err, "failed to download artifact from %s", url)
 	}
 	// Debugging for unzip error
-	r.log.V(2).Info("tar data", "length", len(tar),
-		"kind", "gitrepositories.source.toolkit.fluxcd.io", "namespace", r.GetSourceNameSpace(), "name", r.GetSourceName(),
-		"generation", r.repo.Generation, "observed", r.repo.Status.ObservedGeneration,
-		"revision", r.repo.Status.Artifact.Revision)
+	r.log.V(2).Info("tar data", append(utils.GetGitRepoInfo(r.repo), "length", len(tar))...)
 
 	if err := tarconsumer.UnpackTar(tar, r.GetLoadPath()); err != nil {
 		return errors.WithMessage(err, "faild to untar artifact")
-	}
-
-	return nil
-}
-
-func isExistingDir(dataPath string) error {
-	info, err := os.Stat(dataPath)
-	if os.IsNotExist(err) {
-		return errors.Wrapf(err, "failed to stat: %s", dataPath)
-	}
-	if err != nil {
-		return err
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("addons Data path: %s, is not a directory", dataPath)
 	}
 
 	return nil

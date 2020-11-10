@@ -6,9 +6,7 @@ package apply
 To generate mock code for the LayerApplier run 'go generate ./...' from the project root directory.
 */
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"reflect"
@@ -29,6 +27,7 @@ import (
 
 	"github.com/fidelity/kraan/pkg/internal/kubectl"
 	"github.com/fidelity/kraan/pkg/layers"
+	"github.com/fidelity/kraan/pkg/utils"
 )
 
 var (
@@ -124,40 +123,21 @@ func getObjLabel(obj runtime.Object) string {
 	return fmt.Sprintf("%s/%s", mobj.GetNamespace(), mobj.GetName())
 }
 
-// GetObjNamespaceName gets object namespace and name for logging
-func GetObjNamespaceName(obj runtime.Object) (result []interface{}) {
-	mobj, ok := (obj).(metav1.Object)
-	if !ok {
-		result = append(result, "namespace", "unavailable", "name", "unavailable")
-		return result
-	}
-	result = append(result, "namespace", mobj.GetNamespace(), "name", mobj.GetName())
-	return result
-}
-
-// GetObjKindNamespaceName gets object kind namespace and name for logging
-func GetObjKindNamespaceName(obj runtime.Object) (result []interface{}) {
-	gvk := obj.GetObjectKind().GroupVersionKind()
-	result = append(result, "kind", fmt.Sprintf("%s.%s", gvk.Kind, gvk.Group))
-	result = append(result, GetObjNamespaceName(obj)...)
-	return result
-}
-
 func (a KubectlLayerApplier) decodeHelmReleases(layer layers.Layer, objs []runtime.Object) (hrs []*helmctlv2.HelmRelease, err error) {
 	for _, obj := range objs {
-		a.logDebug("checking for HelmRelease type", layer, GetObjNamespaceName(obj)...)
+		a.logDebug("checking for HelmRelease type", layer, utils.GetObjNamespaceName(obj)...)
 		switch obj.(type) {
 		case *helmctlv2.HelmRelease:
 			hr, ok := obj.(*helmctlv2.HelmRelease)
 			if ok {
-				a.logDebug("found HelmRelease in Object list", layer, append(GetObjKindNamespaceName(obj), "helmRelease", hr)...)
+				a.logDebug("found HelmRelease in Object list", layer, append(utils.GetObjKindNamespaceName(obj), "helmRelease", hr)...)
 				hrs = append(hrs, hr)
 			} else {
 				err = fmt.Errorf("failed to convert runtime.Object to HelmRelease")
-				a.logError(err, err.Error(), layer, GetObjNamespaceName(obj)...)
+				a.logError(err, err.Error(), layer, utils.GetObjNamespaceName(obj)...)
 			}
 		default:
-			a.logDebug("found Kubernetes object in Object list", layer, GetObjKindNamespaceName(obj)...)
+			a.logDebug("found Kubernetes object in Object list", layer, utils.GetObjKindNamespaceName(obj)...)
 		}
 	}
 	return hrs, err
@@ -170,14 +150,14 @@ func (a KubectlLayerApplier) decodeHelmRepos(layer layers.Layer, objs []runtime.
 		case *sourcev1.HelmRepository:
 			hr, ok := obj.(*sourcev1.HelmRepository)
 			if ok {
-				a.logDebug("found HelmRepository in Object list", layer, append(GetObjKindNamespaceName(obj), "helmRelease", hr)...)
+				a.logDebug("found HelmRepository in Object list", layer, append(utils.GetObjKindNamespaceName(obj), "helmRelease", hr)...)
 				hrs = append(hrs, hr)
 			} else {
 				err = fmt.Errorf("failed to convert runtime.Object to HelmRepository")
-				a.logError(err, err.Error(), layer, GetObjKindNamespaceName(obj)...)
+				a.logError(err, err.Error(), layer, utils.GetObjKindNamespaceName(obj)...)
 			}
 		default:
-			a.logDebug("found Kubernetes object in Object list", layer, GetObjNamespaceName(obj)...)
+			a.logDebug("found Kubernetes object in Object list", layer, utils.GetObjNamespaceName(obj)...)
 		}
 	}
 	return hrs, err
@@ -197,11 +177,11 @@ func (a KubectlLayerApplier) decodeAddons(layer layers.Layer,
 		return nil, errors.Wrap(err, "failed to decode json")
 	}
 
-	a.logTrace("decoded JSON output", layer, "groupVersionKind", gvk, "object", LogJSON(obj))
+	a.logTrace("decoded JSON output", layer, "groupVersionKind", gvk, "object", utils.LogJSON(obj))
 
 	switch obj.(type) {
 	case *corev1.List:
-		a.logTrace("decoded raw object List from kubectl output", layer, "list", LogJSON(obj))
+		a.logTrace("decoded raw object List from kubectl output", layer, "list", utils.LogJSON(obj))
 		return a.decodeList(layer, obj.(*corev1.List), &dez)
 	default:
 		/*msg := "decoded kubectl output was not a HelmRelease or List"
@@ -216,10 +196,10 @@ func (a KubectlLayerApplier) addOwnerRefs(layer layers.Layer, objs []runtime.Obj
 		obj, ok := robj.(metav1.Object)
 		if !ok {
 			err := fmt.Errorf("failed to convert runtime.Object to meta.Object")
-			a.logError(err, err.Error(), layer, GetObjKindNamespaceName(robj)...)
+			a.logError(err, err.Error(), layer, utils.GetObjKindNamespaceName(robj)...)
 			return err
 		}
-		a.logDebug("Adding owner ref to resource for AddonsLayer", layer, GetObjKindNamespaceName(robj)...)
+		a.logDebug("Adding owner ref to resource for AddonsLayer", layer, utils.GetObjKindNamespaceName(robj)...)
 		err := controllerutil.SetControllerReference(layer.GetAddonsLayer(), obj, a.scheme)
 		if err != nil {
 			// could not apply owner ref for object
@@ -248,9 +228,9 @@ func (a KubectlLayerApplier) getHelmReleases(ctx context.Context, layer layers.L
 }
 
 func (a KubectlLayerApplier) applyObjects(ctx context.Context, layer layers.Layer, objs []runtime.Object) error {
-	a.logTrace("resources be applied", layer, "objects", LogJSON(objs))
+	a.logTrace("resources be applied", layer, "objects", utils.LogJSON(objs))
 	for _, obj := range objs {
-		a.logTrace("applying resource", layer, "object", LogJSON(obj))
+		a.logTrace("applying resource", layer, "object", utils.LogJSON(obj))
 		/*
 			res, err := controllerutil.CreateOrUpdate(ctx, a.client, obj, func() error {
 				fmt.Fprintln(os.Stderr, "mutate")
@@ -261,7 +241,7 @@ func (a KubectlLayerApplier) applyObjects(ctx context.Context, layer layers.Laye
 		if err != nil {
 			return errors.Wrap(err, "failed to apply layer resources")
 		}
-		a.logDebug("resource successfully applied", layer, GetObjKindNamespaceName(obj)...)
+		a.logDebug("resource successfully applied", layer, utils.GetObjKindNamespaceName(obj)...)
 	}
 	return nil
 }
@@ -288,17 +268,17 @@ func (a KubectlLayerApplier) isObjectPresent(ctx context.Context, layer layers.L
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			removeResourceVersion(obj)
-			a.logDebug("existing object not found", layer, GetObjKindNamespaceName(obj)...)
+			a.logDebug("existing object not found", layer, utils.GetObjKindNamespaceName(obj)...)
 			return false, nil
 		}
 		return false, errors.Wrapf(err, "failed to get an ObjectKey '%s'", key)
 	}
-	a.logDebug("existing object found", layer, GetObjKindNamespaceName(obj)...)
+	a.logDebug("existing object found", layer, utils.GetObjKindNamespaceName(obj)...)
 	return true, nil
 }
 
 func (a KubectlLayerApplier) applyObject(ctx context.Context, layer layers.Layer, obj runtime.Object) error {
-	a.logDebug("applying object", layer, GetObjKindNamespaceName(obj)...)
+	a.logDebug("applying object", layer, utils.GetObjKindNamespaceName(obj)...)
 	present, err := a.isObjectPresent(ctx, layer, obj)
 	if err != nil {
 		return errors.WithMessagef(err, "failed to determine if object '%s' is present on the target cluster", getObjLabel(obj))
@@ -333,7 +313,7 @@ func (a KubectlLayerApplier) decodeList(layer layers.Layer,
 			a.logError(err, err.Error(), layer, "rawJSON", string(raw.Raw))
 		}
 		a.logDebug("decoded Kubernetes object from kubectl output list",
-			layer, GetObjKindNamespaceName(obj)...)
+			layer, utils.GetObjKindNamespaceName(obj)...)
 		objs = append(objs, obj)
 	}
 	return objs, err
@@ -483,7 +463,7 @@ func (a KubectlLayerApplier) PruneIsRequired(ctx context.Context, layer layers.L
 		_, ok := hrs[getLabel(hr.ObjectMeta)]
 		if !ok {
 			// this resource exists on the cluster but not in the source directory
-			a.logDebug("pruned HelmRelease for AddonsLayer in KubeAPI but not in source directory", layer, GetObjKindNamespaceName(hr)...)
+			a.logDebug("pruned HelmRelease for AddonsLayer in KubeAPI but not in source directory", layer, utils.GetObjKindNamespaceName(hr)...)
 			pruneRequired = true
 			pruneHrs = append(pruneHrs, hr)
 		}
@@ -516,7 +496,7 @@ func (a KubectlLayerApplier) ApplyIsRequired(ctx context.Context, layer layers.L
 		_, ok := hrs[getLabel(source.ObjectMeta)]
 		if !ok {
 			// this resource exists in the source directory but not on the cluster
-			a.logDebug("found new HelmRelease in AddonsLayer source directory", layer, GetObjKindNamespaceName(source)...)
+			a.logDebug("found new HelmRelease in AddonsLayer source directory", layer, utils.GetObjKindNamespaceName(source)...)
 			return true, nil
 		}
 	}
@@ -526,7 +506,7 @@ func (a KubectlLayerApplier) ApplyIsRequired(ctx context.Context, layer layers.L
 	for _, source := range sourceHrs {
 		found := hrs[getLabel(source.ObjectMeta)]
 		if a.sourceHasReleaseChanged(layer, source, found) {
-			a.logDebug("found source change", layer, GetObjKindNamespaceName(source)...)
+			a.logDebug("found source change", layer, utils.GetObjKindNamespaceName(source)...)
 			return true, nil
 		}
 	}
@@ -554,7 +534,7 @@ func (a KubectlLayerApplier) helmReposApplyRequired(ctx context.Context, layer l
 		_, ok := hrs[getLabel(source.ObjectMeta)]
 		if !ok {
 			// this resource exists in the source directory but not on the cluster
-			a.logDebug("found new HelmRepository in AddonsLayer source directory", layer, GetObjKindNamespaceName(source)...)
+			a.logDebug("found new HelmRepository in AddonsLayer source directory", layer, utils.GetObjKindNamespaceName(source)...)
 			return true, nil
 		}
 	}
@@ -563,7 +543,7 @@ func (a KubectlLayerApplier) helmReposApplyRequired(ctx context.Context, layer l
 	for _, source := range sourceHrs {
 		found := hrs[getLabel(source.ObjectMeta)]
 		if a.sourceHasRepoChanged(layer, source, found) {
-			a.logDebug("found source change", layer, GetObjKindNamespaceName(source)...)
+			a.logDebug("found source change", layer, utils.GetObjKindNamespaceName(source)...)
 			return true, nil
 		}
 	}
@@ -571,15 +551,15 @@ func (a KubectlLayerApplier) helmReposApplyRequired(ctx context.Context, layer l
 }
 
 func (a KubectlLayerApplier) sourceHasReleaseChanged(layer layers.Layer, source, found *helmctlv2.HelmRelease) (changed bool) {
-	if !CompareAsJSON(source.Spec, found.Spec) {
+	if !utils.CompareAsJSON(source.Spec, found.Spec) {
 		a.logDebug("found spec change for HelmRelease in AddonsLayer source directory", layer,
-			append(GetObjKindNamespaceName(source), "source", source.Spec, "found", found.Spec, "diff", cmp.Diff(source.Spec, found.Spec))...)
+			append(utils.GetObjKindNamespaceName(source), "source", source.Spec, "found", found.Spec, "diff", cmp.Diff(source.Spec, found.Spec))...)
 		return true
 	}
 	if !reflect.DeepEqual(source.ObjectMeta.Labels, found.ObjectMeta.Labels) {
 		// this resource source spec does not match the resource spec on the cluster
 		a.logDebug("found label change for HelmRelease in AddonsLayer source directory", layer,
-			append(GetObjKindNamespaceName(source), "label source", source.ObjectMeta.Labels, "label found", found.ObjectMeta.Labels)...)
+			append(utils.GetObjKindNamespaceName(source), "label source", source.ObjectMeta.Labels, "label found", found.ObjectMeta.Labels)...)
 		return true
 	}
 	a.logTrace("found no changes for HelmRelease in AddonsLayer source directory", layer)
@@ -587,15 +567,15 @@ func (a KubectlLayerApplier) sourceHasReleaseChanged(layer layers.Layer, source,
 }
 
 func (a KubectlLayerApplier) sourceHasRepoChanged(layer layers.Layer, source, found *sourcev1.HelmRepository) (changed bool) {
-	if !CompareAsJSON(source.Spec, found.Spec) {
+	if !utils.CompareAsJSON(source.Spec, found.Spec) {
 		a.logDebug("found spec change for HelmRepository in AddonsLayer source directory", layer,
-			append(GetObjKindNamespaceName(source), "source", source.Spec, "found", found.Spec, "diff", cmp.Diff(source.Spec, found.Spec))...)
+			append(utils.GetObjKindNamespaceName(source), "source", source.Spec, "found", found.Spec, "diff", cmp.Diff(source.Spec, found.Spec))...)
 		return true
 	}
 	if !reflect.DeepEqual(source.ObjectMeta.Labels, found.ObjectMeta.Labels) {
 		// this resource source spec does not match the resource spec on the cluster
 		a.logDebug("found label change for HelmRepository in AddonsLayer source directory", layer,
-			append(GetObjKindNamespaceName(source), "label source", source.ObjectMeta.Labels, "label found", found.ObjectMeta.Labels)...)
+			append(utils.GetObjKindNamespaceName(source), "label source", source.ObjectMeta.Labels, "label found", found.ObjectMeta.Labels)...)
 		return true
 	}
 	a.logDebug("found no change for HelmRepositories in AddonsLayer source directory", layer)
@@ -611,7 +591,7 @@ func (a KubectlLayerApplier) ApplyWasSuccessful(ctx context.Context, layer layer
 
 	for _, hr := range clusterHrs {
 		if !a.checkHR(*hr, layer) {
-			a.logInfo("unsuccessful HelmRelease deployment", layer, append(GetObjKindNamespaceName(hr), "resource", hr)...)
+			a.logInfo("unsuccessful HelmRelease deployment", layer, append(utils.GetObjKindNamespaceName(hr), "resource", hr)...)
 			return false, nil
 		}
 	}
@@ -620,7 +600,7 @@ func (a KubectlLayerApplier) ApplyWasSuccessful(ctx context.Context, layer layer
 }
 
 func (a KubectlLayerApplier) checkHR(hr helmctlv2.HelmRelease, layer layers.Layer) bool {
-	a.logDebug("Check HelmRelease", layer, GetObjKindNamespaceName(hr.DeepCopyObject())...)
+	a.logDebug("Check HelmRelease", layer, utils.GetObjKindNamespaceName(hr.DeepCopyObject())...)
 	// TODO - We could replace this entire function with a single call to fluxmeta.HasReadyCondition,
 	//        except for the logging.  This adapts checkHR to the v2beta1 HelmController
 	//        api to preserve pre-existing log messages.
@@ -629,51 +609,6 @@ func (a KubectlLayerApplier) checkHR(hr helmctlv2.HelmRelease, layer layers.Laye
 		return false
 	}
 	cond := fluxmeta.GetCondition(hr.Status.Conditions, fluxmeta.ReadyCondition)
-	a.logDebug("HelmRelease installed", layer, append(GetObjKindNamespaceName(hr.DeepCopyObject()), "condition", cond)...)
+	a.logDebug("HelmRelease installed", layer, append(utils.GetObjKindNamespaceName(hr.DeepCopyObject()), "condition", cond)...)
 	return cond.Status == corev1.ConditionTrue
-}
-
-// CompareAsJSON compares two interfaces by converting them to json and comparing json text
-func CompareAsJSON(one, two interface{}) bool {
-	if one == nil && two == nil {
-		return true
-	}
-	jsonOne, err := ToJSON(one)
-	if err != nil {
-		return false
-	}
-
-	jsonTwo, err := ToJSON(two)
-	if err != nil {
-		return false
-	}
-	return jsonOne == jsonTwo
-}
-
-// LogJSON is used log an item in JSON format.
-func LogJSON(data interface{}) string {
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		return err.Error()
-	}
-	var prettyJSON bytes.Buffer
-	err = json.Indent(&prettyJSON, jsonData, "", "  ")
-	if err != nil {
-		return err.Error()
-	}
-	return prettyJSON.String()
-}
-
-// ToJSON is used to convert a data structure into JSON format.
-func ToJSON(data interface{}) (string, error) {
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		return "", errors.WithMessage(err, "failed to marshal json")
-	}
-	var prettyJSON bytes.Buffer
-	err = json.Indent(&prettyJSON, jsonData, "", "\t")
-	if err != nil {
-		return "", errors.WithMessage(err, "failed indent json")
-	}
-	return prettyJSON.String(), nil
 }

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fluxcd/pkg/apis/meta"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
@@ -68,6 +69,7 @@ type Layer interface {
 	GetFullStatus() *kraanv1alpha1.AddonsLayerStatus
 	GetSpec() *kraanv1alpha1.AddonsLayerSpec
 	GetAddonsLayer() *kraanv1alpha1.AddonsLayer
+	RevisionReady(conditions []meta.Condition, revision string) (bool, string)
 }
 
 // KraanLayer is the Schema for the addons API.
@@ -249,7 +251,16 @@ func getNameVersion(nameVersion string) (string, string) {
 	return parts[0], parts[1]
 }
 
-func (l *KraanLayer) isOtherDeployed(otherVersion string, otherLayer *kraanv1alpha1.AddonsLayer) bool {
+func (l *KraanLayer) RevisionReady(conditions []meta.Condition, revision string) (bool, string) {
+	for _, cond := range conditions {
+		if cond.Type == "Ready" {
+			return cond.Status == corev1.ConditionTrue && strings.Contains(cond.Message, revision), cond.Message
+		}
+	}
+	return false, "GitRepository not yet reconciled"
+}
+
+func (l *KraanLayer) isOtherDeployed(otherVersion string, otherLayer *kraanv1alpha1.AddonsLayer) bool { // nolint: funlen // ok
 	l.GetLogger().V(1).Info("checking dependency", "dependson", otherLayer.Name, "layer", l.GetName())
 	if otherLayer.Status.ObservedGeneration != otherLayer.Generation {
 		l.GetLogger().V(2).Info("waiting for observed generation", "dependson", otherLayer.Name,
@@ -285,6 +296,21 @@ func (l *KraanLayer) isOtherDeployed(otherVersion string, otherLayer *kraanv1alp
 		l.setStatus(kraanv1alpha1.ApplyPendingCondition, reason, message)
 		return false
 	}
+
+	revision := "not set"
+	if otherSource.Status.Artifact != nil {
+		revision = otherSource.Status.Artifact.Revision
+	}
+	ready, srcMsg := l.RevisionReady(otherSource.Status.Conditions, revision)
+	if !ready {
+		l.GetLogger().V(2).Info("waiting for source to be ready", "dependson", otherLayer.Name, "source", otherSource.ObjectMeta.Name,
+			"deployed", otherLayer.Status.DeployedRevision, "revision", revision, "layer", l.GetName())
+		reason := fmt.Sprintf("waiting for layer: %s, layer source: %s not ready.", otherLayer.ObjectMeta.Name, otherSource.ObjectMeta.Name)
+		message := fmt.Sprintf("Layer: %s, source: %s, status: %s.", otherLayer.ObjectMeta.Name, otherSource.ObjectMeta.Name, srcMsg)
+		l.setStatus(kraanv1alpha1.ApplyPendingCondition, reason, message)
+		return false
+	}
+
 	if otherLayer.Status.DeployedRevision != otherSource.Status.Artifact.Revision {
 		l.GetLogger().V(2).Info("waiting for source revision", "dependson", otherLayer.Name, "source", otherSource.ObjectMeta.Name,
 			"deployed", otherLayer.Status.DeployedRevision, "revision", otherSource.Status.Artifact.Revision, "layer", l.GetName())

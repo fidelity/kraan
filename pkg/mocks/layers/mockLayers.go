@@ -7,6 +7,7 @@ package mocks
 import (
 	context "context"
 	v1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
+	meta "github.com/fluxcd/pkg/apis/meta"
 	logr "github.com/go-logr/logr"
 	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
@@ -406,4 +407,19 @@ func (m *MockLayer) GetAddonsLayer() *v1alpha1.AddonsLayer {
 func (mr *MockLayerMockRecorder) GetAddonsLayer() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAddonsLayer", reflect.TypeOf((*MockLayer)(nil).GetAddonsLayer))
+}
+
+// RevisionReady mocks base method
+func (m *MockLayer) RevisionReady(conditions []meta.Condition, revision string) (bool, string) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RevisionReady", conditions, revision)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(string)
+	return ret0, ret1
+}
+
+// RevisionReady indicates an expected call of RevisionReady
+func (mr *MockLayerMockRecorder) RevisionReady(conditions, revision interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RevisionReady", reflect.TypeOf((*MockLayer)(nil).RevisionReady), conditions, revision)
 }

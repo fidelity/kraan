@@ -9,7 +9,7 @@ set -euo pipefail
 function usage() {
     set +x
     cat <<EOF
-USAGE: ${0##*/} [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--testdata]
+USAGE: ${0##*/} [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--testdata] [--helm <upgrade| install>]
        [--kraan-image-reg <registry name>] [--kraan-image-repo <repo-name>] [--kraan-image-tag] [--kraan-dev]
        [--kraan-image-pull-secret auto | <filename>] [--gitops-image-pull-secret auto | <filename>]
        [--gitops-image-reg <repo-name>] [--kraan-loglevel N] [--prometheus <namespace>] [--values-files <file names>]
@@ -19,7 +19,7 @@ USAGE: ${0##*/} [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--testdata]
 Install the Kraan Addon Manager and gitops source controller to a Kubernetes cluster
 
 Options:
-  '--upgrade' to perform helm upgrade rather than helm install.
+  '--helm' perform helm upgrade or install, if you don't specify either script will not deploy helm chart.
   '--kraan-image-pull-secret' set to 'auto' to generate image pull secrets from ~/.docker/config.json
                               or supply name of file containing image pull secret defintion to apply.
                               The secret should be called 'kraan-regcred'.
@@ -114,7 +114,7 @@ function args() {
   kraan_tag="master"
   kraan_loglevel=""
   no_git_auth=0
-  helm_action="install"
+  helm_action=""
   prometheus=""
   kraan_dev=""
   values_files=""
@@ -142,7 +142,7 @@ function args() {
           "--git-user") (( arg_index+=1 )); GIT_USER="${arg_list[${arg_index}]}";;
           "--git-token") (( arg_index+=1 )); GIT_CREDENTIALS="${arg_list[${arg_index}]}";;
           "--dry-run") dry_run="--dry-run";;
-          "--upgrade") helm_action="upgrade";;
+          "--helm") (( arg_index+=1 )); helm_action="${arg_list[${arg_index}]}";;
           "--no-git-auth") no_git_auth=1;;
           "--debug") set -x;;
                "-h") usage; exit;;
@@ -404,8 +404,9 @@ fi
 if [ -n "${dry_run}" ] ; then
   helm_args="${helm_args} --dry-run"
 fi
-
-helm ${helm_action} kraan chart ${helm_args} --namespace gotk-system
+if [ -n "${helm_action}" ] ; then
+  helm ${helm_action} kraan chart ${helm_args} --namespace gotk-system
+fi
 
 if [ $apply_testdata -gt 0 ]; then
   create_addons_source_yaml "${base_dir}/testdata/addons/addons-source.yaml" "${work_dir}/addons-source.yaml"

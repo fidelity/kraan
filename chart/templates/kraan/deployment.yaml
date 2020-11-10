@@ -35,7 +35,7 @@ spec:
       serviceAccountName: kraan
       containers:
       - name: manager
-        image: {{ .Values.kraan.kraanController.image.repository }}/kraan-controller:{{ .Values.kraan.kraanController.image.tag }}
+        image: {{ .Values.kraan.kraanController.image.repository }}/kraan-controller:{{ .Values.kraan.kraanController.image.tag  | default .Chart.AppVersion }}
         imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false

@@ -32,19 +32,20 @@ var (
 )
 
 const (
-	holdSet      = "hold-set"
-	k8sPending   = "k8s-pending"
-	emptyStatus  = "empty-status"
-	noDepends    = "no-depends"
-	oneDepends   = "one-depends"
-	oneDependsG  = "one-dependsG"
-	oneDependsSG = "one-dependsSG"
-	oneDependsSR = "one-dependsSR"
-	oneDependsND = "one-depends-not-deployed"
-	oneDependsV2 = "one-depends-v2"
-	twoDepends   = "two-depends"
-	k8sv16       = "k8s-v16"
-	k8sv16_2     = "k8s-v16-2"
+	holdSet       = "hold-set"
+	k8sPending    = "k8s-pending"
+	emptyStatus   = "empty-status"
+	noDepends     = "no-depends"
+	oneDepends    = "one-depends"
+	oneDependsG   = "one-dependsG"
+	oneDependsSG  = "one-dependsSG"
+	oneDependsSR  = "one-dependsSR"
+	oneDependsSNR = "one-dependsSNR"
+	oneDependsND  = "one-depends-not-deployed"
+	oneDependsV2  = "one-depends-v2"
+	twoDepends    = "two-depends"
+	k8sv16        = "k8s-v16"
+	k8sv16_2      = "k8s-v16-2"
 	//maxConditions = "max-conditions"
 	layersData  = "testdata/layersdata.json"
 	reposData   = "testdata/reposdata.json"
@@ -711,6 +712,11 @@ func TestDependenciesDeployed(t *testing.T) { // nolint: funlen // ok
 	}, {
 		name:       "check dependencies with one dependsOn, dependency not deployed",
 		layerName:  oneDependsND,
+		layersData: layersData1,
+		expected:   false,
+	}, {
+		name:       "check dependencies with one dependsOn, dependency source not ready",
+		layerName:  oneDependsSNR,
 		layersData: layersData1,
 		expected:   false,
 	},

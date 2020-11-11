@@ -135,6 +135,10 @@ const (
 	// PruningCondition represents the fact that the addons are being pruned.
 	PruningCondition string = "Pruning"
 
+	// PendingCondition represents the fact that the addons are pending being processed.
+	// Used when source is not ready.
+	PendingCondition string = "Pending"
+
 	// ApplyPendingCondition represents the fact that the addons are pending being applied.
 	// Used when applying is pending a prereq being met.
 	ApplyPendingCondition string = "ApplyPending"

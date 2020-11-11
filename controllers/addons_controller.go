@@ -45,6 +45,7 @@ import (
 	"github.com/fidelity/kraan/pkg/layers"
 	"github.com/fidelity/kraan/pkg/metrics"
 	"github.com/fidelity/kraan/pkg/repos"
+	"github.com/fidelity/kraan/pkg/utils"
 )
 
 var (
@@ -56,7 +57,7 @@ type AddonsLayerReconcilerOptions struct {
 	MaxConcurrentReconciles int
 }
 
-func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opts AddonsLayerReconcilerOptions) error {
+func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opts AddonsLayerReconcilerOptions) error { // nolint: funlen,gocyclo // ok
 	addonsLayer := &kraanv1alpha1.AddonsLayer{}
 	hr := &helmctlv2.HelmRelease{}
 	hrepo := &sourcev1.HelmRepository{}
@@ -85,20 +86,50 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 		&handler.EnqueueRequestsFromMapFunc{
 			ToRequests: handler.ToRequestsFunc(r.repoMapperFunc),
 		},
-		predicate.Funcs{CreateFunc: func(e event.CreateEvent) bool {
-			r.Log.V(3).Info("create event for GitRepository", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(e))
-			return true
-		},
+		predicate.Funcs{
+			CreateFunc: func(e event.CreateEvent) bool {
+				r.Log.V(3).Info("create event for GitRepository", "kind", utils.GitRepoSourceKind(), "data", utils.LogJSON(e))
+				return true
+			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
-				r.Log.V(3).Info("update event for GitRepository", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(e))
+				r.Log.V(3).Info("update event for GitRepository", "kind", utils.GitRepoSourceKind(), "data", utils.LogJSON(e))
+				if e.MetaOld == nil || e.MetaNew == nil {
+					r.Log.Error(fmt.Errorf("nill object passed to watcher"), "skipping processing", "data", utils.LogJSON(e))
+					return false
+				}
+
+				oldRepo, ok := e.ObjectOld.(*sourcev1.GitRepository)
+				if !ok {
+					r.Log.Error(fmt.Errorf("unable to cast old object to GitRepository"), "skipping processing", "data", utils.LogJSON(e))
+					return false
+				}
+
+				newRepo, ok := e.ObjectNew.(*sourcev1.GitRepository)
+				if !ok {
+					r.Log.Error(fmt.Errorf("unable to cast new object to GitRepository"), "skipping processing", "data", utils.LogJSON(e))
+					return false
+				}
+
+				if oldRepo.GetArtifact() == nil && newRepo.GetArtifact() != nil {
+					r.Log.V(1).Info("new revision to process", utils.GetGitRepoInfo(newRepo)...)
+					return true
+				}
+
+				if oldRepo.GetArtifact() != nil && newRepo.GetArtifact() != nil &&
+					oldRepo.GetArtifact().Revision != newRepo.GetArtifact().Revision {
+					r.Log.V(1).Info("changed revision to process", utils.GetGitRepoInfo(newRepo)...)
+					r.Log.V(1).Info("old revision", utils.GetGitRepoInfo(newRepo)...)
+					return true
+				}
+				r.Log.V(1).Info("no change to revision, processing anyway", utils.GetGitRepoInfo(newRepo)...)
 				return true
 			},
 			DeleteFunc: func(e event.DeleteEvent) bool {
-				r.Log.V(3).Info("delete event for GitRepository", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(e))
+				r.Log.V(3).Info("delete event for GitRepository", "kind", utils.GitRepoSourceKind(), "data", utils.LogJSON(e))
 				return true
 			},
 			GenericFunc: func(e event.GenericEvent) bool {
-				r.Log.V(3).Info("generic event for GitRepository", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(e))
+				r.Log.V(3).Info("generic event for GitRepository", "kind", utils.GitRepoSourceKind(), "data", utils.LogJSON(e))
 				return true
 			},
 		},
@@ -108,15 +139,15 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 func predicates(logger logr.Logger) predicate.Funcs {
 	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			logger.V(3).Info("create event", "data", apply.LogJSON(e))
+			logger.V(3).Info("create event", "data", utils.LogJSON(e))
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			logger.V(3).Info("update event", "data", apply.LogJSON(e))
+			logger.V(3).Info("update event", "data", utils.LogJSON(e))
 			return true
 		},
 		GenericFunc: func(e event.GenericEvent) bool {
-			logger.V(3).Info("generic event", "data", apply.LogJSON(e))
+			logger.V(3).Info("generic event", "data", utils.LogJSON(e))
 			return true
 		},
 	}
@@ -226,7 +257,7 @@ func (r *AddonsLayerReconciler) checkSuccess(l layers.Layer) (string, error) {
 		return "", nil
 	}
 	l.SetStatusDeployed()
-	revision, err := r.getRevison(l)
+	revision, err := r.getRevision(l)
 	if err != nil {
 		return "", errors.WithMessage(err, "failed to get revision")
 	}
@@ -238,12 +269,12 @@ func (r *AddonsLayerReconciler) waitForData(l layers.Layer, repo repos.Repo) (er
 	for try := 1; try < MaxTries; try++ {
 		err = repo.LinkData(l.GetSourcePath(), l.GetSpec().Source.Path)
 		if err == nil {
-			r.Log.V(1).Info("linked to layer data", "requestName", l.GetName(), "kind", "gitrepositories.source.toolkit.fluxcd.io",
+			r.Log.V(1).Info("linked to layer data", "requestName", l.GetName(), "kind", utils.GitRepoSourceKind(),
 				"namespace", l.GetSpec().Source.NameSpace, "name", l.GetSpec().Source.Name, "layer", l.GetName())
 			return nil
 		}
 		r.Log.V(1).Info("waiting for layer data to be synced", "layer", l.GetName(),
-			"kind", "gitrepositories.source.toolkit.fluxcd.io", "namespace", l.GetSpec().Source.NameSpace, "name", l.GetSpec().Source.Name,
+			"kind", utils.GitRepoSourceKind(), "namespace", l.GetSpec().Source.NameSpace, "name", l.GetSpec().Source.Name,
 			"path", l.GetSpec().Source.Path)
 		time.Sleep(time.Second)
 	}
@@ -262,7 +293,7 @@ func (r *AddonsLayerReconciler) checkData(l layers.Layer) (bool, error) {
 			}
 			return true, nil
 		}
-		r.Log.Info("waiting for layer data", "requestName", l.GetName(), "kind", "gitrepositories.source.toolkit.fluxcd.io", "source", l.GetSpec().Source)
+		r.Log.Info("waiting for layer data", "requestName", l.GetName(), "kind", utils.GitRepoSourceKind(), "source", l.GetSpec().Source)
 		time.Sleep(time.Duration(time.Second * time.Duration(try))) // nolint: unconvert // ignore
 	}
 	l.SetDelayedRequeue()
@@ -270,7 +301,7 @@ func (r *AddonsLayerReconciler) checkData(l layers.Layer) (bool, error) {
 	return false, nil
 }
 
-func (r *AddonsLayerReconciler) getRevison(l layers.Layer) (string, error) {
+func (r *AddonsLayerReconciler) getRevision(l layers.Layer) (string, error) {
 	sourceRepoName := l.GetSourceKey()
 	repo := r.Repos.Get(sourceRepoName)
 	if repo == nil {
@@ -279,7 +310,28 @@ func (r *AddonsLayerReconciler) getRevison(l layers.Layer) (string, error) {
 	return repo.GetGitRepo().Status.Artifact.Revision, nil
 }
 
-func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error) {
+func (r *AddonsLayerReconciler) isReady(l layers.Layer) (bool, error) {
+	sourceRepoName := l.GetSourceKey()
+	repo := r.Repos.Get(sourceRepoName)
+	if repo == nil {
+		return false, fmt.Errorf("unable to find git repository object")
+	}
+	revision := "not set"
+	if repo.GetGitRepo().Status.Artifact != nil {
+		revision = repo.GetGitRepo().Status.Artifact.Revision
+	}
+	ready, srcMsg := l.RevisionReady(repo.GetGitRepo().Status.Conditions, revision)
+	if !ready {
+		l.SetDelayedRequeue()
+		reason := fmt.Sprintf("layer source: %s not ready.", repo.GetGitRepo().Name)
+		message := fmt.Sprintf("source state: %s.", srcMsg)
+		l.StatusUpdate(kraanv1alpha1.PendingCondition, reason, message)
+		return false, nil
+	}
+	return true, nil
+}
+
+func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error) { // nolint: gocyclo // ok
 	l.GetLogger().Info("processing")
 
 	if l.IsHold() {
@@ -290,6 +342,14 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error
 	if !l.CheckK8sVersion() {
 		l.SetStatusK8sVersion()
 		l.SetDelayedRequeue()
+		return "", nil
+	}
+
+	ready, err := r.isReady(l)
+	if err != nil {
+		return "", errors.WithMessage(err, "failed to check source is ready")
+	}
+	if !ready {
 		return "", nil
 	}
 
@@ -392,30 +452,26 @@ func (r *AddonsLayerReconciler) update(ctx context.Context, log logr.Logger,
 	return nil
 }
 
-func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.Request { // nolint: funlen,gocyclo //ok
+func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.Request {
 	/* Not sure why this test fails when it shouldn't
 	kind := a.Object.GetObjectKind().GroupVersionKind()
 	repoKind := sourcev1.GitRepositoryKind
 	if kind.Kind != repoKind {
 		// If this isn't a GitRepository object, return an empty list of requests
 		r.Log.Error(fmt.Errorf("unexpected object kind: %s, only %s supported", kind, sourcev1.GitRepositoryKind),
-			"unexpected kind, continuing", "kind", "gitrepositories.source.toolkit.fluxcd.io", "data", apply.LogJSON(kind))
+			"unexpected kind, continuing", "kind", utils.GitRepoSourceKind(), "data", utils.LogJSON(kind))
 		//return []reconcile.Request{}
 	}
 	*/
 	srcRepo, ok := a.Object.(*sourcev1.GitRepository)
 	if !ok {
-		r.Log.Error(fmt.Errorf("unable to cast object to GitRepository"), "skipping processing", apply.GetObjKindNamespaceName(a.Object)...)
+		r.Log.Error(fmt.Errorf("unable to cast object to GitRepository"), "skipping processing", utils.GetObjKindNamespaceName(a.Object))
 		return []reconcile.Request{}
 	}
-	r.Log.V(1).Info("monitoring", "kind", "gitrepositories.source.toolkit.fluxcd.io", "namespace",
-		srcRepo.Namespace, "name", srcRepo.Name, "generation", srcRepo.Generation,
-		"observed", srcRepo.Status.ObservedGeneration, "revision", srcRepo.Status.Artifact.Revision)
+	r.Log.V(1).Info("monitoring", utils.GetGitRepoInfo(srcRepo)...)
 	addonsList := &kraanv1alpha1.AddonsLayerList{}
 	if err := r.List(r.Context, addonsList); err != nil {
-		r.Log.Error(err, "unable to list AddonsLayers", "kind", "gitrepositories.source.toolkit.fluxcd.io",
-			"namespace", srcRepo.Namespace, "name", srcRepo.Name, "data", "generation", srcRepo.Generation,
-			"observed", srcRepo.Status.ObservedGeneration, "revision", srcRepo.Status.Artifact.Revision)
+		r.Log.Error(err, "unable to list AddonsLayers", utils.GetGitRepoInfo(srcRepo)...)
 		return []reconcile.Request{}
 	}
 	layerList := []layers.Layer{}
@@ -423,9 +479,7 @@ func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.
 	for _, addon := range addonsList.Items {
 		layer := layers.CreateLayer(r.Context, r.Client, r.k8client, r.Log, &addon) //nolint:scopelint // ok
 		if layer.GetSpec().Source.Name == srcRepo.Name && layer.GetSpec().Source.NameSpace == srcRepo.Namespace {
-			r.Log.V(1).Info("layer is using this source", "kind", "gitrepositories.source.toolkit.fluxcd.io", "namespace",
-				srcRepo.Namespace, "name", srcRepo.Name, "generation", srcRepo.Generation, "observed", srcRepo.Status.ObservedGeneration,
-				"revision", srcRepo.Status.Artifact.Revision, "layer", addon.Name)
+			r.Log.V(1).Info("layer is using this source", append(utils.GetGitRepoInfo(srcRepo), "layer", addon.Name)...)
 			layerList = append(layerList, layer)
 			addons = append(addons, reconcile.Request{NamespacedName: types.NamespacedName{Name: layer.GetName(), Namespace: ""}})
 		}
@@ -433,57 +487,30 @@ func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.
 	if len(addons) == 0 {
 		return []reconcile.Request{}
 	}
-	repo := r.Repos.Get(r.Repos.PathKey(srcRepo))
-	if repo == nil {
-		r.Log.V(1).Info("new repo object", "kind", "gitrepositories.source.toolkit.fluxcd.io",
-			"namespace", srcRepo.Namespace, "name", srcRepo.Name,
-			"generation", srcRepo.Generation, "observed", srcRepo.Status.ObservedGeneration,
-			"revision", srcRepo.Status.Artifact.Revision)
-	} else {
-		if srcRepo.Status.Artifact.Revision == repo.GetGitRepo().Status.Artifact.Revision {
-			r.Log.V(1).Info("unchanged repo object", "kind", "gitrepositories.source.toolkit.fluxcd.io",
-				"namespace", srcRepo.Namespace, "name", srcRepo.Name,
-				"generation", srcRepo.Generation, "observed", srcRepo.Status.ObservedGeneration,
-				"revision", srcRepo.Status.Artifact.Revision)
-			return []reconcile.Request{}
-		}
-	}
-	repo = r.Repos.Add(srcRepo)
-	r.Log.V(1).Info("created repo object", "kind", "gitrepositories.source.toolkit.fluxcd.io",
-		"namespace", srcRepo.Namespace, "name", srcRepo.Namespace, "revision", srcRepo.Status.Artifact.Revision)
+	repo := r.Repos.Add(srcRepo)
+	r.Log.V(1).Info("created repo object", utils.GetGitRepoInfo(srcRepo)...)
 	if err := repo.SyncRepo(); err != nil {
-		r.Log.Error(err, "unable to sync repo, not requeuing", "kind", "gitrepositories.source.toolkit.fluxcd.io",
-			"namespace", srcRepo.Namespace, "name", srcRepo.Name,
-			"generation", srcRepo.Generation, "observed", srcRepo.Status.ObservedGeneration,
-			"revision", srcRepo.Status.Artifact.Revision)
+		r.Log.Error(err, "unable to sync repo, not requeuing", utils.GetGitRepoInfo(srcRepo)...)
 		return []reconcile.Request{}
 	}
-	r.Log.V(1).Info("synced repo", "kind", "gitrepositories.source.toolkit.fluxcd.io",
-		"namespace", srcRepo.Namespace, "name", srcRepo.Name,
-		"generation", srcRepo.Generation, "observed", srcRepo.Status.ObservedGeneration,
-		"revision", srcRepo.Status.Artifact.Revision)
 
 	for _, layer := range layerList {
 		if err := repo.LinkData(layer.GetSourcePath(), layer.GetSpec().Source.Path); err != nil {
 			r.Log.Error(err, "unable to link referencing AddonsLayer directory to repository data",
-				"kind", "gitrepositories.source.toolkit.fluxcd.io", "namespace", srcRepo.Namespace, "name", srcRepo.Name,
-				"generation", srcRepo.Generation, "observed", srcRepo.Status.ObservedGeneration,
-				"revision", srcRepo.Status.Artifact.Revision,
-				"layer", layer.GetName())
+				append(utils.GetGitRepoInfo(srcRepo), "layer", layer.GetName())...)
 			continue
 		}
 	}
-	r.Log.Info("synced source", "kind", "gitrepositories.source.toolkit.fluxcd.io",
-		"namespace", srcRepo.Namespace, "name", srcRepo.Name, "revision", srcRepo.Status.Artifact.Revision, "layers", addons)
+	r.Log.Info("synced source", append(utils.GetGitRepoInfo(srcRepo), "layers", addons)...)
 	return addons
 }
 
 func (r *AddonsLayerReconciler) indexHelmReleaseByOwner(o runtime.Object) []string {
-	r.Log.V(2).Info("indexing", apply.GetObjKindNamespaceName(o)...)
+	r.Log.V(2).Info("indexing", utils.GetObjKindNamespaceName(o)...)
 	hr, ok := o.(*helmctlv2.HelmRelease)
 	if !ok {
 		r.Log.Error(fmt.Errorf("failed to cast to helmrelease"), "failed to cast object to expected kind",
-			apply.GetObjKindNamespaceName(o)...)
+			utils.GetObjKindNamespaceName(o)...)
 		return nil
 	}
 	owner := metav1.GetControllerOf(hr)
@@ -503,11 +530,11 @@ func (r *AddonsLayerReconciler) indexHelmReleaseByOwner(o runtime.Object) []stri
 }
 
 func (r *AddonsLayerReconciler) indexHelmRepoByOwner(o runtime.Object) []string {
-	r.Log.V(2).Info("indexing", apply.GetObjKindNamespaceName(o)...)
+	r.Log.V(2).Info("indexing", utils.GetObjKindNamespaceName(o)...)
 	hr, ok := o.(*sourcev1.HelmRepository)
 	if !ok {
 		r.Log.Error(fmt.Errorf("failed to cast to helmrepository"), "unable cast object to expected kind",
-			apply.GetObjKindNamespaceName(o)...)
+			utils.GetObjKindNamespaceName(o)...)
 		return nil
 	}
 	owner := metav1.GetControllerOf(hr)

@@ -104,6 +104,20 @@ func (mr *MockReposMockRecorder) SetRootPath(path interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRootPath", reflect.TypeOf((*MockRepos)(nil).SetRootPath), path)
 }
 
+// GetRootPath mocks base method
+func (m *MockRepos) GetRootPath() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRootPath")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetRootPath indicates an expected call of GetRootPath
+func (mr *MockReposMockRecorder) GetRootPath() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRootPath", reflect.TypeOf((*MockRepos)(nil).GetRootPath))
+}
+
 // SetHostName mocks base method
 func (m *MockRepos) SetHostName(hostName string) {
 	m.ctrl.T.Helper()
@@ -138,20 +152,6 @@ func (m *MockRepos) SetHTTPClient(client *http.Client) {
 func (mr *MockReposMockRecorder) SetHTTPClient(client interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetHTTPClient", reflect.TypeOf((*MockRepos)(nil).SetHTTPClient), client)
-}
-
-// PathKey mocks base method
-func (m *MockRepos) PathKey(srcRepo *v1beta1.GitRepository) string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PathKey", srcRepo)
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// PathKey indicates an expected call of PathKey
-func (mr *MockReposMockRecorder) PathKey(srcRepo interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PathKey", reflect.TypeOf((*MockRepos)(nil).PathKey), srcRepo)
 }
 
 // MockRepo is a mock of Repo interface
@@ -302,15 +302,15 @@ func (mr *MockRepoMockRecorder) SetHostName(hostName interface{}) *gomock.Call {
 }
 
 // SetGitRepo mocks base method
-func (m *MockRepo) SetGitRepo(src *v1beta1.GitRepository) {
+func (m *MockRepo) SetGitRepo(src *v1beta1.GitRepository, rootPath string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetGitRepo", src)
+	m.ctrl.Call(m, "SetGitRepo", src, rootPath)
 }
 
 // SetGitRepo indicates an expected call of SetGitRepo
-func (mr *MockRepoMockRecorder) SetGitRepo(src interface{}) *gomock.Call {
+func (mr *MockRepoMockRecorder) SetGitRepo(src, rootPath interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetGitRepo", reflect.TypeOf((*MockRepo)(nil).SetGitRepo), src)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetGitRepo", reflect.TypeOf((*MockRepo)(nil).SetGitRepo), src, rootPath)
 }
 
 // SetHTTPClient mocks base method

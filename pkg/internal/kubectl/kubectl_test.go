@@ -455,27 +455,41 @@ func (s *Setup) expectRunError() *Setup {
 func (s *Setup) expectRunLogsKubectlCommand() *Setup {
 	s.expectRun()
 	// The ApplyCommand should use the factory's mockLogger to log a log-leveled message indicating that kubectl was executed with the expected command
-	s.mockLogr.EXPECT().V(gomock.Any()).Return(s.mockLogr).Times(1)
-	s.mockLogr.EXPECT().Info("executing kubectl", "command", s.runStr).Times(1)
+	s.mockLogr.EXPECT().V(gomock.Any()).Return(s.mockLogr).Times(7)
+	s.mockLogr.EXPECT().Info("Entering function", "function", "kubectl.(*CommandFactory).isKustomization", "source", "kubectl.go", "line", gomock.Any()).Times(1)
+	s.mockLogr.EXPECT().Info("Exiting function", "function", "kubectl.(*CommandFactory).isKustomization", "source", "kubectl.go", "line", gomock.Any()).Times(1)
+	s.mockLogr.EXPECT().Info("executing kubectl", "function", "kubectl.(*abstractCommand).Run", "source", "kubectl.go", "line", gomock.Any(), "command", s.runStr).Times(1)
+	s.mockLogr.EXPECT().Info("Entering function", "function", "kubectl.(*abstractCommand).Run", "source", "kubectl.go", "line", gomock.Any()).Times(1)
+	s.mockLogr.EXPECT().Info("Exiting function", "function", "kubectl.(*abstractCommand).Run", "source", "kubectl.go", "line", gomock.Any()).Times(1)
+	s.mockLogr.EXPECT().Info("Entering function", "function", "kubectl.(*CommandFactory).Apply", "source", "kubectl.go", "line", gomock.Any()).Times(1)
+	s.mockLogr.EXPECT().Info("Exiting function", "function", "kubectl.(*CommandFactory).Apply", "source", "kubectl.go", "line", gomock.Any()).Times(1)
 	return s
 }
 
 func (s *Setup) expectDryRunLogsKubectlCommand() *Setup {
 	s.expectDryRun()
 	// The ApplyCommand should use the factory's mockLogger to log a log-leveled message indicating that kubectl was executed with the expected command
-	s.mockLogr.EXPECT().V(gomock.Any()).Return(s.mockLogr).Times(1)
-	s.mockLogr.EXPECT().Info("executing kubectl", "command", s.dryRunStr).Times(1)
+	s.mockLogr.EXPECT().V(gomock.Any()).Return(s.mockLogr).Times(7)
+	s.mockLogr.EXPECT().Info("Entering function", "function", "kubectl.(*CommandFactory).isKustomization", "source", "kubectl.go", "line", gomock.Any()).Times(1)
+	s.mockLogr.EXPECT().Info("Exiting function", "function", "kubectl.(*CommandFactory).isKustomization", "source", "kubectl.go", "line", gomock.Any()).Times(1)
+	s.mockLogr.EXPECT().Info("executing kubectl", "function", "kubectl.(*abstractCommand).Run", "source", "kubectl.go", "line", gomock.Any(), "command", s.dryRunStr).Times(1)
+	s.mockLogr.EXPECT().Info("Entering function", "function", "kubectl.(*abstractCommand).Run", "source", "kubectl.go", "line", gomock.Any()).Times(1)
+	s.mockLogr.EXPECT().Info("Exiting function", "function", "kubectl.(*abstractCommand).Run", "source", "kubectl.go", "line", gomock.Any()).Times(1)
+	s.mockLogr.EXPECT().Info("Entering function", "function", "kubectl.(*CommandFactory).Apply", "source", "kubectl.go", "line", gomock.Any()).Times(1)
+	s.mockLogr.EXPECT().Info("Exiting function", "function", "kubectl.(*CommandFactory).Apply", "source", "kubectl.go", "line", gomock.Any()).Times(1)
 	return s
 }
 
 func (s *Setup) expectRunUsesCommandLogger() *Setup {
 	s.expectRun()
 	// The ApplyCommand should use the command's mockLogger to log a log-leveled message indicating that kubectl was executed with the expected command
-	s.cmdLogr.EXPECT().V(gomock.Any()).Return(s.cmdLogr).Times(1)
-	s.cmdLogr.EXPECT().Info("executing kubectl", "command", s.runStr).Times(1)
+	s.cmdLogr.EXPECT().V(gomock.Any()).Return(s.cmdLogr).Times(3)
+	s.cmdLogr.EXPECT().Info("executing kubectl", "function", "kubectl.(*abstractCommand).Run", "source", "kubectl.go", "line", gomock.Any(), "command", s.runStr).Times(1)
+	s.cmdLogr.EXPECT().Info("Entering function", "function", "kubectl.(*abstractCommand).Run", "source", "kubectl.go", "line", gomock.Any()).Times(1)
+	s.cmdLogr.EXPECT().Info("Exiting function", "function", "kubectl.(*abstractCommand).Run", "source", "kubectl.go", "line", gomock.Any()).Times(1)
 	// The Factory's mockLogger should never be used
-	s.mockLogr.EXPECT().V(gomock.Any()).Return(s.mockLogr).Times(0)
-	s.mockLogr.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+	s.mockLogr.EXPECT().V(gomock.Any()).Return(s.mockLogr).Times(4)
+	s.mockLogr.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(4)
 	return s
 }
 

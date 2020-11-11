@@ -148,13 +148,10 @@ To test the kraan-controller you can run it on your local machine against a kube
     USAGE: run-controller.sh [--log-level N] [--debug]
     Run the Kraan Addon Manager on local machine
     options:
-    '--log-level' N, where N is 1 for debug messages and 2 or higher for trace level debugging
+    '--log-level' N, where N is 1 for debug message and 2 or higher for trace level debugging
     '--debug' for verbose output
-    This script will create a temporary directory and copy the addons.yaml and addons-source.yaml
-    files from testdata/addons tothe temporary directory. It will then set the environmental
-    variable DATA_PATH to the temporary directory. This will cause the kraan-controller to process
-    the addons layers using the temporary directory as its root directory when storing files it
-    retrieves from this git repository's testdata/addons directory using the source controller.
+    This script will create a temporary directory call /tmp/kraan-local-exec which the kraan-controller
+    will use as its root directory when storing files it retrieves from this git repository
 
 The kraan-controller will reprocess all AddonsLayers perioidically. This period defaults to 30 seconds but can be set using a command line argument.
 
@@ -171,9 +168,7 @@ The `SC_HOST` environmental variable can be used to set the host component of th
     kubectl -n gotk-system port-forward svc/source-controller 8090:80 &
 	export SC_HOST=localhost:8090
 
-If you elected to use the `--testdata` option when setting up the cluster test data wil be added. Alternatively, you can do this by applying `.testdata/addons/addons-source.yaml` and `.testdata/addons/addons.yaml` to deploy the source controller custom resource and AddonsLayers custom resources respectively. This will cause the kraan-controller to operate on the testdata in the `./testdata` directory of this repository using the `master` branch. If you want to test against other branches use the copy of these files the `scripts/run-controller.sh` creates. Edit then apply those files.
-
-If you want to use the kraan-controller to deploy items defined in your own repository edit the 'addons-source.yaml' file in the temporary directory to reference the repository and branch containing your addons definitions and apply it to the cluster. Then edit the `.testdata/addons/addons.yaml` file to define the addons layers and apply that.
+If you elected to use the `--testdata` option when setting up the cluster test data wil be added. Alternatively, you can do this by applying `.testdata/addons/addons-source.yaml` and `.testdata/addons/addons.yaml` to deploy the source controller custom resource and AddonsLayers custom resources respectively. This will cause the kraan-controller to operate on the testdata in the `./testdata` directory of this repository using the `master` branch.
 
 ### Integration Tests
 
@@ -181,3 +176,18 @@ To run integration tests:
 
     make integration
 
+## Debugging
+
+The Kraan Controller emits json format log records. Most log record contains a number of common fields that can be used to select log messages to display when examining log data.
+
+field name | Description
+--------- | -----------
+function | The function name, in format `package.interface/object.method/function`
+source | The source file, just file name, not full path name
+line | The line number
+kind | The kind for log messages relating to owned or watched objects
+layer | The layer name for log messages relating to addons layers
+msg | The message text
+logger | name of the logger, one of   `controller-runtime.manager`, `controller-runtime`, `metrics`, `initialization`, `kraan.controller.applier`, `kraan.controller.reconciler` or `kraan.manager.controller`
+level | Level of message. This will be `info`, `debug` or `Level(-N)`, where 'N' is the trace level. Levels 2 to 5 are currently used.
+ts | timestamp of log message

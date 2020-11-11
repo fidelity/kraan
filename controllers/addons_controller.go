@@ -58,6 +58,9 @@ type AddonsLayerReconcilerOptions struct {
 }
 
 func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opts AddonsLayerReconcilerOptions) error { // nolint: funlen,gocyclo // ok
+	utils.TraceCall(r.Log)
+	defer utils.TraceExit(r.Log)
+
 	addonsLayer := &kraanv1alpha1.AddonsLayer{}
 	hr := &helmctlv2.HelmRelease{}
 	hrepo := &sourcev1.HelmRepository{}
@@ -88,30 +91,36 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 		},
 		predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
-				r.Log.V(3).Info("create event for GitRepository", "kind", utils.GitRepoSourceKind(), "data", utils.LogJSON(e))
+				r.Log.V(3).Info("create event for GitRepository",
+					append(utils.GetFunctionAndSource(utils.MyCaller), "kind", utils.GitRepoSourceKind(), "data", utils.LogJSON(e))...)
 				return true
 			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
-				r.Log.V(3).Info("update event for GitRepository", "kind", utils.GitRepoSourceKind(), "data", utils.LogJSON(e))
+				r.Log.V(3).Info("update event for GitRepository",
+					append(utils.GetFunctionAndSource(utils.MyCaller), "kind", utils.GitRepoSourceKind(), "data", utils.LogJSON(e))...)
 				if e.MetaOld == nil || e.MetaNew == nil {
-					r.Log.Error(fmt.Errorf("nill object passed to watcher"), "skipping processing", "data", utils.LogJSON(e))
+					r.Log.Error(fmt.Errorf("nill object passed to watcher"), "skipping processing",
+						append(utils.GetFunctionAndSource(utils.MyCaller), "data", utils.LogJSON(e))...)
 					return false
 				}
 
 				oldRepo, ok := e.ObjectOld.(*sourcev1.GitRepository)
 				if !ok {
-					r.Log.Error(fmt.Errorf("unable to cast old object to GitRepository"), "skipping processing", "data", utils.LogJSON(e))
+					r.Log.Error(fmt.Errorf("unable to cast old object to GitRepository"), "skipping processing",
+						append(utils.GetFunctionAndSource(utils.MyCaller), "data", utils.LogJSON(e))...)
 					return false
 				}
 
 				newRepo, ok := e.ObjectNew.(*sourcev1.GitRepository)
 				if !ok {
-					r.Log.Error(fmt.Errorf("unable to cast new object to GitRepository"), "skipping processing", "data", utils.LogJSON(e))
+					r.Log.Error(fmt.Errorf("unable to cast new object to GitRepository"), "skipping processing",
+						append(utils.GetFunctionAndSource(utils.MyCaller), "data", utils.LogJSON(e))...)
 					return false
 				}
 
 				if oldRepo.GetArtifact() == nil && newRepo.GetArtifact() != nil {
-					r.Log.V(1).Info("new revision to process", utils.GetGitRepoInfo(newRepo)...)
+					r.Log.V(1).Info("new revision to process",
+						append(utils.GetFunctionAndSource(utils.MyCaller), utils.GetGitRepoInfo(newRepo)...)...)
 					return true
 				}
 
@@ -121,15 +130,18 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 					r.Log.V(1).Info("old revision", utils.GetGitRepoInfo(newRepo)...)
 					return true
 				}
-				r.Log.V(1).Info("no change to revision, processing anyway", utils.GetGitRepoInfo(newRepo)...)
+				r.Log.V(1).Info("no change to revision, processing anyway",
+					append(utils.GetFunctionAndSource(utils.MyCaller), utils.GetGitRepoInfo(newRepo)...)...)
 				return true
 			},
 			DeleteFunc: func(e event.DeleteEvent) bool {
-				r.Log.V(3).Info("delete event for GitRepository", "kind", utils.GitRepoSourceKind(), "data", utils.LogJSON(e))
+				r.Log.V(3).Info("delete event for GitRepository",
+					append(utils.GetFunctionAndSource(utils.MyCaller), "kind", utils.GitRepoSourceKind(), "data", utils.LogJSON(e))...)
 				return true
 			},
 			GenericFunc: func(e event.GenericEvent) bool {
-				r.Log.V(3).Info("generic event for GitRepository", "kind", utils.GitRepoSourceKind(), "data", utils.LogJSON(e))
+				r.Log.V(3).Info("generic event for GitRepository",
+					append(utils.GetFunctionAndSource(utils.MyCaller), "kind", utils.GitRepoSourceKind(), "data", utils.LogJSON(e))...)
 				return true
 			},
 		},
@@ -139,15 +151,15 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 func predicates(logger logr.Logger) predicate.Funcs {
 	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			logger.V(3).Info("create event", "data", utils.LogJSON(e))
+			logger.V(3).Info("create event", append(utils.GetFunctionAndSource(utils.MyCaller), "data", utils.LogJSON(e))...)
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			logger.V(3).Info("update event", "data", utils.LogJSON(e))
+			logger.V(3).Info("update event", append(utils.GetFunctionAndSource(utils.MyCaller), "data", utils.LogJSON(e))...)
 			return true
 		},
 		GenericFunc: func(e event.GenericEvent) bool {
-			logger.V(3).Info("generic event", "data", utils.LogJSON(e))
+			logger.V(3).Info("generic event", append(utils.GetFunctionAndSource(utils.MyCaller), "data", utils.LogJSON(e))...)
 			return true
 		},
 	}
@@ -192,6 +204,9 @@ func NewReconciler(config *rest.Config, client client.Client, logger logr.Logger
 }
 
 func (r *AddonsLayerReconciler) getK8sClient() (kubernetes.Interface, error) {
+	utils.TraceCall(r.Log)
+	defer utils.TraceExit(r.Log)
+
 	// creates the clientset
 	clientset, err := kubernetes.NewForConfig(r.Config)
 	if err != nil {
@@ -202,6 +217,9 @@ func (r *AddonsLayerReconciler) getK8sClient() (kubernetes.Interface, error) {
 }
 
 func (r *AddonsLayerReconciler) processPrune(l layers.Layer) (statusReconciled bool, err error) {
+	utils.TraceCall(r.Log)
+	defer utils.TraceExit(r.Log)
+
 	ctx := r.Context
 	applier := r.Applier
 
@@ -221,6 +239,9 @@ func (r *AddonsLayerReconciler) processPrune(l layers.Layer) (statusReconciled b
 }
 
 func (r *AddonsLayerReconciler) processApply(l layers.Layer) (statusReconciled bool, err error) {
+	utils.TraceCall(r.Log)
+	defer utils.TraceExit(r.Log)
+
 	ctx := r.Context
 	applier := r.Applier
 
@@ -236,7 +257,7 @@ func (r *AddonsLayerReconciler) processApply(l layers.Layer) (statusReconciled b
 
 		l.SetStatusApplying()
 		if applyErr := applier.Apply(ctx, l); applyErr != nil {
-			return true, errors.WithMessage(applyErr, "check for apply failed")
+			return true, errors.WithMessage(applyErr, "apply failed")
 		}
 		l.SetDelayedRequeue()
 		return true, nil
@@ -245,6 +266,9 @@ func (r *AddonsLayerReconciler) processApply(l layers.Layer) (statusReconciled b
 }
 
 func (r *AddonsLayerReconciler) checkSuccess(l layers.Layer) (string, error) {
+	utils.TraceCall(r.Log)
+	defer utils.TraceExit(r.Log)
+
 	ctx := r.Context
 	applier := r.Applier
 
@@ -265,17 +289,21 @@ func (r *AddonsLayerReconciler) checkSuccess(l layers.Layer) (string, error) {
 }
 
 func (r *AddonsLayerReconciler) waitForData(l layers.Layer, repo repos.Repo) (err error) {
+	utils.TraceCall(r.Log)
+	defer utils.TraceExit(r.Log)
+
 	MaxTries := 15
 	for try := 1; try < MaxTries; try++ {
 		err = repo.LinkData(l.GetSourcePath(), l.GetSpec().Source.Path)
 		if err == nil {
-			r.Log.V(1).Info("linked to layer data", "requestName", l.GetName(), "kind", utils.GitRepoSourceKind(),
-				"namespace", l.GetSpec().Source.NameSpace, "name", l.GetSpec().Source.Name, "layer", l.GetName())
+			r.Log.V(1).Info("linked to layer data",
+				append(utils.GetFunctionAndSource(utils.MyCaller), "requestName", l.GetName(), "kind", utils.GitRepoSourceKind(),
+					"namespace", l.GetSpec().Source.NameSpace, "name", l.GetSpec().Source.Name, "layer", l.GetName())...)
 			return nil
 		}
-		r.Log.V(1).Info("waiting for layer data to be synced", "layer", l.GetName(),
-			"kind", utils.GitRepoSourceKind(), "namespace", l.GetSpec().Source.NameSpace, "name", l.GetSpec().Source.Name,
-			"path", l.GetSpec().Source.Path)
+		r.Log.V(1).Info("waiting for layer data to be synced",
+			append(utils.GetFunctionAndSource(utils.MyCaller), "layer", l.GetName(), "kind", utils.GitRepoSourceKind(),
+				"namespace", l.GetSpec().Source.NameSpace, "name", l.GetSpec().Source.Name, "path", l.GetSpec().Source.Path)...)
 		time.Sleep(time.Second)
 	}
 	l.StatusUpdate(kraanv1alpha1.FailedCondition, kraanv1alpha1.AddonsLayerFailedReason, err.Error())
@@ -283,6 +311,9 @@ func (r *AddonsLayerReconciler) waitForData(l layers.Layer, repo repos.Repo) (er
 }
 
 func (r *AddonsLayerReconciler) checkData(l layers.Layer) (bool, error) {
+	utils.TraceCall(r.Log)
+	defer utils.TraceExit(r.Log)
+
 	sourceRepoName := l.GetSourceKey()
 	MaxTries := 5
 	for try := 1; try < MaxTries; try++ {
@@ -293,7 +324,8 @@ func (r *AddonsLayerReconciler) checkData(l layers.Layer) (bool, error) {
 			}
 			return true, nil
 		}
-		r.Log.Info("waiting for layer data", "requestName", l.GetName(), "kind", utils.GitRepoSourceKind(), "source", l.GetSpec().Source)
+		r.Log.Info("waiting for layer data",
+			append(utils.GetFunctionAndSource(utils.MyCaller), "requestName", l.GetName(), "kind", utils.GitRepoSourceKind(), "source", l.GetSpec().Source)...)
 		time.Sleep(time.Duration(time.Second * time.Duration(try))) // nolint: unconvert // ignore
 	}
 	l.SetDelayedRequeue()
@@ -302,6 +334,9 @@ func (r *AddonsLayerReconciler) checkData(l layers.Layer) (bool, error) {
 }
 
 func (r *AddonsLayerReconciler) getRevision(l layers.Layer) (string, error) {
+	utils.TraceCall(r.Log)
+	defer utils.TraceExit(r.Log)
+
 	sourceRepoName := l.GetSourceKey()
 	repo := r.Repos.Get(sourceRepoName)
 	if repo == nil {
@@ -311,6 +346,9 @@ func (r *AddonsLayerReconciler) getRevision(l layers.Layer) (string, error) {
 }
 
 func (r *AddonsLayerReconciler) isReady(l layers.Layer) (bool, error) {
+	utils.TraceCall(r.Log)
+	defer utils.TraceExit(r.Log)
+
 	sourceRepoName := l.GetSourceKey()
 	repo := r.Repos.Get(sourceRepoName)
 	if repo == nil {
@@ -332,6 +370,9 @@ func (r *AddonsLayerReconciler) isReady(l layers.Layer) (bool, error) {
 }
 
 func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error) { // nolint: gocyclo // ok
+	utils.TraceCall(r.Log)
+	defer utils.TraceExit(r.Log)
+
 	l.GetLogger().Info("processing")
 
 	if l.IsHold() {
@@ -381,6 +422,9 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error
 }
 
 func (r *AddonsLayerReconciler) updateRequeue(l layers.Layer, res *ctrl.Result, rerr *error) {
+	utils.TraceCall(r.Log)
+	defer utils.TraceExit(r.Log)
+
 	if l.IsUpdated() {
 		*rerr = r.update(r.Context, r.Log, l.GetAddonsLayer())
 	}
@@ -398,6 +442,9 @@ func (r *AddonsLayerReconciler) updateRequeue(l layers.Layer, res *ctrl.Result, 
 // +kubebuilder:rbac:groups=kraan.io,resources=addons,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kraan.io,resources=addons/status,verbs=get;update;patch
 func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (res ctrl.Result, err error) {
+	utils.TraceCall(r.Log)
+	defer utils.TraceExit(r.Log)
+
 	ctx := r.Context
 	reconcileStart := time.Now()
 
@@ -412,7 +459,7 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (res ctrl.Result, er
 	deployedRevision, err := r.processAddonLayer(l)
 	if err != nil {
 		l.StatusUpdate(kraanv1alpha1.FailedCondition, kraanv1alpha1.AddonsLayerFailedReason, err.Error())
-		log.Error(err, "failed to process addons layer")
+		log.Error(err, "failed to process addons layer", utils.GetFunctionAndSource(utils.MyCaller)...)
 	}
 
 	if l.GetAddonsLayer().Generation != l.GetFullStatus().ObservedGeneration {
@@ -432,6 +479,9 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (res ctrl.Result, er
 }
 
 func (r *AddonsLayerReconciler) recordReadiness(al *kraanv1alpha1.AddonsLayer, deleted bool) {
+	utils.TraceCall(r.Log)
+	defer utils.TraceExit(r.Log)
+
 	status := corev1.ConditionUnknown
 	if al.Status.State == kraanv1alpha1.DeployedCondition {
 		status = corev1.ConditionTrue
@@ -444,8 +494,11 @@ func (r *AddonsLayerReconciler) recordReadiness(al *kraanv1alpha1.AddonsLayer, d
 
 func (r *AddonsLayerReconciler) update(ctx context.Context, log logr.Logger,
 	a *kraanv1alpha1.AddonsLayer) error {
+	utils.TraceCall(r.Log)
+	defer utils.TraceExit(r.Log)
+
 	if err := r.Status().Update(ctx, a); err != nil {
-		log.Error(err, "unable to update AddonsLayer status")
+		log.Error(err, "unable to update AddonsLayer status", utils.GetFunctionAndSource(utils.MyCaller)...)
 		return err
 	}
 
@@ -453,25 +506,18 @@ func (r *AddonsLayerReconciler) update(ctx context.Context, log logr.Logger,
 }
 
 func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.Request {
-	/* Not sure why this test fails when it shouldn't
-	kind := a.Object.GetObjectKind().GroupVersionKind()
-	repoKind := sourcev1.GitRepositoryKind
-	if kind.Kind != repoKind {
-		// If this isn't a GitRepository object, return an empty list of requests
-		r.Log.Error(fmt.Errorf("unexpected object kind: %s, only %s supported", kind, sourcev1.GitRepositoryKind),
-			"unexpected kind, continuing", "kind", utils.GitRepoSourceKind(), "data", utils.LogJSON(kind))
-		//return []reconcile.Request{}
-	}
-	*/
+	utils.TraceCall(r.Log)
+	defer utils.TraceExit(r.Log)
+
 	srcRepo, ok := a.Object.(*sourcev1.GitRepository)
 	if !ok {
 		r.Log.Error(fmt.Errorf("unable to cast object to GitRepository"), "skipping processing", utils.GetObjKindNamespaceName(a.Object))
 		return []reconcile.Request{}
 	}
-	r.Log.V(1).Info("monitoring", utils.GetGitRepoInfo(srcRepo)...)
+	r.Log.V(1).Info("monitoring", append(utils.GetGitRepoInfo(srcRepo), utils.GetFunctionAndSource(utils.MyCaller))...)
 	addonsList := &kraanv1alpha1.AddonsLayerList{}
 	if err := r.List(r.Context, addonsList); err != nil {
-		r.Log.Error(err, "unable to list AddonsLayers", utils.GetGitRepoInfo(srcRepo)...)
+		r.Log.Error(err, "unable to list AddonsLayers", append(utils.GetGitRepoInfo(srcRepo), utils.GetFunctionAndSource(utils.MyCaller))...)
 		return []reconcile.Request{}
 	}
 	layerList := []layers.Layer{}
@@ -479,7 +525,7 @@ func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.
 	for _, addon := range addonsList.Items {
 		layer := layers.CreateLayer(r.Context, r.Client, r.k8client, r.Log, &addon) //nolint:scopelint // ok
 		if layer.GetSpec().Source.Name == srcRepo.Name && layer.GetSpec().Source.NameSpace == srcRepo.Namespace {
-			r.Log.V(1).Info("layer is using this source", append(utils.GetGitRepoInfo(srcRepo), "layer", addon.Name)...)
+			r.Log.V(1).Info("layer is using this source", append(utils.GetGitRepoInfo(srcRepo), utils.GetFunctionAndSource(utils.MyCaller), "layers", addons)...)
 			layerList = append(layerList, layer)
 			addons = append(addons, reconcile.Request{NamespacedName: types.NamespacedName{Name: layer.GetName(), Namespace: ""}})
 		}
@@ -490,46 +536,52 @@ func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.
 	repo := r.Repos.Add(srcRepo)
 	r.Log.V(1).Info("created repo object", utils.GetGitRepoInfo(srcRepo)...)
 	if err := repo.SyncRepo(); err != nil {
-		r.Log.Error(err, "unable to sync repo, not requeuing", utils.GetGitRepoInfo(srcRepo)...)
+		r.Log.Error(err, "unable to sync repo, not requeuing", append(utils.GetGitRepoInfo(srcRepo), utils.GetFunctionAndSource(utils.MyCaller))...)
 		return []reconcile.Request{}
 	}
 
 	for _, layer := range layerList {
 		if err := repo.LinkData(layer.GetSourcePath(), layer.GetSpec().Source.Path); err != nil {
 			r.Log.Error(err, "unable to link referencing AddonsLayer directory to repository data",
-				append(utils.GetGitRepoInfo(srcRepo), "layer", layer.GetName())...)
+				append(utils.GetGitRepoInfo(srcRepo), utils.GetFunctionAndSource(utils.MyCaller), "layers", layer.GetName())...)
 			continue
 		}
 	}
-	r.Log.Info("synced source", append(utils.GetGitRepoInfo(srcRepo), "layers", addons)...)
 	return addons
 }
 
 func (r *AddonsLayerReconciler) indexHelmReleaseByOwner(o runtime.Object) []string {
-	r.Log.V(2).Info("indexing", utils.GetObjKindNamespaceName(o)...)
+	utils.TraceCall(r.Log)
+	defer utils.TraceExit(r.Log)
+
+	r.Log.V(2).Info("indexing", append(utils.GetObjKindNamespaceName(o), utils.GetFunctionAndSource(utils.MyCaller))...)
 	hr, ok := o.(*helmctlv2.HelmRelease)
 	if !ok {
 		r.Log.Error(fmt.Errorf("failed to cast to helmrelease"), "failed to cast object to expected kind",
-			utils.GetObjKindNamespaceName(o)...)
+			append(utils.GetObjKindNamespaceName(o), utils.GetFunctionAndSource(utils.MyCaller))...)
 		return nil
 	}
 	owner := metav1.GetControllerOf(hr)
 	if owner == nil {
 		r.Log.Info("unexpected helmrelease passed to indexer, no owner information",
-			"kind", "helmreleases.helm.toolkit.fluxcd.io", "namespace", hr.Namespace, "name", hr.Name)
+			append(utils.GetFunctionAndSource(utils.MyCaller), "kind", "helmreleases.helm.toolkit.fluxcd.io", "namespace", hr.Namespace, "name", hr.Name)...)
 		return nil
 	}
 	if owner.APIVersion != kraanv1alpha1.GroupVersion.String() || owner.Kind != "AddonsLayer" {
 		r.Log.Info("unexpected helmrelease passed to indexer, not owned by an AddonsLayer",
-			"kind", "helmreleases.helm.toolkit.fluxcd.io", "namespace", hr.Namespace, "name", hr.Name)
+			append(utils.GetFunctionAndSource(utils.MyCaller), "kind", "helmreleases.helm.toolkit.fluxcd.io", "namespace", hr.Namespace, "name", hr.Name)...)
 		return nil
 	}
-	r.Log.V(1).Info("HelmRelease associated with layer", "kind", "helmreleases.helm.toolkit.fluxcd.io", "namespace", hr.Namespace, "name", hr.Name, "layer", owner.Name)
+	r.Log.V(1).Info("HelmRelease associated with layer",
+		append(utils.GetFunctionAndSource(utils.MyCaller), "kind", "helmreleases.helm.toolkit.fluxcd.io", "namespace", hr.Namespace, "name", hr.Name, "layer", owner.Name)...)
 
 	return []string{owner.Name}
 }
 
 func (r *AddonsLayerReconciler) indexHelmRepoByOwner(o runtime.Object) []string {
+	utils.TraceCall(r.Log)
+	defer utils.TraceExit(r.Log)
+
 	r.Log.V(2).Info("indexing", utils.GetObjKindNamespaceName(o)...)
 	hr, ok := o.(*sourcev1.HelmRepository)
 	if !ok {
@@ -540,14 +592,15 @@ func (r *AddonsLayerReconciler) indexHelmRepoByOwner(o runtime.Object) []string 
 	owner := metav1.GetControllerOf(hr)
 	if owner == nil {
 		r.Log.Info("unexpected helmrepository passed to indexer, no owner information",
-			"kind", "helmrepositories.source.toolkit.fluxcd.io", "namespace", hr.Namespace, "name", hr.Name)
+			append(utils.GetFunctionAndSource(utils.MyCaller), "kind", "helmrepositories.source.toolkit.fluxcd.io", "namespace", hr.Namespace, "name", hr.Name)...)
 		return nil
 	}
 	if owner.APIVersion != kraanv1alpha1.GroupVersion.String() || owner.Kind != "AddonsLayer" {
 		r.Log.Info("unexpected helmrepository passed to indexer, not owned by an AddonsLayer",
-			"kind", "helmrepositories.source.toolkit.fluxcd.io", "namespace", hr.Namespace, "name", hr.Name)
+			append(utils.GetFunctionAndSource(utils.MyCaller), "kind", "helmrepositories.source.toolkit.fluxcd.io", "namespace", hr.Namespace, "name", hr.Name)...)
 		return nil
 	}
-	r.Log.V(1).Info("Helm Repository associated with layer", "kind", "helmrepositories.source.toolkit.fluxcd.io", "namespace", hr.Namespace, "name", hr.Name, "layer", owner.Name)
+	r.Log.V(1).Info("Helm Repository associated with layer",
+		append(utils.GetFunctionAndSource(utils.MyCaller), "kind", "helmrepositories.source.toolkit.fluxcd.io", "namespace", hr.Namespace, "name", hr.Name, "layer", owner.Name)...)
 	return []string{owner.Name}
 }

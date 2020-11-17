@@ -122,13 +122,12 @@ type abstractCommand struct {
 }
 
 func (c *abstractCommand) logDebug(msg string, keysAndValues ...interface{}) {
-	keysAndValues = append(keysAndValues, logging.GetFunctionAndSource(logging.MyCaller+1)...)
-	c.logger.V(1).Info(msg, append(keysAndValues, "command", c.asString())...)
+	c.logger.V(1).Info(msg, append(keysAndValues, append(logging.GetFunctionAndSource(logging.MyCaller+1), "command", c.asString())...)...)
 }
 
 func (c *abstractCommand) logError(sourceErr error, keysAndValues ...interface{}) (err error) {
 	msg := "error executing kubectl command"
-	c.logger.Error(err, msg, append(logging.GetFunctionAndSource(logging.MyCaller+1), keysAndValues, "command", c.asString())...)
+	c.logger.Error(err, msg, append(keysAndValues, append(logging.GetFunctionAndSource(logging.MyCaller+1), "command", c.asString())...)...)
 	return fmt.Errorf("%s '%s' : %w", msg, c.asString(), sourceErr)
 }
 

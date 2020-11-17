@@ -505,7 +505,7 @@ func (r *AddonsLayerReconciler) update(ctx context.Context, log logr.Logger,
 	return nil
 }
 
-func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.Request {
+func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.Request { // nolint:gocyclo //ok
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
 
@@ -514,10 +514,11 @@ func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.
 		r.Log.Error(fmt.Errorf("unable to cast object to GitRepository"), "skipping processing", logging.GetObjKindNamespaceName(a.Object))
 		return []reconcile.Request{}
 	}
-	r.Log.V(1).Info("monitoring", append(logging.GetGitRepoInfo(srcRepo), logging.GetFunctionAndSource(logging.MyCaller))...)
+
+	r.Log.V(1).Info("monitoring", append(logging.GetGitRepoInfo(srcRepo), logging.GetFunctionAndSource(logging.MyCaller)...)...)
 	addonsList := &kraanv1alpha1.AddonsLayerList{}
 	if err := r.List(r.Context, addonsList); err != nil {
-		r.Log.Error(err, "unable to list AddonsLayers", append(logging.GetGitRepoInfo(srcRepo), logging.GetFunctionAndSource(logging.MyCaller))...)
+		r.Log.Error(err, "unable to list AddonsLayers", append(logging.GetGitRepoInfo(srcRepo), logging.GetFunctionAndSource(logging.MyCaller)...)...)
 		return []reconcile.Request{}
 	}
 	layerList := []layers.Layer{}
@@ -525,7 +526,7 @@ func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.
 	for _, addon := range addonsList.Items {
 		layer := layers.CreateLayer(r.Context, r.Client, r.k8client, r.Log, &addon) //nolint:scopelint // ok
 		if layer.GetSpec().Source.Name == srcRepo.Name && layer.GetSpec().Source.NameSpace == srcRepo.Namespace {
-			r.Log.V(1).Info("layer is using this source", append(logging.GetGitRepoInfo(srcRepo), logging.GetFunctionAndSource(logging.MyCaller), "layers", addons)...)
+			r.Log.V(1).Info("layer is using this source", append(logging.GetGitRepoInfo(srcRepo), append(logging.GetFunctionAndSource(logging.MyCaller), "layers", addons)...)...)
 			layerList = append(layerList, layer)
 			addons = append(addons, reconcile.Request{NamespacedName: types.NamespacedName{Name: layer.GetName(), Namespace: ""}})
 		}
@@ -536,16 +537,20 @@ func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.
 	repo := r.Repos.Add(srcRepo)
 	r.Log.V(1).Info("created repo object", logging.GetGitRepoInfo(srcRepo)...)
 	if err := repo.SyncRepo(); err != nil {
-		r.Log.Error(err, "unable to sync repo, not requeuing", append(logging.GetGitRepoInfo(srcRepo), logging.GetFunctionAndSource(logging.MyCaller))...)
+		r.Log.Error(err, "unable to sync repo, not requeuing", append(logging.GetGitRepoInfo(srcRepo), logging.GetFunctionAndSource(logging.MyCaller)...)...)
 		return []reconcile.Request{}
 	}
 
 	for _, layer := range layerList {
 		if err := repo.LinkData(layer.GetSourcePath(), layer.GetSpec().Source.Path); err != nil {
 			r.Log.Error(err, "unable to link referencing AddonsLayer directory to repository data",
-				append(logging.GetGitRepoInfo(srcRepo), logging.GetFunctionAndSource(logging.MyCaller), "layers", layer.GetName())...)
+				append(logging.GetGitRepoInfo(srcRepo), append(logging.GetFunctionAndSource(logging.MyCaller), "layers", layer.GetName())...)...)
 			continue
 		}
+	}
+	r.Log.Info("synced source", append(logging.GetGitRepoInfo(srcRepo), append(logging.GetFunctionAndSource(logging.MyCaller), "layers", addons)...)...)
+	if err := repo.TidyRepo(); err != nil {
+		r.Log.Error(err, "unable to garbage collect repo revisions", append(logging.GetGitRepoInfo(srcRepo), logging.GetFunctionAndSource(logging.MyCaller)...)...)
 	}
 	return addons
 }
@@ -554,11 +559,11 @@ func (r *AddonsLayerReconciler) indexHelmReleaseByOwner(o runtime.Object) []stri
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
 
-	r.Log.V(2).Info("indexing", append(logging.GetObjKindNamespaceName(o), logging.GetFunctionAndSource(logging.MyCaller))...)
+	r.Log.V(2).Info("indexing", append(logging.GetObjKindNamespaceName(o), logging.GetFunctionAndSource(logging.MyCaller)...)...)
 	hr, ok := o.(*helmctlv2.HelmRelease)
 	if !ok {
 		r.Log.Error(fmt.Errorf("failed to cast to helmrelease"), "failed to cast object to expected kind",
-			append(logging.GetObjKindNamespaceName(o), logging.GetFunctionAndSource(logging.MyCaller))...)
+			append(logging.GetObjKindNamespaceName(o), logging.GetFunctionAndSource(logging.MyCaller)...)...)
 		return nil
 	}
 	owner := metav1.GetControllerOf(hr)

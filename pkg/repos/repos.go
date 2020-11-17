@@ -5,6 +5,7 @@ package repos
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -143,6 +144,7 @@ type Repo interface {
 	GetSourceName() string
 	GetSourceNameSpace() string
 	SyncRepo() error
+	TidyRepo() error
 	LinkData(layerPath, sourcePath string) error
 	GetGitRepo() *sourcev1.GitRepository
 	GetPath() string
@@ -251,6 +253,52 @@ func (r *repoData) GetSourceNameSpace() string {
 	return r.repo.GetNamespace()
 }
 
+func (r *repoData) TidyRepo() error {
+	r.syncLock.Lock()
+	defer r.syncLock.Unlock()
+	if r.repo.Status.Artifact == nil {
+		return fmt.Errorf("repository %s does not contain an artifact", r.path)
+	}
+	dataPathParts := strings.Split(r.GetDataPath(), "/")
+	dataPathDir := strings.Join(dataPathParts[:len(dataPathParts)-1], "/")
+	revision := dataPathParts[len(dataPathParts)-1]
+
+	if err := r.removeDirs(dataPathDir, revision); err != nil {
+		return errors.WithMessage(err, "failed to remove previous revisions")
+	}
+
+	dataPathDir = strings.Join(dataPathParts[:len(dataPathParts)-2], "/")
+	branch := dataPathParts[len(dataPathParts)-2]
+
+	if err := r.removeDirs(dataPathDir, branch); err != nil {
+		return errors.WithMessage(err, "failed to remove previous branches/tags")
+	}
+	return nil
+}
+
+func (r *repoData) removeDirs(path, exclude string) error {
+	r.log.V(2).Info("processing directory",
+		append(logging.GetGitRepoInfo(r.repo), append(logging.GetFunctionAndSource(logging.MyCaller), "path", path, "exclude", exclude)...)...)
+	files, err := ioutil.ReadDir(path)
+	if err != nil {
+		return errors.Wrap(err, "failed to read directory")
+	}
+
+	for _, f := range files {
+		if f.IsDir() {
+			if f.Name() != exclude {
+				dirName := fmt.Sprintf("%s/%s", path, f.Name())
+				r.log.V(1).Info("removing directory", append(logging.GetGitRepoInfo(r.repo),
+					append(logging.GetFunctionAndSource(logging.MyCaller), "path", dirName)...)...)
+				if e := os.RemoveAll(dirName); e != nil {
+					return errors.Wrapf(err, "failed to remove directory: %s", dirName)
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func (r *repoData) LinkData(layerPath, sourcePath string) error {
 	logging.TraceCall(r.log)
 	defer logging.TraceExit(r.log)
@@ -345,11 +393,11 @@ func (r *repoData) SyncRepo() error {
 		return fmt.Errorf("repository %s does not contain an artifact", r.path)
 	}
 	if err := isExistingDir(r.dataPath); err == nil {
-		r.log.V(1).Info("Revision already synced", append(logging.GetGitRepoInfo(r.repo), logging.GetFunctionAndSource(logging.MyCaller))...)
+		r.log.V(1).Info("Revision already synced", append(logging.GetGitRepoInfo(r.repo), logging.GetFunctionAndSource(logging.MyCaller)...)...)
 		return nil
 	}
-	r.log.V(1).Info("New revision detected", append(logging.GetGitRepoInfo(r.repo), logging.GetFunctionAndSource(logging.MyCaller))...)
-
+	r.log.V(1).Info("New revision detected", append(logging.GetGitRepoInfo(r.repo), logging.GetFunctionAndSource(logging.MyCaller)...)...)
+  
 	if err := removeRecreateDir(r.loadPath); err != nil {
 		return errors.WithMessage(err, "failed to remove and recreate load directory")
 	}
@@ -374,7 +422,7 @@ func (r *repoData) SyncRepo() error {
 	if err := os.Rename(r.loadPath, r.dataPath); err != nil {
 		return errors.Wrapf(err, "failed to rename load path: %s", r.loadPath)
 	}
-	r.log.V(1).Info("synced repo", append(logging.GetGitRepoInfo(r.repo), logging.GetFunctionAndSource(logging.MyCaller))...)
+	r.log.V(1).Info("synced repo", append(logging.GetGitRepoInfo(r.repo), logging.GetFunctionAndSource(logging.MyCaller)...)...)
 	return nil
 }
 
@@ -399,7 +447,7 @@ func (r *repoData) fetchArtifact(ctx context.Context) error {
 		return errors.WithMessagef(err, "failed to download artifact from %s", url)
 	}
 	// Debugging for unzip error
-	r.log.V(2).Info("tar data", append(logging.GetGitRepoInfo(r.repo), logging.GetFunctionAndSource(logging.MyCaller), "length", len(tar))...)
+	r.log.V(2).Info("tar data", append(logging.GetGitRepoInfo(r.repo), append(logging.GetFunctionAndSource(logging.MyCaller), "length", len(tar))...)...)
 
 	if err := tarconsumer.UnpackTar(tar, r.GetLoadPath()); err != nil {
 		return errors.WithMessage(err, "faild to untar artifact")

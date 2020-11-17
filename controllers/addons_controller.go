@@ -458,7 +458,7 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (res ctrl.Result, er
 	l := layers.CreateLayer(ctx, r.Client, r.k8client, log, addonsLayer)
 	deployedRevision, err := r.processAddonLayer(l)
 	if err != nil {
-		l.StatusUpdate(kraanv1alpha1.FailedCondition, kraanv1alpha1.AddonsLayerFailedReason, err.Error())
+		l.StatusUpdate(kraanv1alpha1.FailedCondition, kraanv1alpha1.AddonsLayerFailedReason, errors.Cause(err).Error())
 		log.Error(err, "failed to process addons layer", logging.GetFunctionAndSource(logging.MyCaller)...)
 	}
 

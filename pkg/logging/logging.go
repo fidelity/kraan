@@ -131,6 +131,12 @@ func GetCaller(skip uint, short bool) CallerInfo {
 	return callers[skip-1]
 }
 
+// CallerStr returns the caller's function, source file and line number as a string
+func CallerStr(skip uint) string {
+	callerInfo := GetCaller(skip+1, true)
+	return fmt.Sprintf("%s - %s(%d)", callerInfo.FunctionName, callerInfo.SourceFile, callerInfo.SourceLine)
+}
+
 // Trace traces calls and exit for functions
 func TraceCall(log logr.Logger) {
 	callerInfo := GetCaller(MyCaller, true)

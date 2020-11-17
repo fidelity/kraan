@@ -3,8 +3,11 @@
 package kubectl
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
+
+	"github.com/fidelity/kraan/pkg/logging"
 )
 
 // ExecProvider interface defines functions Kubectl uses to verify and execute a local command.
@@ -34,5 +37,13 @@ func (p realExecProvider) FindOnPath(file string) (string, error) {
 }
 
 func (p realExecProvider) ExecCmd(name string, arg ...string) ([]byte, error) {
-	return exec.Command(name, arg...).Output()
+	data, err := exec.Command(name, arg...).Output()
+	if err != nil {
+		exitError, ok := err.(*exec.ExitError)
+		if ok {
+			return nil, fmt.Errorf("%s - kubectl failed, %s, error\n%s", logging.CallerStr(logging.Me), exitError.ProcessState.String(), string(exitError.Stderr))
+		}
+		return nil, err
+	}
+	return data, err
 }

@@ -190,12 +190,12 @@ func NewReconciler(config *rest.Config, client client.Client, logger logr.Logger
 	var err error
 	reconciler.k8client, err = reconciler.getK8sClient()
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to create reconciler")
+		return nil, errors.WithMessagef(err, "%s - failed to create reconciler", logging.CallerStr(logging.Me))
 	}
 	reconciler.Context = context.Background()
 	reconciler.Applier, err = apply.NewApplier(client, logger.WithName("applier"), scheme)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to create applier")
+		return nil, errors.WithMessagef(err, "%s - failed to create applier", logging.CallerStr(logging.Me))
 	}
 	reconciler.Repos = repos.NewRepos(reconciler.Context, reconciler.Log)
 
@@ -210,7 +210,7 @@ func (r *AddonsLayerReconciler) getK8sClient() (kubernetes.Interface, error) {
 	// creates the clientset
 	clientset, err := kubernetes.NewForConfig(r.Config)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create k8s client")
+		return nil, errors.Wrapf(err, "%s - failed to create k8s client", logging.CallerStr(logging.Me))
 	}
 
 	return clientset, nil
@@ -225,12 +225,12 @@ func (r *AddonsLayerReconciler) processPrune(l layers.Layer) (statusReconciled b
 
 	pruneIsRequired, hrs, err := applier.PruneIsRequired(ctx, l)
 	if err != nil {
-		return false, errors.WithMessage(err, "check for apply required failed")
+		return false, errors.WithMessagef(err, "%s - check for apply required failed", logging.CallerStr(logging.Me))
 	}
 	if pruneIsRequired {
 		l.SetStatusPruning()
 		if pruneErr := applier.Prune(ctx, l, hrs); pruneErr != nil {
-			return true, errors.WithMessage(pruneErr, "prune failed")
+			return true, errors.WithMessagef(pruneErr, "%s - prune failed", logging.CallerStr(logging.Me))
 		}
 		l.SetDelayedRequeue()
 		return true, nil
@@ -247,7 +247,7 @@ func (r *AddonsLayerReconciler) processApply(l layers.Layer) (statusReconciled b
 
 	applyIsRequired, err := applier.ApplyIsRequired(ctx, l)
 	if err != nil {
-		return false, errors.WithMessage(err, "check if apply is required failed")
+		return false, errors.WithMessagef(err, "%s - check if apply is required failed", logging.CallerStr(logging.Me))
 	}
 	if applyIsRequired {
 		if !l.DependenciesDeployed() {
@@ -257,7 +257,7 @@ func (r *AddonsLayerReconciler) processApply(l layers.Layer) (statusReconciled b
 
 		l.SetStatusApplying()
 		if applyErr := applier.Apply(ctx, l); applyErr != nil {
-			return true, errors.WithMessage(applyErr, "apply failed")
+			return true, errors.WithMessagef(applyErr, "%s - apply failed", logging.CallerStr(logging.Me))
 		}
 		l.SetDelayedRequeue()
 		return true, nil
@@ -274,7 +274,7 @@ func (r *AddonsLayerReconciler) checkSuccess(l layers.Layer) (string, error) {
 
 	applyWasSuccessful, err := applier.ApplyWasSuccessful(ctx, l)
 	if err != nil {
-		return "", errors.WithMessage(err, "check for apply required failed")
+		return "", errors.WithMessagef(err, "%s - check for apply required failed", logging.CallerStr(logging.Me))
 	}
 	if !applyWasSuccessful {
 		l.SetDelayedRequeue()
@@ -283,7 +283,7 @@ func (r *AddonsLayerReconciler) checkSuccess(l layers.Layer) (string, error) {
 	l.SetStatusDeployed()
 	revision, err := r.getRevision(l)
 	if err != nil {
-		return "", errors.WithMessage(err, "failed to get revision")
+		return "", errors.WithMessagef(err, "%s - failed to get revision", logging.CallerStr(logging.Me))
 	}
 	return revision, nil
 }
@@ -307,7 +307,7 @@ func (r *AddonsLayerReconciler) waitForData(l layers.Layer, repo repos.Repo) (er
 		time.Sleep(time.Second)
 	}
 	l.StatusUpdate(kraanv1alpha1.FailedCondition, kraanv1alpha1.AddonsLayerFailedReason, err.Error())
-	return errors.WithMessage(err, "failed to link to layer data")
+	return errors.WithMessagef(err, "%s - failed to link to layer data", logging.CallerStr(logging.Me))
 }
 
 func (r *AddonsLayerReconciler) checkData(l layers.Layer) (bool, error) {
@@ -320,7 +320,7 @@ func (r *AddonsLayerReconciler) checkData(l layers.Layer) (bool, error) {
 		repo := r.Repos.Get(sourceRepoName)
 		if repo != nil {
 			if err := r.waitForData(l, repo); err != nil {
-				return false, errors.WithMessage(err, "failed to wait for layer data")
+				return false, errors.WithMessagef(err, "%s - failed to wait for layer data", logging.CallerStr(logging.Me))
 			}
 			return true, nil
 		}
@@ -388,7 +388,7 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error
 
 	ready, err := r.isReady(l)
 	if err != nil {
-		return "", errors.WithMessage(err, "failed to check source is ready")
+		return "", errors.WithMessagef(err, "%s - failed to check source is ready", logging.CallerStr(logging.Me))
 	}
 	if !ready {
 		return "", nil
@@ -396,7 +396,7 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error
 
 	layerDataReady, err := r.checkData(l)
 	if err != nil {
-		return "", errors.WithMessage(err, "failed to check layer data is ready")
+		return "", errors.WithMessagef(err, "%s - failed to check layer data is ready", logging.CallerStr(logging.Me))
 	}
 	if !layerDataReady {
 		return "", nil
@@ -404,7 +404,7 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error
 
 	layerStatusUpdated, err := r.processPrune(l)
 	if err != nil {
-		return "", errors.WithMessage(err, "failed to perform prune processing")
+		return "", errors.WithMessagef(err, "%s - failed to perform prune processing", logging.CallerStr(logging.Me))
 	}
 	if layerStatusUpdated {
 		return "", nil
@@ -412,7 +412,7 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error
 
 	layerStatusUpdated, err = r.processApply(l)
 	if err != nil {
-		return "", errors.WithMessage(err, "failed to perform apply processing")
+		return "", errors.WithMessagef(err, "%s - failed to perform apply processing", logging.CallerStr(logging.Me))
 	}
 	if layerStatusUpdated {
 		return "", nil

@@ -27,7 +27,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 
-	"github.com/fidelity/kraan/pkg/utils"
+	"github.com/fidelity/kraan/pkg/logging"
 )
 
 const (
@@ -122,13 +122,13 @@ type abstractCommand struct {
 }
 
 func (c *abstractCommand) logDebug(msg string, keysAndValues ...interface{}) {
-	keysAndValues = append(keysAndValues, utils.GetFunctionAndSource(utils.MyCaller+1)...)
+	keysAndValues = append(keysAndValues, logging.GetFunctionAndSource(logging.MyCaller+1)...)
 	c.logger.V(1).Info(msg, append(keysAndValues, "command", c.asString())...)
 }
 
 func (c *abstractCommand) logError(sourceErr error, keysAndValues ...interface{}) (err error) {
 	msg := "error executing kubectl command"
-	c.logger.Error(err, msg, append(utils.GetFunctionAndSource(utils.MyCaller+1), keysAndValues, "command", c.asString())...)
+	c.logger.Error(err, msg, append(logging.GetFunctionAndSource(logging.MyCaller+1), keysAndValues, "command", c.asString())...)
 	return fmt.Errorf("%s '%s' : %w", msg, c.asString(), sourceErr)
 }
 
@@ -157,8 +157,8 @@ func (c *abstractCommand) asString() (cmdString string) {
 
 // Run executes the Kubectl command with all its arguments and returns the output.
 func (c *abstractCommand) Run() (output []byte, err error) {
-	utils.TraceCall(c.logger)
-	defer utils.TraceExit(c.logger)
+	logging.TraceCall(c.logger)
+	defer logging.TraceExit(c.logger)
 	if c.jsonOutput {
 		c.args = append(c.args, "-o", "json")
 	}
@@ -181,8 +181,8 @@ func createTempDir() (buildDir string, err error) {
 
 // Build executes the Kustomize command with all its arguments and returns the output.
 func (c *abstractCommand) Build() (buildDir string) {
-	utils.TraceCall(c.logger)
-	defer utils.TraceExit(c.logger)
+	logging.TraceCall(c.logger)
+	defer logging.TraceExit(c.logger)
 	var err error
 	buildDir, err = tempDirProviderFunc()
 	if err != nil {
@@ -223,11 +223,11 @@ type BuildCommand struct {
 }
 
 func (f *CommandFactory) kustomizationBuiler(path string, log logr.Logger) string {
-	utils.TraceCall(f.logger)
-	defer utils.TraceExit(f.logger)
+	logging.TraceCall(f.logger)
+	defer logging.TraceExit(f.logger)
 	kustomize, err := NewKustomize(log)
 	if err != nil {
-		log.Error(err, "failed to create kustomize command object", utils.GetFunctionAndSource(utils.MyCaller)...)
+		log.Error(err, "failed to create kustomize command object", logging.GetFunctionAndSource(logging.MyCaller)...)
 		return path
 	}
 	return kustomize.Build(path).Build()
@@ -235,8 +235,8 @@ func (f *CommandFactory) kustomizationBuiler(path string, log logr.Logger) strin
 
 // Build instantiates an BuildCommand instance using the provided directory path.
 func (f *CommandFactory) Build(path string) (c Command) {
-	utils.TraceCall(f.logger)
-	defer utils.TraceExit(f.logger)
+	logging.TraceCall(f.logger)
+	defer logging.TraceExit(f.logger)
 	c = &BuildCommand{
 		abstractCommand: abstractCommand{
 			logger:     f.logger,
@@ -251,8 +251,8 @@ func (f *CommandFactory) Build(path string) (c Command) {
 
 // Apply instantiates an ApplyCommand instance using the provided directory path.
 func (f *CommandFactory) Apply(path string) (c Command) {
-	utils.TraceCall(f.logger)
-	defer utils.TraceExit(f.logger)
+	logging.TraceCall(f.logger)
+	defer logging.TraceExit(f.logger)
 	if f.isKustomization(path) {
 		path = f.kustomizationBuiler(path, f.logger)
 	}
@@ -269,8 +269,8 @@ func (f *CommandFactory) Apply(path string) (c Command) {
 }
 
 func (f *CommandFactory) isKustomization(dir string) bool {
-	utils.TraceCall(f.logger)
-	defer utils.TraceExit(f.logger)
+	logging.TraceCall(f.logger)
+	defer logging.TraceExit(f.logger)
 	return f.getExecProvider().FileExists(filepath.Join(dir, kustomizeYaml))
 }
 
@@ -281,8 +281,8 @@ type DeleteCommand struct {
 
 // Delete instantiates a DeleteCommand instance for the described Kubernetes resource.
 func (f *CommandFactory) Delete(args ...string) (c Command) {
-	utils.TraceCall(f.logger)
-	defer utils.TraceExit(f.logger)
+	logging.TraceCall(f.logger)
+	defer logging.TraceExit(f.logger)
 	c = &DeleteCommand{
 		abstractCommand: abstractCommand{
 			logger:     f.logger,
@@ -302,8 +302,8 @@ type GetCommand struct {
 
 // Get instantiates a GetCommand instance for the described Kubernetes resource
 func (f *CommandFactory) Get(args ...string) (c Command) {
-	utils.TraceCall(f.logger)
-	defer utils.TraceExit(f.logger)
+	logging.TraceCall(f.logger)
+	defer logging.TraceExit(f.logger)
 	c = &GetCommand{
 		abstractCommand: abstractCommand{
 			logger:     f.logger,

@@ -189,5 +189,5 @@ kind | The kind for log messages relating to owned or watched objects
 layer | The layer name for log messages relating to addons layers
 msg | The message text
 logger | name of the logger, one of   `controller-runtime.manager`, `controller-runtime`, `metrics`, `initialization`, `kraan.controller.applier`, `kraan.controller.reconciler` or `kraan.manager.controller`
-level | Level of message. This will be `info`, `debug` or `Level(-N)`, where 'N' is the trace level. Levels 2 to 5 are currently used.
+level | Level of message. This will be `info`, `debug` or `Level(-N)`, where 'N' is the trace level. Levels 2 to 4 are currently used.<br>Level 4 is exclusively used by tracing of function entry and exit.
 ts | timestamp of log message

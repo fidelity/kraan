@@ -1,17 +1,15 @@
-//Package utils contains utility functions used by multiple packages
-package utils
+//Package logging contains logging related functions used by multiple packages
+package logging
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"runtime"
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
 	"github.com/go-logr/logr"
-	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -20,22 +18,6 @@ const (
 	Me       = 3
 	MyCaller = 4
 )
-
-func CompareAsJSON(one, two interface{}) bool {
-	if one == nil && two == nil {
-		return true
-	}
-	jsonOne, err := ToJSON(one)
-	if err != nil {
-		return false
-	}
-
-	jsonTwo, err := ToJSON(two)
-	if err != nil {
-		return false
-	}
-	return jsonOne == jsonTwo
-}
 
 // LogJSON is used log an item in JSON format.
 func LogJSON(data interface{}) string {
@@ -49,20 +31,6 @@ func LogJSON(data interface{}) string {
 		return err.Error()
 	}
 	return prettyJSON.String()
-}
-
-// ToJSON is used to convert a data structure into JSON format.
-func ToJSON(data interface{}) (string, error) {
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		return "", errors.WithMessage(err, "failed to marshal json")
-	}
-	var prettyJSON bytes.Buffer
-	err = json.Indent(&prettyJSON, jsonData, "", "\t")
-	if err != nil {
-		return "", errors.WithMessage(err, "failed indent json")
-	}
-	return prettyJSON.String(), nil
 }
 
 // GetObjNamespaceName gets object namespace and name for logging
@@ -98,30 +66,6 @@ func GetGitRepoInfo(srcRepo *sourcev1.GitRepository) (result []interface{}) {
 // GitRepoSourceKind returns the gitrepository kind
 func GitRepoSourceKind() string {
 	return fmt.Sprintf("%s.%s", sourcev1.GitRepositoryKind, sourcev1.GroupVersion)
-}
-
-// RemoveIfExists removes a directory if it exists
-func RemoveIfExists(path string) error {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return nil
-	} else if err != nil {
-		return err
-	}
-	if e := os.RemoveAll(path); e != nil {
-		return errors.Wrap(e, "failed to remove directory")
-	}
-	return nil
-}
-
-// RemoveRecreateDir removes a directory if it exists and then recreates it
-func RemoveRecreateDir(path string) error {
-	if e := RemoveIfExists(path); e != nil {
-		return errors.WithMessage(e, "failed to remove directory before recreate")
-	}
-	if err := os.MkdirAll(path, os.ModePerm); err != nil {
-		return errors.Wrapf(err, "failed to make directory: %s", path)
-	}
-	return nil
 }
 
 // CallerInfo hold the function name and source file/line from which a call was made

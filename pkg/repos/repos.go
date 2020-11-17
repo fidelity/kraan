@@ -16,7 +16,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/fidelity/kraan/pkg/internal/tarconsumer"
-	"github.com/fidelity/kraan/pkg/utils"
+	"github.com/fidelity/kraan/pkg/logging"
 )
 
 var (
@@ -53,8 +53,8 @@ type reposData struct {
 
 // NewRepos creates a repos object.
 func NewRepos(ctx context.Context, log logr.Logger) Repos {
-	utils.TraceCall(log)
-	defer utils.TraceExit(log)
+	logging.TraceCall(log)
+	defer logging.TraceExit(log)
 	return &reposData{
 		repos:    make(map[string]Repo, 1),
 		ctx:      ctx,
@@ -92,8 +92,8 @@ func (r *reposData) SetHTTPClient(client *http.Client) {
 
 // List returns a map of repos keyed by repo label
 func (r *reposData) List() map[string]Repo {
-	utils.TraceCall(r.log)
-	defer utils.TraceExit(r.log)
+	logging.TraceCall(r.log)
+	defer logging.TraceExit(r.log)
 	r.RLock()
 	defer r.RUnlock()
 	return r.repos
@@ -101,8 +101,8 @@ func (r *reposData) List() map[string]Repo {
 
 // Get returns a worker or nil if not present
 func (r *reposData) Get(name string) Repo {
-	utils.TraceCall(r.log)
-	defer utils.TraceExit(r.log)
+	logging.TraceCall(r.log)
+	defer logging.TraceExit(r.log)
 	r.RLock()
 	defer r.RUnlock()
 	if repo, found := r.repos[name]; found {
@@ -113,8 +113,8 @@ func (r *reposData) Get(name string) Repo {
 
 // Add adds a repo to the map of active repos
 func (r *reposData) Add(repo *sourcev1.GitRepository) Repo {
-	utils.TraceCall(r.log)
-	defer utils.TraceExit(r.log)
+	logging.TraceCall(r.log)
+	defer logging.TraceExit(r.log)
 	r.Lock()
 	defer r.Unlock()
 	key := PathKey(repo)
@@ -129,8 +129,8 @@ func (r *reposData) Add(repo *sourcev1.GitRepository) Repo {
 
 // Delete deletes a repo from the map of active repos
 func (r *reposData) Delete(name string) {
-	utils.TraceCall(r.log)
-	defer utils.TraceExit(r.log)
+	logging.TraceCall(r.log)
+	defer logging.TraceExit(r.log)
 	r.Lock()
 	defer r.Unlock()
 	if _, found := r.repos[name]; found {
@@ -173,8 +173,8 @@ type repoData struct {
 
 // newRepo creates a repo.
 func (r *reposData) newRepo(path string, sourceRepo *sourcev1.GitRepository) Repo {
-	utils.TraceCall(r.log)
-	defer utils.TraceExit(r.log)
+	logging.TraceCall(r.log)
+	defer logging.TraceExit(r.log)
 	url := "not set"
 	revision := "none"
 	if sourceRepo.Status.Artifact != nil {
@@ -218,8 +218,8 @@ func (r *repoData) SetHostName(hostName string) {
 }
 
 func (r *repoData) SetGitRepo(src *sourcev1.GitRepository, rootPath string) {
-	utils.TraceCall(r.log)
-	defer utils.TraceExit(r.log)
+	logging.TraceCall(r.log)
+	defer logging.TraceExit(r.log)
 	r.syncLock.Lock()
 	defer r.syncLock.Unlock()
 	r.repo = src
@@ -252,8 +252,8 @@ func (r *repoData) GetSourceNameSpace() string {
 }
 
 func (r *repoData) LinkData(layerPath, sourcePath string) error {
-	utils.TraceCall(r.log)
-	defer utils.TraceExit(r.log)
+	logging.TraceCall(r.log)
+	defer logging.TraceExit(r.log)
 	r.Lock()
 	defer r.Unlock()
 	addonsPath := fmt.Sprintf("%s/%s", r.GetDataPath(), sourcePath)
@@ -296,6 +296,30 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// removeIfExists removes a directory if it exists
+func removeIfExists(path string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	if e := os.RemoveAll(path); e != nil {
+		return errors.Wrap(e, "failed to remove directory")
+	}
+	return nil
+}
+
+// removeRecreateDir removes a directory if it exists and then recreates it
+func removeRecreateDir(path string) error {
+	if e := removeIfExists(path); e != nil {
+		return errors.WithMessage(e, "failed to remove directory before recreate")
+	}
+	if err := os.MkdirAll(path, os.ModePerm); err != nil {
+		return errors.Wrapf(err, "failed to make directory: %s", path)
+	}
+	return nil
+}
+
 func isExistingDir(dataPath string) error {
 	info, err := os.Stat(dataPath)
 	if os.IsNotExist(err) {
@@ -312,8 +336,8 @@ func isExistingDir(dataPath string) error {
 }
 
 func (r *repoData) SyncRepo() error {
-	utils.TraceCall(r.log)
-	defer utils.TraceExit(r.log)
+	logging.TraceCall(r.log)
+	defer logging.TraceExit(r.log)
 	r.syncLock.Lock()
 	defer r.syncLock.Unlock()
 
@@ -321,12 +345,12 @@ func (r *repoData) SyncRepo() error {
 		return fmt.Errorf("repository %s does not contain an artifact", r.path)
 	}
 	if err := isExistingDir(r.dataPath); err == nil {
-		r.log.V(1).Info("Revision already synced", append(utils.GetGitRepoInfo(r.repo), utils.GetFunctionAndSource(utils.MyCaller))...)
+		r.log.V(1).Info("Revision already synced", append(logging.GetGitRepoInfo(r.repo), logging.GetFunctionAndSource(logging.MyCaller))...)
 		return nil
 	}
-	r.log.V(1).Info("New revision detected", append(utils.GetGitRepoInfo(r.repo), utils.GetFunctionAndSource(utils.MyCaller))...)
+	r.log.V(1).Info("New revision detected", append(logging.GetGitRepoInfo(r.repo), logging.GetFunctionAndSource(logging.MyCaller))...)
 
-	if err := utils.RemoveRecreateDir(r.loadPath); err != nil {
+	if err := removeRecreateDir(r.loadPath); err != nil {
 		return errors.WithMessage(err, "failed to remove and recreate load directory")
 	}
 
@@ -350,13 +374,13 @@ func (r *repoData) SyncRepo() error {
 	if err := os.Rename(r.loadPath, r.dataPath); err != nil {
 		return errors.Wrapf(err, "failed to rename load path: %s", r.loadPath)
 	}
-	r.log.V(1).Info("synced repo", append(utils.GetGitRepoInfo(r.repo), utils.GetFunctionAndSource(utils.MyCaller))...)
+	r.log.V(1).Info("synced repo", append(logging.GetGitRepoInfo(r.repo), logging.GetFunctionAndSource(logging.MyCaller))...)
 	return nil
 }
 
 func (r *repoData) fetchArtifact(ctx context.Context) error {
-	utils.TraceCall(r.log)
-	defer utils.TraceExit(r.log)
+	logging.TraceCall(r.log)
+	defer logging.TraceExit(r.log)
 	repo := r.repo
 	if repo.Status.Artifact == nil {
 		return fmt.Errorf("repository %s does not contain an artifact", r.path)
@@ -375,7 +399,7 @@ func (r *repoData) fetchArtifact(ctx context.Context) error {
 		return errors.WithMessagef(err, "failed to download artifact from %s", url)
 	}
 	// Debugging for unzip error
-	r.log.V(2).Info("tar data", append(utils.GetGitRepoInfo(r.repo), utils.GetFunctionAndSource(utils.MyCaller), "length", len(tar))...)
+	r.log.V(2).Info("tar data", append(logging.GetGitRepoInfo(r.repo), logging.GetFunctionAndSource(logging.MyCaller), "length", len(tar))...)
 
 	if err := tarconsumer.UnpackTar(tar, r.GetLoadPath()); err != nil {
 		return errors.WithMessage(err, "faild to untar artifact")

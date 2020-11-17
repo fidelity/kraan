@@ -21,8 +21,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
+	"github.com/fidelity/kraan/pkg/logging"
 	"github.com/fidelity/kraan/pkg/repos"
-	"github.com/fidelity/kraan/pkg/utils"
 )
 
 // MaxConditions is the maximum number of condtions to retain.
@@ -153,11 +153,11 @@ func (l *KraanLayer) getK8sClient() kubernetes.Interface {
 
 // CheckK8sVersion checks if the cluster api server version is equal to or above the required version.
 func (l *KraanLayer) CheckK8sVersion() bool {
-	utils.TraceCall(l.GetLogger())
-	defer utils.TraceExit(l.GetLogger())
+	logging.TraceCall(l.GetLogger())
+	defer logging.TraceExit(l.GetLogger())
 	versionInfo, err := l.getK8sClient().Discovery().ServerVersion()
 	if err != nil {
-		l.GetLogger().Error(err, "failed get server version", utils.GetFunctionAndSource(utils.MyCaller)...)
+		l.GetLogger().Error(err, "failed get server version", logging.GetFunctionAndSource(logging.MyCaller)...)
 		l.StatusUpdate(l.GetStatus(), "failed to obtain cluster api server version",
 			err.Error())
 		l.SetDelayedRequeue()
@@ -167,8 +167,8 @@ func (l *KraanLayer) CheckK8sVersion() bool {
 }
 
 func (l *KraanLayer) trimConditions() {
-	utils.TraceCall(l.GetLogger())
-	defer utils.TraceExit(l.GetLogger())
+	logging.TraceCall(l.GetLogger())
+	defer logging.TraceExit(l.GetLogger())
 	length := len(l.addonsLayer.Status.Conditions)
 	if length < MaxConditions {
 		return
@@ -178,8 +178,8 @@ func (l *KraanLayer) trimConditions() {
 }
 
 func (l *KraanLayer) setStatus(status, reason, message string) {
-	utils.TraceCall(l.GetLogger())
-	defer utils.TraceExit(l.GetLogger())
+	logging.TraceCall(l.GetLogger())
+	defer logging.TraceExit(l.GetLogger())
 	length := len(l.addonsLayer.Status.Conditions)
 	if length > 0 {
 		last := &l.addonsLayer.Status.Conditions[length-1]
@@ -206,40 +206,40 @@ func (l *KraanLayer) setStatus(status, reason, message string) {
 
 // SetStatusK8sVersion sets the addon layer's status to waiting for required K8s Version.
 func (l *KraanLayer) SetStatusK8sVersion() {
-	utils.TraceCall(l.GetLogger())
-	defer utils.TraceExit(l.GetLogger())
+	logging.TraceCall(l.GetLogger())
+	defer logging.TraceExit(l.GetLogger())
 	l.setStatus(kraanv1alpha1.K8sVersionCondition,
 		kraanv1alpha1.AddonsLayerK8sVersionReason, kraanv1alpha1.AddonsLayerK8sVersionMsg)
 }
 
 // SetStatusDeployed sets the addon layer's status to deployed.
 func (l *KraanLayer) SetStatusDeployed() {
-	utils.TraceCall(l.GetLogger())
-	defer utils.TraceExit(l.GetLogger())
+	logging.TraceCall(l.GetLogger())
+	defer logging.TraceExit(l.GetLogger())
 	l.setStatus(kraanv1alpha1.DeployedCondition,
 		fmt.Sprintf("AddonsLayer version %s is Deployed", l.GetSpec().Version), "")
 }
 
 // SetStatusApplying sets the addon layer's status to apply in progress.
 func (l *KraanLayer) SetStatusApplying() {
-	utils.TraceCall(l.GetLogger())
-	defer utils.TraceExit(l.GetLogger())
+	logging.TraceCall(l.GetLogger())
+	defer logging.TraceExit(l.GetLogger())
 	l.setStatus(kraanv1alpha1.ApplyingCondition,
 		kraanv1alpha1.AddonsLayerApplyingReason, kraanv1alpha1.AddonsLayerApplyingMsg)
 }
 
 // SetStatusPruning sets the addon layer's status to pruning.
 func (l *KraanLayer) SetStatusPruning() {
-	utils.TraceCall(l.GetLogger())
-	defer utils.TraceExit(l.GetLogger())
+	logging.TraceCall(l.GetLogger())
+	defer logging.TraceExit(l.GetLogger())
 	l.setStatus(kraanv1alpha1.PruningCondition,
 		kraanv1alpha1.AddonsLayerPruningReason, kraanv1alpha1.AddonsLayerPruningMsg)
 }
 
 // SetStatusPending sets the addon layer's status to pending.
 func (l *KraanLayer) SetStatusPending() {
-	utils.TraceCall(l.GetLogger())
-	defer utils.TraceExit(l.GetLogger())
+	logging.TraceCall(l.GetLogger())
+	defer logging.TraceExit(l.GetLogger())
 	reason := fmt.Sprintf("waiting for layer data to be available.")
 	message := fmt.Sprintf("Layer source: %s, not yet available.", l.GetSourceKey())
 	l.setStatus(kraanv1alpha1.FailedCondition, reason, message)
@@ -252,8 +252,8 @@ func (l *KraanLayer) GetSourceKey() string {
 
 // StatusUpdate sets the addon layer's status.
 func (l *KraanLayer) StatusUpdate(status, reason, message string) {
-	utils.TraceCall(l.GetLogger())
-	defer utils.TraceExit(l.GetLogger())
+	logging.TraceCall(l.GetLogger())
+	defer logging.TraceExit(l.GetLogger())
 	l.setStatus(status, reason, message)
 }
 
@@ -271,8 +271,8 @@ func getNameVersion(nameVersion string) (string, string) {
 }
 
 func (l *KraanLayer) RevisionReady(conditions []meta.Condition, revision string) (bool, string) {
-	utils.TraceCall(l.GetLogger())
-	defer utils.TraceExit(l.GetLogger())
+	logging.TraceCall(l.GetLogger())
+	defer logging.TraceExit(l.GetLogger())
 	for _, cond := range conditions {
 		if cond.Type == "Ready" {
 			return cond.Status == corev1.ConditionTrue && strings.Contains(cond.Message, revision), cond.Message
@@ -282,9 +282,9 @@ func (l *KraanLayer) RevisionReady(conditions []meta.Condition, revision string)
 }
 
 func (l *KraanLayer) isOtherDeployed(otherVersion string, otherLayer *kraanv1alpha1.AddonsLayer) bool { // nolint: funlen // ok
-	utils.TraceCall(l.GetLogger())
-	defer utils.TraceExit(l.GetLogger())
-	l.GetLogger().V(1).Info("checking dependency", append(utils.GetFunctionAndSource(utils.MyCaller), "dependson", otherLayer.Name, "layer", l.GetName())...)
+	logging.TraceCall(l.GetLogger())
+	defer logging.TraceExit(l.GetLogger())
+	l.GetLogger().V(1).Info("checking dependency", append(logging.GetFunctionAndSource(logging.MyCaller), "dependson", otherLayer.Name, "layer", l.GetName())...)
 	if otherLayer.Status.ObservedGeneration != otherLayer.Generation {
 		l.GetLogger().V(2).Info("waiting for observed generation", "dependson", otherLayer.Name,
 			"observed", otherLayer.Status.ObservedGeneration, "generation", otherLayer.Generation, "layer", l.GetName())
@@ -294,7 +294,7 @@ func (l *KraanLayer) isOtherDeployed(otherVersion string, otherLayer *kraanv1alp
 		return false
 	}
 	if otherLayer.Status.Version != otherVersion {
-		l.GetLogger().V(2).Info("waiting for version", append(utils.GetFunctionAndSource(utils.MyCaller), "dependson", otherLayer.Name,
+		l.GetLogger().V(2).Info("waiting for version", append(logging.GetFunctionAndSource(logging.MyCaller), "dependson", otherLayer.Name,
 			"version", otherLayer.Status.Version, "required", otherVersion, "layer", l.GetName())...)
 		reason := fmt.Sprintf("waiting for layer: %s, version: %s to be applied.", otherLayer.ObjectMeta.Name, otherVersion)
 		message := fmt.Sprintf("Layer: %s, current version is: %s, require version: %s.",
@@ -310,7 +310,7 @@ func (l *KraanLayer) isOtherDeployed(otherVersion string, otherLayer *kraanv1alp
 		return false
 	}
 	if otherSource.Status.ObservedGeneration != otherSource.Generation {
-		l.GetLogger().V(2).Info("waiting for source generation", append(utils.GetFunctionAndSource(utils.MyCaller),
+		l.GetLogger().V(2).Info("waiting for source generation", append(logging.GetFunctionAndSource(logging.MyCaller),
 			"dependson", otherLayer.Name, "source", otherSource.ObjectMeta.Name,
 			"observed", otherSource.Status.ObservedGeneration, "generation", otherSource.Generation, "layer", l.GetName())...)
 		reason := fmt.Sprintf("waiting for layer: %s, source: %s, to be reconciled.",
@@ -327,7 +327,7 @@ func (l *KraanLayer) isOtherDeployed(otherVersion string, otherLayer *kraanv1alp
 	}
 	ready, srcMsg := l.RevisionReady(otherSource.Status.Conditions, revision)
 	if !ready {
-		l.GetLogger().V(2).Info("waiting for source to be ready", append(utils.GetFunctionAndSource(utils.MyCaller),
+		l.GetLogger().V(2).Info("waiting for source to be ready", append(logging.GetFunctionAndSource(logging.MyCaller),
 			"dependson", otherLayer.Name, "source", otherSource.ObjectMeta.Name,
 			"deployed", otherLayer.Status.DeployedRevision, "revision", revision, "layer", l.GetName())...)
 		reason := fmt.Sprintf("waiting for layer: %s, layer source: %s not ready.", otherLayer.ObjectMeta.Name, otherSource.ObjectMeta.Name)
@@ -337,7 +337,7 @@ func (l *KraanLayer) isOtherDeployed(otherVersion string, otherLayer *kraanv1alp
 	}
 
 	if otherLayer.Status.DeployedRevision != otherSource.Status.Artifact.Revision {
-		l.GetLogger().V(2).Info("waiting for source revision", append(utils.GetFunctionAndSource(utils.MyCaller),
+		l.GetLogger().V(2).Info("waiting for source revision", append(logging.GetFunctionAndSource(logging.MyCaller),
 			"dependson", otherLayer.Name, "source", otherSource.ObjectMeta.Name,
 			"deployed", otherLayer.Status.DeployedRevision, "revision", otherSource.Status.Artifact.Revision, "layer", l.GetName())...)
 		reason := fmt.Sprintf("waiting for layer: %s, to apply source revision: %s.", otherLayer.ObjectMeta.Name, otherSource.Status.Artifact.Revision)
@@ -346,7 +346,7 @@ func (l *KraanLayer) isOtherDeployed(otherVersion string, otherLayer *kraanv1alp
 		return false
 	}
 	if otherLayer.Status.State != kraanv1alpha1.DeployedCondition {
-		l.GetLogger().V(2).Info("waiting for deployed", append(utils.GetFunctionAndSource(utils.MyCaller),
+		l.GetLogger().V(2).Info("waiting for deployed", append(logging.GetFunctionAndSource(logging.MyCaller),
 			"dependson", otherLayer.Name, "state", otherLayer.Status.State, "layer", l.GetName())...)
 		reason := fmt.Sprintf("waiting for layer: %s, version: %s to be applied.", otherLayer.ObjectMeta.Name, otherVersion)
 		message := fmt.Sprintf("Layer: %s, current state: %s.", otherLayer.ObjectMeta.Name, otherLayer.Status.State)
@@ -358,8 +358,8 @@ func (l *KraanLayer) isOtherDeployed(otherVersion string, otherLayer *kraanv1alp
 
 // DependenciesDeployed checks that all the layers this layer is dependent on are deployed.
 func (l *KraanLayer) DependenciesDeployed() bool {
-	utils.TraceCall(l.GetLogger())
-	defer utils.TraceExit(l.GetLogger())
+	logging.TraceCall(l.GetLogger())
+	defer logging.TraceExit(l.GetLogger())
 	for _, otherNameVersion := range l.GetSpec().PreReqs.DependsOn {
 		otherName, otherVersion := getNameVersion(otherNameVersion)
 		otherLayer, err := l.getOtherAddonsLayer(otherName)
@@ -401,8 +401,8 @@ func (l *KraanLayer) GetStatus() string {
 
 // SetHold sets the hold status.
 func (l *KraanLayer) SetHold() {
-	utils.TraceCall(l.GetLogger())
-	defer utils.TraceExit(l.GetLogger())
+	logging.TraceCall(l.GetLogger())
+	defer logging.TraceExit(l.GetLogger())
 	if l.IsHold() && l.GetStatus() != kraanv1alpha1.HoldCondition {
 		l.StatusUpdate(kraanv1alpha1.HoldCondition,
 			kraanv1alpha1.AddonsLayerHoldReason, kraanv1alpha1.AddonsLayerHoldMsg)
@@ -427,8 +427,8 @@ func (l *KraanLayer) GetName() string {
 
 // getOtherAddonsLayer returns another addonsLayer.
 func (l *KraanLayer) getOtherAddonsLayer(name string) (*kraanv1alpha1.AddonsLayer, error) {
-	utils.TraceCall(l.GetLogger())
-	defer utils.TraceExit(l.GetLogger())
+	logging.TraceCall(l.GetLogger())
+	defer logging.TraceExit(l.GetLogger())
 	obj := &kraanv1alpha1.AddonsLayer{}
 	if err := l.client.Get(l.GetContext(), types.NamespacedName{Name: name}, obj); err != nil {
 		return nil, errors.Wrapf(err, "failed to retrieve layer: %s", types.NamespacedName{Name: name})
@@ -438,8 +438,8 @@ func (l *KraanLayer) getOtherAddonsLayer(name string) (*kraanv1alpha1.AddonsLaye
 
 // getSource returns a GitRepository Source.
 func (l *KraanLayer) getSource(namespace, name string) (*sourcev1.GitRepository, error) {
-	utils.TraceCall(l.GetLogger())
-	defer utils.TraceExit(l.GetLogger())
+	logging.TraceCall(l.GetLogger())
+	defer logging.TraceExit(l.GetLogger())
 	gitRepo := &sourcev1.GitRepository{}
 	if err := l.client.Get(l.GetContext(), types.NamespacedName{Namespace: namespace, Name: name}, gitRepo); err != nil {
 		return nil, errors.Wrapf(err, "failed to retrieve source: %s", types.NamespacedName{Namespace: namespace, Name: name})

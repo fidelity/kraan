@@ -78,13 +78,11 @@ func (a KubectlLayerApplier) getLog(layer layers.Layer) (logger logr.Logger) {
 }
 
 func (a KubectlLayerApplier) log(level int, msg string, layer layers.Layer, keysAndValues ...interface{}) {
-	keysAndValues = append(keysAndValues, logging.GetFunctionAndSource(logging.MyCaller+2)...)
-	a.getLog(layer).V(level).Info(msg, append(keysAndValues, "sourcePath", layer.GetSourcePath())...)
+	a.getLog(layer).V(level).Info(msg, append(keysAndValues, append(logging.GetFunctionAndSource(logging.MyCaller+2), "sourcePath", layer.GetSourcePath())...)...)
 }
 
 func (a KubectlLayerApplier) logError(err error, msg string, layer layers.Layer, keysAndValues ...interface{}) {
-	keysAndValues = append(keysAndValues, logging.GetFunctionAndSource(logging.MyCaller+1)...)
-	a.getLog(layer).Error(err, msg, append(keysAndValues, "sourcePath", layer.GetSourcePath())...)
+	a.getLog(layer).Error(err, msg, append(keysAndValues, append(logging.GetFunctionAndSource(logging.MyCaller+2), "sourcePath", layer.GetSourcePath())...)...)
 }
 
 func (a KubectlLayerApplier) logInfo(msg string, layer layers.Layer, keysAndValues ...interface{}) {

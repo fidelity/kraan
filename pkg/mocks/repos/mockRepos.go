@@ -219,6 +219,20 @@ func (mr *MockRepoMockRecorder) SyncRepo() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncRepo", reflect.TypeOf((*MockRepo)(nil).SyncRepo))
 }
 
+// TidyRepo mocks base method
+func (m *MockRepo) TidyRepo() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TidyRepo")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// TidyRepo indicates an expected call of TidyRepo
+func (mr *MockRepoMockRecorder) TidyRepo() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TidyRepo", reflect.TypeOf((*MockRepo)(nil).TidyRepo))
+}
+
 // LinkData mocks base method
 func (m *MockRepo) LinkData(layerPath, sourcePath string) error {
 	m.ctrl.T.Helper()

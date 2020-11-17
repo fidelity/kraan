@@ -514,6 +514,7 @@ func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.
 		r.Log.Error(fmt.Errorf("unable to cast object to GitRepository"), "skipping processing", logging.GetObjKindNamespaceName(a.Object))
 		return []reconcile.Request{}
 	}
+
 	r.Log.V(1).Info("monitoring", append(logging.GetGitRepoInfo(srcRepo), logging.GetFunctionAndSource(logging.MyCaller)...)...)
 	addonsList := &kraanv1alpha1.AddonsLayerList{}
 	if err := r.List(r.Context, addonsList); err != nil {

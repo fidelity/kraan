@@ -397,7 +397,7 @@ func (r *repoData) SyncRepo() error {
 		return nil
 	}
 	r.log.V(1).Info("New revision detected", append(logging.GetGitRepoInfo(r.repo), logging.GetFunctionAndSource(logging.MyCaller)...)...)
-  
+
 	if err := removeRecreateDir(r.loadPath); err != nil {
 		return errors.WithMessage(err, "failed to remove and recreate load directory")
 	}

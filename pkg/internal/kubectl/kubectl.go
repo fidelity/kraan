@@ -80,7 +80,7 @@ func newCommandFactory(logger logr.Logger, execProvider ExecProvider, execProg s
 	}
 	factory.path, err = factory.getExecProvider().FindOnPath(execProg)
 	if err != nil {
-		return nil, errors.Wrapf(err, "unable to find %s binary on system PATH", execProg)
+		return nil, errors.Wrapf(err, "%s - unable to find %s binary on system PATH", logging.CallerStr(logging.Me), execProg)
 	}
 	return factory, nil
 }
@@ -164,7 +164,7 @@ func (c *abstractCommand) Run() (output []byte, err error) {
 	c.logDebug("executing kubectl")
 	c.output, err = c.factory.getExecProvider().ExecCmd(c.getPath(), c.getArgs()...)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to execute kubectl")
+		return nil, errors.WithMessagef(err, "%s - failed to execute kubectl", logging.CallerStr(logging.Me))
 	}
 	return c.output, nil
 }
@@ -173,7 +173,7 @@ func (c *abstractCommand) Run() (output []byte, err error) {
 func createTempDir() (buildDir string, err error) {
 	buildDir, err = ioutil.TempDir("", "build-*")
 	if err != nil {
-		return "", errors.WithMessage(err, "failed to create temporary directory")
+		return "", errors.WithMessagef(err, "%s - failed to create temporary directory", logging.CallerStr(logging.Me))
 	}
 	return buildDir, nil
 }

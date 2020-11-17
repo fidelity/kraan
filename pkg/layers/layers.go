@@ -431,7 +431,7 @@ func (l *KraanLayer) getOtherAddonsLayer(name string) (*kraanv1alpha1.AddonsLaye
 	defer logging.TraceExit(l.GetLogger())
 	obj := &kraanv1alpha1.AddonsLayer{}
 	if err := l.client.Get(l.GetContext(), types.NamespacedName{Name: name}, obj); err != nil {
-		return nil, errors.Wrapf(err, "failed to retrieve layer: %s", types.NamespacedName{Name: name})
+		return nil, errors.Wrapf(err, "%s - failed to retrieve layer: %s", logging.CallerStr(logging.Me), types.NamespacedName{Name: name})
 	}
 	return obj, nil
 }
@@ -442,7 +442,7 @@ func (l *KraanLayer) getSource(namespace, name string) (*sourcev1.GitRepository,
 	defer logging.TraceExit(l.GetLogger())
 	gitRepo := &sourcev1.GitRepository{}
 	if err := l.client.Get(l.GetContext(), types.NamespacedName{Namespace: namespace, Name: name}, gitRepo); err != nil {
-		return nil, errors.Wrapf(err, "failed to retrieve source: %s", types.NamespacedName{Namespace: namespace, Name: name})
+		return nil, errors.Wrapf(err, "%s - failed to retrieve source: %s", logging.CallerStr(logging.Me), types.NamespacedName{Namespace: namespace, Name: name})
 	}
 	return gitRepo, nil
 }

@@ -264,14 +264,14 @@ func (r *repoData) TidyRepo() error {
 	revision := dataPathParts[len(dataPathParts)-1]
 
 	if err := r.removeDirs(dataPathDir, revision); err != nil {
-		return errors.WithMessage(err, "failed to remove previous revisions")
+		return errors.WithMessagef(err, "%s - failed to remove previous revisions", logging.CallerStr(logging.Me))
 	}
 
 	dataPathDir = strings.Join(dataPathParts[:len(dataPathParts)-2], "/")
 	branch := dataPathParts[len(dataPathParts)-2]
 
 	if err := r.removeDirs(dataPathDir, branch); err != nil {
-		return errors.WithMessage(err, "failed to remove previous branches/tags")
+		return errors.WithMessagef(err, "%s - failed to remove previous branches/tags", logging.CallerStr(logging.Me))
 	}
 	return nil
 }
@@ -281,7 +281,7 @@ func (r *repoData) removeDirs(path, exclude string) error {
 		append(logging.GetGitRepoInfo(r.repo), append(logging.GetFunctionAndSource(logging.MyCaller), "path", path, "exclude", exclude)...)...)
 	files, err := ioutil.ReadDir(path)
 	if err != nil {
-		return errors.Wrap(err, "failed to read directory")
+		return errors.Wrapf(err, "%s -failed to read directory", logging.CallerStr(logging.Me))
 	}
 
 	for _, f := range files {
@@ -291,7 +291,7 @@ func (r *repoData) removeDirs(path, exclude string) error {
 				r.log.V(1).Info("removing directory", append(logging.GetGitRepoInfo(r.repo),
 					append(logging.GetFunctionAndSource(logging.MyCaller), "path", dirName)...)...)
 				if e := os.RemoveAll(dirName); e != nil {
-					return errors.Wrapf(err, "failed to remove directory: %s", dirName)
+					return errors.Wrapf(err, "%s - failed to remove directory: %s", logging.CallerStr(logging.Me), dirName)
 				}
 			}
 		}
@@ -306,24 +306,24 @@ func (r *repoData) LinkData(layerPath, sourcePath string) error {
 	defer r.Unlock()
 	addonsPath := fmt.Sprintf("%s/%s", r.GetDataPath(), sourcePath)
 	if err := isExistingDir(addonsPath); err != nil {
-		return errors.Wrap(err, "failed, target directory does not exist")
+		return errors.Wrapf(err, "%s - failed, target directory does not exist", logging.CallerStr(logging.Me))
 	}
 	layerPathParts := strings.Split(layerPath, "/")
 	layerPathDir := strings.Join(layerPathParts[:len(layerPathParts)-1], "/")
 
 	if err := os.MkdirAll(layerPathDir, os.ModePerm); err != nil {
-		return errors.Wrapf(err, "failed to make directory: %s", layerPathDir)
+		return errors.Wrapf(err, "%s - failed to make directory: %s", logging.CallerStr(logging.Me), layerPathDir)
 	}
 	if _, err := os.Lstat(layerPath); err == nil {
 		if e := os.RemoveAll(layerPath); e != nil {
-			return errors.Wrapf(err, "failed to remove link: %s", layerPath)
+			return errors.Wrapf(err, "%s - failed to remove link: %s", logging.CallerStr(logging.Me), layerPath)
 		}
 	} else if !os.IsNotExist(err) {
 		return err
 	}
 
 	if err := os.Symlink(addonsPath, layerPath); err != nil {
-		return errors.Wrapf(err, "failed to create link: %s", layerPath)
+		return errors.Wrapf(err, "%s - failed to create link: %s", logging.CallerStr(logging.Me), layerPath)
 	}
 	return nil
 }
@@ -352,7 +352,7 @@ func removeIfExists(path string) error {
 		return err
 	}
 	if e := os.RemoveAll(path); e != nil {
-		return errors.Wrap(e, "failed to remove directory")
+		return errors.Wrapf(e, "%s - failed to remove directory", logging.CallerStr(logging.Me))
 	}
 	return nil
 }
@@ -360,10 +360,10 @@ func removeIfExists(path string) error {
 // removeRecreateDir removes a directory if it exists and then recreates it
 func removeRecreateDir(path string) error {
 	if e := removeIfExists(path); e != nil {
-		return errors.WithMessage(e, "failed to remove directory before recreate")
+		return errors.WithMessagef(e, "%s - failed to remove directory before recreate", logging.CallerStr(logging.Me))
 	}
 	if err := os.MkdirAll(path, os.ModePerm); err != nil {
-		return errors.Wrapf(err, "failed to make directory: %s", path)
+		return errors.Wrapf(err, "%s - failed to make directory: %s", logging.CallerStr(logging.Me), path)
 	}
 	return nil
 }
@@ -371,7 +371,7 @@ func removeRecreateDir(path string) error {
 func isExistingDir(dataPath string) error {
 	info, err := os.Stat(dataPath)
 	if os.IsNotExist(err) {
-		return errors.Wrapf(err, "failed to stat: %s", dataPath)
+		return errors.Wrapf(err, "%s - failed to stat: %s", logging.CallerStr(logging.Me), dataPath)
 	}
 	if err != nil {
 		return err
@@ -397,9 +397,9 @@ func (r *repoData) SyncRepo() error {
 		return nil
 	}
 	r.log.V(1).Info("New revision detected", append(logging.GetGitRepoInfo(r.repo), logging.GetFunctionAndSource(logging.MyCaller)...)...)
-  
+
 	if err := removeRecreateDir(r.loadPath); err != nil {
-		return errors.WithMessage(err, "failed to remove and recreate load directory")
+		return errors.WithMessagef(err, "%s - failed to remove and recreate load directory", logging.CallerStr(logging.Me))
 	}
 
 	ctx, cancel := context.WithTimeout(r.ctx, DefaultTimeOut)
@@ -407,20 +407,20 @@ func (r *repoData) SyncRepo() error {
 
 	// download and extract artifact
 	if err := r.fetchArtifact(ctx); err != nil {
-		return errors.Wrap(err, "failed to fetch repository tar file from source controller")
+		return errors.Wrapf(err, "%s - failed to fetch repository tar file from source controller", logging.CallerStr(logging.Me))
 	}
 
 	if err := os.MkdirAll(r.dataPath, os.ModePerm); err != nil {
-		return errors.Wrapf(err, "failed to make directory: %s", r.dataPath)
+		return errors.Wrapf(err, "%s - failed to make directory: %s", logging.CallerStr(logging.Me), r.dataPath)
 	}
 
 	r.Lock()
 	defer r.Unlock()
 	if e := os.RemoveAll(r.dataPath); e != nil {
-		return errors.Wrapf(e, "failed to remove data path: %s", r.dataPath)
+		return errors.Wrapf(e, "%s - failed to remove data path: %s", logging.CallerStr(logging.Me), r.dataPath)
 	}
 	if err := os.Rename(r.loadPath, r.dataPath); err != nil {
-		return errors.Wrapf(err, "failed to rename load path: %s", r.loadPath)
+		return errors.Wrapf(err, "%s - failed to rename load path: %s", logging.CallerStr(logging.Me), r.loadPath)
 	}
 	r.log.V(1).Info("synced repo", append(logging.GetGitRepoInfo(r.repo), logging.GetFunctionAndSource(logging.MyCaller)...)...)
 	return nil
@@ -444,13 +444,13 @@ func (r *repoData) fetchArtifact(ctx context.Context) error {
 
 	tar, err := r.tarConsumer.GetTar(ctx)
 	if err != nil {
-		return errors.WithMessagef(err, "failed to download artifact from %s", url)
+		return errors.WithMessagef(err, "%s - failed to download artifact from %s", logging.CallerStr(logging.Me), url)
 	}
 	// Debugging for unzip error
 	r.log.V(2).Info("tar data", append(logging.GetGitRepoInfo(r.repo), append(logging.GetFunctionAndSource(logging.MyCaller), "length", len(tar))...)...)
 
 	if err := tarconsumer.UnpackTar(tar, r.GetLoadPath()); err != nil {
-		return errors.WithMessage(err, "faild to untar artifact")
+		return errors.WithMessagef(err, "%s - failed to untar artifact", logging.CallerStr(logging.Me))
 	}
 
 	return nil

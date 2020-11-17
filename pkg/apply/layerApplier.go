@@ -58,7 +58,7 @@ type KubectlLayerApplier struct {
 func NewApplier(client client.Client, logger logr.Logger, scheme *runtime.Scheme) (applier LayerApplier, err error) {
 	kubectl, err := newKubectlFunc(logger)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to create a Kubectl provider for KubectlLayerApplier")
+		return nil, errors.WithMessagef(err, "%s - failed to create a Kubectl provider for KubectlLayerApplier", logging.CallerStr(logging.Me))
 	}
 	applier = KubectlLayerApplier{
 		client:  client,
@@ -182,7 +182,7 @@ func (a KubectlLayerApplier) decodeAddons(layer layers.Layer,
 	obj, gvk, err := dez.Decode(json, nil, nil)
 	if err != nil {
 		a.logError(err, "unable to parse JSON output from kubectl", layer, "output", string(json))
-		return nil, errors.Wrap(err, "failed to decode json")
+		return nil, errors.Wrapf(err, "%s - failed to decode json", logging.CallerStr(logging.Me))
 	}
 
 	a.logTrace("decoded JSON output", layer, "groupVersionKind", gvk, "object", logging.LogJSON(obj))
@@ -213,7 +213,7 @@ func (a KubectlLayerApplier) addOwnerRefs(layer layers.Layer, objs []runtime.Obj
 		err := controllerutil.SetControllerReference(layer.GetAddonsLayer(), obj, a.scheme)
 		if err != nil {
 			// could not apply owner ref for object
-			return errors.Wrapf(err, "failed to apply owner reference to: %s", getObjLabel(robj))
+			return errors.Wrapf(err, "%s - failed to apply owner reference to: %s", logging.CallerStr(logging.Me), getObjLabel(robj))
 		}
 		labels := obj.GetLabels()
 		if labels == nil {
@@ -231,7 +231,7 @@ func (a KubectlLayerApplier) getHelmReleases(ctx context.Context, layer layers.L
 	hrList := &helmctlv2.HelmReleaseList{}
 	err = a.client.List(ctx, hrList, client.MatchingFields{".owner": layer.GetName()})
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to list HelmRelease resources owned by '%s'", layer.GetName())
+		return nil, errors.Wrapf(err, "%s - failed to list HelmRelease resources owned by '%s'", logging.CallerStr(logging.Me), layer.GetName())
 	}
 	for _, hr := range hrList.Items {
 		foundHrs = append(foundHrs, hr.DeepCopy())
@@ -253,7 +253,7 @@ func (a KubectlLayerApplier) applyObjects(ctx context.Context, layer layers.Laye
 		*/
 		err := a.applyObject(ctx, layer, obj)
 		if err != nil {
-			return errors.Wrap(err, "failed to apply layer resources")
+			return errors.Wrapf(err, "%s - failed to apply layer resources", logging.CallerStr(logging.Me))
 		}
 		a.logDebug("resource successfully applied", layer, logging.GetObjKindNamespaceName(obj)...)
 	}
@@ -266,7 +266,7 @@ func (a KubectlLayerApplier) getHelmRepos(ctx context.Context, layer layers.Laye
 	hrList := &sourcev1.HelmRepositoryList{}
 	err = a.client.List(ctx, hrList, client.MatchingFields{".owner": layer.GetName()})
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to list HelmRepos resources owned by '%s'", layer.GetName())
+		return nil, errors.Wrapf(err, "%s - failed to list HelmRepos resources owned by '%s'", logging.CallerStr(logging.Me), layer.GetName())
 	}
 	for _, hr := range hrList.Items {
 		foundHrs = append(foundHrs, hr.DeepCopy())
@@ -279,7 +279,7 @@ func (a KubectlLayerApplier) isObjectPresent(ctx context.Context, layer layers.L
 	defer logging.TraceExit(a.getLog(layer))
 	key, err := client.ObjectKeyFromObject(obj)
 	if err != nil {
-		return false, errors.Wrapf(err, "failed to get an ObjectKey '%s'", getObjLabel(obj))
+		return false, errors.Wrapf(err, "%s - failed to get an ObjectKey '%s'", logging.CallerStr(logging.Me), getObjLabel(obj))
 	}
 	existing := obj.DeepCopyObject()
 	err = a.client.Get(ctx, key, existing)
@@ -289,7 +289,7 @@ func (a KubectlLayerApplier) isObjectPresent(ctx context.Context, layer layers.L
 			a.logDebug("existing object not found", layer, logging.GetObjKindNamespaceName(obj)...)
 			return false, nil
 		}
-		return false, errors.Wrapf(err, "failed to get an ObjectKey '%s'", key)
+		return false, errors.Wrapf(err, "%s - failed to get an ObjectKey '%s'", logging.CallerStr(logging.Me), key)
 	}
 	a.logDebug("existing object found", layer, logging.GetObjKindNamespaceName(obj)...)
 	return true, nil
@@ -301,19 +301,19 @@ func (a KubectlLayerApplier) applyObject(ctx context.Context, layer layers.Layer
 	a.logDebug("applying object", layer, logging.GetObjKindNamespaceName(obj)...)
 	present, err := a.isObjectPresent(ctx, layer, obj)
 	if err != nil {
-		return errors.WithMessagef(err, "failed to determine if object '%s' is present on the target cluster", getObjLabel(obj))
+		return errors.WithMessagef(err, "%s - failed to determine if object '%s' is present on the target cluster", logging.CallerStr(logging.Me), getObjLabel(obj))
 	}
 	if !present {
 		// object does not exist, create resource
 		err = a.client.Create(ctx, obj, &client.CreateOptions{})
 		if err != nil {
-			return errors.Wrapf(err, "failed to Create Object '%s' on the target cluster", getObjLabel(obj))
+			return errors.Wrapf(err, "%s - failed to Create Object '%s' on the target cluster", logging.CallerStr(logging.Me), getObjLabel(obj))
 		}
 	} else {
 		// Object exists, update resource
 		err = a.client.Update(ctx, obj, &client.UpdateOptions{})
 		if err != nil {
-			return errors.Wrapf(err, "failed to Update object '%s' on the target cluster", getObjLabel(obj))
+			return errors.Wrapf(err, "%s - failed to Update object '%s' on the target cluster", logging.CallerStr(logging.Me), getObjLabel(obj))
 		}
 	}
 
@@ -359,8 +359,8 @@ func (a KubectlLayerApplier) checkSourcePath(layer layers.Layer) (sourceDir stri
 	}
 	if err != nil {
 		a.logError(err, "error while checking source directory", layer)
-		return sourceDir, errors.Wrapf(err, "failed to check source directory (%s) for AddonsLayer %s",
-			sourceDir, layer.GetName())
+		return sourceDir, errors.Wrapf(err, "%s - failed to check source directory (%s) for AddonsLayer %s",
+			logging.CallerStr(logging.Me), sourceDir, layer.GetName())
 	}
 	if info.IsDir() {
 		sourceDir = sourceDir + string(os.PathSeparator)
@@ -382,7 +382,7 @@ func (a KubectlLayerApplier) doApply(layer layers.Layer, sourceDir string) (outp
 		}
 		a.logDebug("retrying apply", layer)
 	}
-	return output, errors.WithMessage(err, "failed to run dry run apply")
+	return output, errors.WithMessagef(err, "%s - failed to run dry run apply", logging.CallerStr(logging.Me))
 }
 
 func (a KubectlLayerApplier) getSourceResources(layer layers.Layer) (objs []runtime.Object, err error) {
@@ -395,18 +395,18 @@ func (a KubectlLayerApplier) getSourceResources(layer layers.Layer) (objs []runt
 
 	output, err := a.doApply(layer, sourceDir)
 	if err != nil {
-		return nil, errors.WithMessagef(err, "failed to execute kubectl while parsing source directory (%s) for AddonsLayer %s",
-			sourceDir, layer.GetName())
+		return nil, errors.WithMessagef(err, "%s - failed to execute kubectl while parsing source directory (%s) for AddonsLayer %s",
+			logging.CallerStr(logging.Me), sourceDir, layer.GetName())
 	}
 
 	objs, err = a.decodeAddons(layer, output)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to decode apply dry run output")
+		return nil, errors.WithMessagef(err, "%s - failed to decode apply dry run output", logging.CallerStr(logging.Me))
 	}
 
 	err = a.addOwnerRefs(layer, objs)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to add owner reference")
+		return nil, errors.WithMessagef(err, "%s - failed to add owner reference", logging.CallerStr(logging.Me))
 	}
 
 	return objs, nil
@@ -417,12 +417,12 @@ func (a KubectlLayerApplier) getSourceHelmReleases(layer layers.Layer) (hrs []*h
 	defer logging.TraceExit(a.getLog(layer))
 	objs, err := a.getSourceResources(layer)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to get source helm releases")
+		return nil, errors.WithMessagef(err, "%s - failed to get source helm releases", logging.CallerStr(logging.Me))
 	}
 
 	hrs, err = a.decodeHelmReleases(layer, objs)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to decode helm releases")
+		return nil, errors.WithMessagef(err, "%s - failed to decode helm releases", logging.CallerStr(logging.Me))
 	}
 
 	return hrs, nil
@@ -433,12 +433,12 @@ func (a KubectlLayerApplier) getSourceHelmRepos(layer layers.Layer) (hrs []*sour
 	defer logging.TraceExit(a.getLog(layer))
 	objs, err := a.getSourceResources(layer)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to get source helm repositories")
+		return nil, errors.WithMessagef(err, "%s - failed to get source helm repositories", logging.CallerStr(logging.Me))
 	}
 
 	hrs, err = a.decodeHelmRepos(layer, objs)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to decode helm repositories")
+		return nil, errors.WithMessagef(err, "%s - failed to decode helm repositories", logging.CallerStr(logging.Me))
 	}
 
 	return hrs, nil
@@ -452,12 +452,12 @@ func (a KubectlLayerApplier) Apply(ctx context.Context, layer layers.Layer) (err
 
 	hrs, err := a.getSourceResources(layer)
 	if err != nil {
-		return errors.WithMessage(err, "failed to get source resources")
+		return errors.WithMessagef(err, "%s - failed to get source resources", logging.CallerStr(logging.Me))
 	}
 
 	err = a.applyObjects(ctx, layer, hrs)
 	if err != nil {
-		return errors.WithMessage(err, "failed to apply objects")
+		return errors.WithMessagef(err, "%s - failed to apply objects", logging.CallerStr(logging.Me))
 	}
 	return nil
 }
@@ -469,7 +469,8 @@ func (a KubectlLayerApplier) Prune(ctx context.Context, layer layers.Layer, prun
 	for _, hr := range pruneHrs {
 		err := a.client.Delete(ctx, hr, client.PropagationPolicy(metav1.DeletePropagationBackground))
 		if err != nil {
-			return errors.Wrapf(err, "unable to delete HelmRelease '%s' for AddonsLayer '%s'", getLabel(hr.ObjectMeta), layer.GetName())
+			return errors.Wrapf(err, "%s - unable to delete HelmRelease '%s' for AddonsLayer '%s'",
+				logging.CallerStr(logging.Me), getLabel(hr.ObjectMeta), layer.GetName())
 		}
 	}
 	return nil
@@ -481,7 +482,7 @@ func (a KubectlLayerApplier) PruneIsRequired(ctx context.Context, layer layers.L
 	defer logging.TraceExit(a.getLog(layer))
 	sourceHrs, err := a.getSourceHelmReleases(layer)
 	if err != nil {
-		return false, nil, errors.WithMessage(err, "failed to get source helm releases")
+		return false, nil, errors.WithMessagef(err, "%s - failed to get source helm releases", logging.CallerStr(logging.Me))
 	}
 
 	hrs := map[string]*helmctlv2.HelmRelease{}
@@ -491,7 +492,7 @@ func (a KubectlLayerApplier) PruneIsRequired(ctx context.Context, layer layers.L
 
 	clusterHrs, err := a.getHelmReleases(ctx, layer)
 	if err != nil {
-		return false, nil, errors.WithMessage(err, "failed to get helm releases")
+		return false, nil, errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
 	}
 
 	pruneRequired = false
@@ -517,13 +518,13 @@ func (a KubectlLayerApplier) ApplyIsRequired(ctx context.Context, layer layers.L
 	// TODO - get all resources defined in the YAML regardless of type
 	sourceHrs, err := a.getSourceHelmReleases(layer)
 	if err != nil {
-		return false, errors.WithMessage(err, "failed to get source helm releases")
+		return false, errors.WithMessagef(err, "%s - failed to get source helm releases", logging.CallerStr(logging.Me))
 	}
 
 	// TODO - get all resources owned by the layer regardless of type
 	clusterHrs, err := a.getHelmReleases(ctx, layer)
 	if err != nil {
-		return false, errors.WithMessage(err, "failed to get helm releases")
+		return false, errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
 	}
 
 	hrs := map[string]*helmctlv2.HelmRelease{}
@@ -558,12 +559,12 @@ func (a KubectlLayerApplier) helmReposApplyRequired(ctx context.Context, layer l
 	defer logging.TraceExit(a.getLog(layer))
 	sourceHrs, err := a.getSourceHelmRepos(layer)
 	if err != nil {
-		return false, errors.WithMessage(err, "failed to get source helm repositories")
+		return false, errors.WithMessagef(err, "%s - failed to get source helm repositories", logging.CallerStr(logging.Me))
 	}
 
 	clusterHrs, err := a.getHelmRepos(ctx, layer)
 	if err != nil {
-		return false, errors.WithMessage(err, "failed to get helm repositories")
+		return false, errors.WithMessagef(err, "%s - failed to get helm repositories", logging.CallerStr(logging.Me))
 	}
 
 	hrs := map[string]*sourcev1.HelmRepository{}
@@ -634,7 +635,7 @@ func (a KubectlLayerApplier) ApplyWasSuccessful(ctx context.Context, layer layer
 	defer logging.TraceExit(a.getLog(layer))
 	clusterHrs, err := a.getHelmReleases(ctx, layer)
 	if err != nil {
-		return false, errors.WithMessage(err, "failed to get helm releases")
+		return false, errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
 	}
 
 	for _, hr := range clusterHrs {
@@ -683,12 +684,12 @@ func compareAsJSON(one, two interface{}) bool {
 func toJSON(data interface{}) (string, error) {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		return "", errors.WithMessage(err, "failed to marshal json")
+		return "", errors.WithMessagef(err, "%s - failed to marshal json", logging.CallerStr(logging.Me))
 	}
 	var prettyJSON bytes.Buffer
 	err = json.Indent(&prettyJSON, jsonData, "", "\t")
 	if err != nil {
-		return "", errors.WithMessage(err, "failed indent json")
+		return "", errors.WithMessagef(err, "%s - failed indent json", logging.CallerStr(logging.Me))
 	}
 	return prettyJSON.String(), nil
 }

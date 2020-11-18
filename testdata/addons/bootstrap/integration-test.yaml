@@ -26,7 +26,7 @@ spec:
         namespace: gotk-system
       version: '>4.0.0'
   test:
-    enable: false
+    enable: true
     ignoreFailures: false
     timeout: "1m"
   values:

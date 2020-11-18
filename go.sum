@@ -107,12 +107,15 @@ github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5Kwzbycv
 github.com/fluxcd/helm-controller v0.1.0 h1:F7XxAmBY2tNwShC5BiAVlO1p/7HwIX06+2LmRfFbft4=
 github.com/fluxcd/helm-controller v0.1.1 h1:QNJ8jQGxbUzpU7tE2GLuThewfjcqqMdtfzf7w+xsC4U=
 github.com/fluxcd/helm-controller v0.1.3 h1:Rjz+Er3YrADwUrtP88exRwmWVQ33XgYlkMhmWb6QQ2U=
+github.com/fluxcd/helm-controller v0.2.1 h1:mT6hq9/NFOnZPjpqmoqVVbGHnAmfmtsH8eukEeJxIhY=
+github.com/fluxcd/helm-controller v0.2.2 h1:YWxr1SC1ch9RTX/BTjjgwVqxu6gUlT8Q99/ITkj3JLA=
 github.com/fluxcd/helm-controller/api v0.0.10 h1:VWguG8loIrfbECgpXfnfl4wMwH/dJ/NzZUS8TYL2bF4=
 github.com/fluxcd/helm-controller/api v0.0.10/go.mod h1:m6f9E3SniPQhdBJj5f1uUTGSDimERl3fHhTouTfBAq4=
 github.com/fluxcd/helm-controller/api v0.1.0 h1:hci9/dLlej6W+rZVkAGVi1MjLVaHWsq/luOYX9DtzJo=
 github.com/fluxcd/helm-controller/api v0.1.1 h1:iKskkLGRYRi5hiZg/+Rn+rpneGPayGQPnmilM3bok44=
 github.com/fluxcd/helm-controller/api v0.1.1/go.mod h1:orwdS+iYGcM8BReUQfIb5CJ+jiFdlKmnLnzp6K3FK2U=
 github.com/fluxcd/helm-controller/api v0.1.3 h1:OztoSyxj5+2P38FRc9JXqnXP+f4eNQ0j199PRIqhnR4=
+github.com/fluxcd/helm-controller/api v0.2.2 h1:2SuX3Y9yJqDNfRd2hPUhOs3jf3n/hu2uPY2kiryaWyA=
 github.com/fluxcd/pkg v0.0.4 h1:fMA6GG3FTSBFDrlB026gQJhxj4xVuvcvwP3rhX/Yqrw=
 github.com/fluxcd/pkg/apis/meta v0.0.2 h1:kyA4Y0IzNjf1joBOnFqpWG7aNDHvtLExZcaHQM7qhRI=
 github.com/fluxcd/pkg/apis/meta v0.0.2/go.mod h1:nCNps5JJOcEQr3MNDmZqI4o0chjePSUYL6Q2ktDtotU=

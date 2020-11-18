@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fluxcd/pkg/apis/meta"
+	fluxmeta "github.com/fluxcd/pkg/apis/meta"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
@@ -70,7 +70,7 @@ type Layer interface {
 	GetFullStatus() *kraanv1alpha1.AddonsLayerStatus
 	GetSpec() *kraanv1alpha1.AddonsLayerSpec
 	GetAddonsLayer() *kraanv1alpha1.AddonsLayer
-	RevisionReady(conditions []meta.Condition, revision string) (bool, string)
+	RevisionReady(conditions []fluxmeta.Condition, revision string) (bool, string)
 }
 
 // KraanLayer is the Schema for the addons API.
@@ -202,6 +202,9 @@ func (l *KraanLayer) setStatus(status, reason, message string) {
 	l.addonsLayer.Status.Version = l.addonsLayer.Spec.Version
 	l.updated = true
 	l.requeue = true
+	if l.addonsLayer.Status.Resources == nil {
+		l.addonsLayer.Status.Resources = []kraanv1alpha1.Resource{}
+	}
 }
 
 // SetStatusK8sVersion sets the addon layer's status to waiting for required K8s Version.
@@ -270,7 +273,7 @@ func getNameVersion(nameVersion string) (string, string) {
 	return parts[0], parts[1]
 }
 
-func (l *KraanLayer) RevisionReady(conditions []meta.Condition, revision string) (bool, string) {
+func (l *KraanLayer) RevisionReady(conditions []fluxmeta.Condition, revision string) (bool, string) {
 	logging.TraceCall(l.GetLogger())
 	defer logging.TraceExit(l.GetLogger())
 	for _, cond := range conditions {

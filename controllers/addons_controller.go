@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta1"
@@ -345,6 +346,44 @@ func (r *AddonsLayerReconciler) getRevision(l layers.Layer) (string, error) {
 	return repo.GetGitRepo().Status.Artifact.Revision, nil
 }
 
+func (r *AddonsLayerReconciler) compareResources(current, new []kraanv1alpha1.Resource) bool {
+	logging.TraceCall(r.Log)
+	defer logging.TraceExit(r.Log)
+
+	if len(current) != len(new) {
+		return false
+	}
+
+	sort.Sort(kraanv1alpha1.Resources(current))
+	sort.Sort(kraanv1alpha1.Resources(new))
+	for index, resource := range current {
+		if !apply.CompareAsJSON(resource, new[index]) {
+			return false
+		}
+	}
+	return true
+}
+
+func (r *AddonsLayerReconciler) updateResources(l layers.Layer) {
+	logging.TraceCall(r.Log)
+	defer logging.TraceExit(r.Log)
+
+	ctx := r.Context
+	applier := r.Applier
+
+	resources, err := applier.GetResources(ctx, l)
+	if err != nil {
+		r.Log.Error(err, "failed to get resources", logging.GetFunctionAndSource(logging.MyCaller)...)
+		return
+	}
+	if !r.compareResources(l.GetFullStatus().Resources, resources) {
+		sort.Sort(kraanv1alpha1.Resources(resources))
+		l.GetFullStatus().Resources = resources
+		l.SetUpdated()
+		r.Log.V(3).Info("updated resources", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", l.GetName(), "resources", l.GetFullStatus().Resources)...)
+	}
+}
+
 func (r *AddonsLayerReconciler) isReady(l layers.Layer) (bool, error) {
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
@@ -401,6 +440,8 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error
 	if !layerDataReady {
 		return "", nil
 	}
+
+	defer r.updateResources(l)
 
 	layerStatusUpdated, err := r.processPrune(l)
 	if err != nil {

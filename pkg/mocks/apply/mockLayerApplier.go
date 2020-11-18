@@ -6,6 +6,7 @@ package mocks
 
 import (
 	context "context"
+	v1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 	layers "github.com/fidelity/kraan/pkg/layers"
 	v2beta1 "github.com/fluxcd/helm-controller/api/v2beta1"
 	gomock "github.com/golang/mock/gomock"
@@ -107,4 +108,19 @@ func (m *MockLayerApplier) ApplyWasSuccessful(ctx context.Context, layer layers.
 func (mr *MockLayerApplierMockRecorder) ApplyWasSuccessful(ctx, layer interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ApplyWasSuccessful", reflect.TypeOf((*MockLayerApplier)(nil).ApplyWasSuccessful), ctx, layer)
+}
+
+// GetResources mocks base method
+func (m *MockLayerApplier) GetResources(ctx context.Context, layer layers.Layer) ([]v1alpha1.Resource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetResources", ctx, layer)
+	ret0, _ := ret[0].([]v1alpha1.Resource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetResources indicates an expected call of GetResources
+func (mr *MockLayerApplierMockRecorder) GetResources(ctx, layer interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResources", reflect.TypeOf((*MockLayerApplier)(nil).GetResources), ctx, layer)
 }

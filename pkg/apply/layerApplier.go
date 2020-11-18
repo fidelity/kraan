@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/internal/kubectl"
 	"github.com/fidelity/kraan/pkg/layers"
 	"github.com/fidelity/kraan/pkg/logging"
@@ -44,6 +45,7 @@ type LayerApplier interface {
 	PruneIsRequired(ctx context.Context, layer layers.Layer) (pruneRequired bool, pruneHrs []*helmctlv2.HelmRelease, err error)
 	ApplyIsRequired(ctx context.Context, layer layers.Layer) (applyIsRequired bool, err error)
 	ApplyWasSuccessful(ctx context.Context, layer layers.Layer) (applyIsRequired bool, err error)
+	GetResources(ctx context.Context, layer layers.Layer) (resources []kraanv1alpha1.Resource, err error)
 }
 
 // KubectlLayerApplier applies an AddonsLayer to a Kubernetes cluster using the kubectl command.
@@ -141,7 +143,7 @@ func (a KubectlLayerApplier) decodeHelmReleases(layer layers.Layer, objs []runti
 				a.logError(err, err.Error(), layer, logging.GetObjNamespaceName(obj)...)
 			}
 		default:
-			a.logDebug("found Kubernetes object in Object list", layer, logging.GetObjKindNamespaceName(obj)...)
+			a.logTrace("found Kubernetes object in Object list", layer, logging.GetObjKindNamespaceName(obj)...)
 		}
 	}
 	return hrs, err
@@ -225,7 +227,7 @@ func (a KubectlLayerApplier) addOwnerRefs(layer layers.Layer, objs []runtime.Obj
 	return nil
 }
 
-func (a KubectlLayerApplier) getHelmReleases(ctx context.Context, layer layers.Layer) (foundHrs []*helmctlv2.HelmRelease, err error) {
+func (a KubectlLayerApplier) getHelmReleases(ctx context.Context, layer layers.Layer) (foundHrs map[string]*helmctlv2.HelmRelease, err error) {
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
 	hrList := &helmctlv2.HelmReleaseList{}
@@ -233,8 +235,9 @@ func (a KubectlLayerApplier) getHelmReleases(ctx context.Context, layer layers.L
 	if err != nil {
 		return nil, errors.Wrapf(err, "%s - failed to list HelmRelease resources owned by '%s'", logging.CallerStr(logging.Me), layer.GetName())
 	}
+	foundHrs = map[string]*helmctlv2.HelmRelease{}
 	for _, hr := range hrList.Items {
-		foundHrs = append(foundHrs, hr.DeepCopy())
+		foundHrs[getLabel(hr.ObjectMeta)] = hr.DeepCopy()
 	}
 	return foundHrs, nil
 }
@@ -412,7 +415,7 @@ func (a KubectlLayerApplier) getSourceResources(layer layers.Layer) (objs []runt
 	return objs, nil
 }
 
-func (a KubectlLayerApplier) getSourceHelmReleases(layer layers.Layer) (hrs []*helmctlv2.HelmRelease, err error) {
+func (a KubectlLayerApplier) getSourceHelmReleases(layer layers.Layer) (hrs map[string]*helmctlv2.HelmRelease, err error) {
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
 	objs, err := a.getSourceResources(layer)
@@ -420,9 +423,14 @@ func (a KubectlLayerApplier) getSourceHelmReleases(layer layers.Layer) (hrs []*h
 		return nil, errors.WithMessagef(err, "%s - failed to get source helm releases", logging.CallerStr(logging.Me))
 	}
 
-	hrs, err = a.decodeHelmReleases(layer, objs)
+	sourceHrs, err := a.decodeHelmReleases(layer, objs)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "%s - failed to decode helm releases", logging.CallerStr(logging.Me))
+	}
+
+	hrs = map[string]*helmctlv2.HelmRelease{}
+	for _, hr := range sourceHrs {
+		hrs[getLabel(hr.ObjectMeta)] = hr
 	}
 
 	return hrs, nil
@@ -442,6 +450,23 @@ func (a KubectlLayerApplier) getSourceHelmRepos(layer layers.Layer) (hrs []*sour
 	}
 
 	return hrs, nil
+}
+
+// getSourceAndClusterHelmReleases returns source and cluster helmreleases
+func (a KubectlLayerApplier) getSourceAndClusterHelmReleases(ctx context.Context, layer layers.Layer) (sourceHrs, clusterHrs map[string]*helmctlv2.HelmRelease, err error) {
+	logging.TraceCall(a.getLog(layer))
+	defer logging.TraceExit(a.getLog(layer))
+
+	sourceHrs, err = a.getSourceHelmReleases(layer)
+	if err != nil {
+		return nil, nil, errors.WithMessagef(err, "%s - failed to get source helm releases", logging.CallerStr(logging.Me))
+	}
+
+	clusterHrs, err = a.getHelmReleases(ctx, layer)
+	if err != nil {
+		return nil, nil, errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
+	}
+	return sourceHrs, clusterHrs, nil
 }
 
 // Apply an AddonLayer to the cluster.
@@ -476,21 +501,91 @@ func (a KubectlLayerApplier) Prune(ctx context.Context, layer layers.Layer, prun
 	return nil
 }
 
+// getResourceInfo updates a resource object with details from object on cluster
+func (a KubectlLayerApplier) getResourceInfo(layer layers.Layer, resource kraanv1alpha1.Resource, conditions []fluxmeta.Condition) kraanv1alpha1.Resource {
+	logging.TraceCall(a.getLog(layer))
+	defer logging.TraceExit(a.getLog(layer))
+
+	cond := a.getReadyCondition(layer, conditions)
+	if cond == nil {
+		resource.Status = kraanv1alpha1.NotDeployed
+		return resource
+	}
+	resource.LastTransitionTime = cond.LastTransitionTime
+
+	if cond.Status == corev1.ConditionTrue {
+		resource.Status = kraanv1alpha1.Deployed
+		return resource
+	}
+	resource.Status = cond.Reason
+	return resource
+}
+
+func (a KubectlLayerApplier) getReadyCondition(layer layers.Layer, conditions []fluxmeta.Condition) *fluxmeta.Condition {
+	logging.TraceCall(a.getLog(layer))
+	defer logging.TraceExit(a.getLog(layer))
+
+	for _, cond := range conditions {
+		if cond.Type == "Ready" {
+			return &cond
+		}
+	}
+	return nil
+}
+
+// GetResources returns a list of resources for this AddonsLayer
+func (a KubectlLayerApplier) GetResources(ctx context.Context, layer layers.Layer) (resources []kraanv1alpha1.Resource, err error) {
+	logging.TraceCall(a.getLog(layer))
+	defer logging.TraceExit(a.getLog(layer))
+
+	sourceHrs, clusterHrs, err := a.getSourceAndClusterHelmReleases(ctx, layer)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
+	}
+
+	for key, source := range sourceHrs {
+		resource := kraanv1alpha1.Resource{
+			Namespace:          source.GetNamespace(),
+			Name:               source.GetName(),
+			Kind:               "helmreleases.helm.toolkit.fluxcd.io",
+			LastTransitionTime: metav1.Now(),
+			Status:             "Unknown",
+		}
+		hr, ok := clusterHrs[key]
+		if ok {
+			a.logDebug("HelmRelease in AddonsLayer source directory and on cluster", layer, logging.GetObjKindNamespaceName(source)...)
+			resources = append(resources, a.getResourceInfo(layer, resource, hr.Status.Conditions))
+		} else {
+			// this resource exists in the source directory but not on the cluster
+			a.logDebug("HelmRelease in AddonsLayer source directory but not on cluster", layer, logging.GetObjKindNamespaceName(source)...)
+			resource.Status = kraanv1alpha1.NotDeployed
+			resources = append(resources, resource)
+		}
+	}
+
+	for key, hr := range clusterHrs {
+		resource := kraanv1alpha1.Resource{
+			Namespace:          hr.GetNamespace(),
+			Name:               hr.GetName(),
+			Kind:               "helmreleases.helm.toolkit.fluxcd.io",
+			LastTransitionTime: metav1.Now(),
+			Status:             "Unknown",
+		}
+		_, ok := sourceHrs[key]
+		if !ok {
+			a.logDebug("HelmRelease not in AddonsLayer source directory but on cluster", layer, "name", sourceHrs[key])
+			resources = append(resources, a.getResourceInfo(layer, resource, hr.Status.Conditions))
+		}
+	}
+	return resources, err
+}
+
 // PruneIsRequired returns true if any resources need to be pruned for this AddonsLayer
 func (a KubectlLayerApplier) PruneIsRequired(ctx context.Context, layer layers.Layer) (pruneRequired bool, pruneHrs []*helmctlv2.HelmRelease, err error) {
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
-	sourceHrs, err := a.getSourceHelmReleases(layer)
-	if err != nil {
-		return false, nil, errors.WithMessagef(err, "%s - failed to get source helm releases", logging.CallerStr(logging.Me))
-	}
 
-	hrs := map[string]*helmctlv2.HelmRelease{}
-	for _, hr := range sourceHrs {
-		hrs[getLabel(hr.ObjectMeta)] = hr
-	}
-
-	clusterHrs, err := a.getHelmReleases(ctx, layer)
+	sourceHrs, clusterHrs, err := a.getSourceAndClusterHelmReleases(ctx, layer)
 	if err != nil {
 		return false, nil, errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
 	}
@@ -498,8 +593,8 @@ func (a KubectlLayerApplier) PruneIsRequired(ctx context.Context, layer layers.L
 	pruneRequired = false
 	pruneHrs = []*helmctlv2.HelmRelease{}
 
-	for _, hr := range clusterHrs {
-		_, ok := hrs[getLabel(hr.ObjectMeta)]
+	for key, hr := range clusterHrs {
+		_, ok := sourceHrs[key]
 		if !ok {
 			// this resource exists on the cluster but not in the source directory
 			a.logDebug("pruned HelmRelease for AddonsLayer in KubeAPI but not in source directory", layer, logging.GetObjKindNamespaceName(hr)...)
@@ -515,26 +610,15 @@ func (a KubectlLayerApplier) PruneIsRequired(ctx context.Context, layer layers.L
 func (a KubectlLayerApplier) ApplyIsRequired(ctx context.Context, layer layers.Layer) (applyIsRequired bool, err error) {
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
-	// TODO - get all resources defined in the YAML regardless of type
-	sourceHrs, err := a.getSourceHelmReleases(layer)
-	if err != nil {
-		return false, errors.WithMessagef(err, "%s - failed to get source helm releases", logging.CallerStr(logging.Me))
-	}
 
-	// TODO - get all resources owned by the layer regardless of type
-	clusterHrs, err := a.getHelmReleases(ctx, layer)
+	sourceHrs, clusterHrs, err := a.getSourceAndClusterHelmReleases(ctx, layer)
 	if err != nil {
 		return false, errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
 	}
 
-	hrs := map[string]*helmctlv2.HelmRelease{}
-	for _, hr := range clusterHrs {
-		hrs[getLabel(hr.ObjectMeta)] = hr
-	}
-
 	// Check for any missing resources first.  This is the fastest and easiest check.
-	for _, source := range sourceHrs {
-		_, ok := hrs[getLabel(source.ObjectMeta)]
+	for key, source := range sourceHrs {
+		_, ok := clusterHrs[key]
 		if !ok {
 			// this resource exists in the source directory but not on the cluster
 			a.logDebug("found new HelmRelease in AddonsLayer source directory", layer, logging.GetObjKindNamespaceName(source)...)
@@ -542,11 +626,9 @@ func (a KubectlLayerApplier) ApplyIsRequired(ctx context.Context, layer layers.L
 		}
 	}
 
-	// TODO - Compare each resource (regardless of type) source spec to the spec of the found resource on the cluster
 	// Compare each HelmRelease source spec to the spec of the found HelmRelease on the cluster
-	for _, source := range sourceHrs {
-		found := hrs[getLabel(source.ObjectMeta)]
-		if a.sourceHasReleaseChanged(layer, source, found) {
+	for key, source := range sourceHrs {
+		if a.sourceHasReleaseChanged(layer, source, clusterHrs[key]) {
 			a.logDebug("found source change", layer, logging.GetObjKindNamespaceName(source)...)
 			return true, nil
 		}
@@ -596,7 +678,7 @@ func (a KubectlLayerApplier) helmReposApplyRequired(ctx context.Context, layer l
 func (a KubectlLayerApplier) sourceHasReleaseChanged(layer layers.Layer, source, found *helmctlv2.HelmRelease) (changed bool) {
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
-	if !compareAsJSON(source.Spec, found.Spec) {
+	if !CompareAsJSON(source.Spec, found.Spec) {
 		a.logDebug("found spec change for HelmRelease in AddonsLayer source directory", layer,
 			append(logging.GetObjKindNamespaceName(source), "source", source.Spec, "found", found.Spec, "diff", cmp.Diff(source.Spec, found.Spec))...)
 		return true
@@ -614,7 +696,7 @@ func (a KubectlLayerApplier) sourceHasReleaseChanged(layer layers.Layer, source,
 func (a KubectlLayerApplier) sourceHasRepoChanged(layer layers.Layer, source, found *sourcev1.HelmRepository) (changed bool) {
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
-	if !compareAsJSON(source.Spec, found.Spec) {
+	if !CompareAsJSON(source.Spec, found.Spec) {
 		a.logDebug("found spec change for HelmRepository in AddonsLayer source directory", layer,
 			append(logging.GetObjKindNamespaceName(source), "source", source.Spec, "found", found.Spec, "diff", cmp.Diff(source.Spec, found.Spec))...)
 		return true
@@ -664,7 +746,7 @@ func (a KubectlLayerApplier) checkHR(hr helmctlv2.HelmRelease, layer layers.Laye
 	return cond.Status == corev1.ConditionTrue
 }
 
-func compareAsJSON(one, two interface{}) bool {
+func CompareAsJSON(one, two interface{}) bool {
 	if one == nil && two == nil {
 		return true
 	}

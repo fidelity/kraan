@@ -19,7 +19,7 @@ spec:
         namespace: gotk-system
       version: '>4.0.0'
   test:
-    enable: false
+    enable: true
     ignoreFailures: false
     timeout: "1m"
   values:
@@ -27,12 +27,12 @@ spec:
     preHookActiveDeadlineSeconds: 60
     preHookRestartPolicy: Never
     preHookDelaySeconds: 10
-    preHookSucceed: "true"
+    preHookSucceed: "false"
     testHookBackoffLimit: 1
     testHookActiveDeadlineSeconds: 60
     testHookRestartPolicy: Never
     testHookDelaySeconds: 10
-    testHookSucceed: "true"
+    testHookSucceed: "false"
     podinfo:
       service:
         enabled: true

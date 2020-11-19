@@ -46,16 +46,34 @@ For more details on *HelmRelease*, check
 ```yaml
 # podinfo.yaml
 ---
-apiVersion: helm.fluxcd.io/v1
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
 kind: HelmRelease
 metadata:
   name: podinfo
   namespace: default
 spec:
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    remediation:
+      retries: -1
   chart:
-    repository: https://stefanprodan.github.io/podinfo
-    name: podinfo
-    version: 3.2.0
+    spec:
+      chart: podinfo
+      sourceRef:
+        kind: HelmRepository
+        name: podinfo
+        namespace: gotk-system
+      version: '>4.0.0'
+  values:
+    podinfo:
+      service:
+        enabled: true
+        type: ClusterIP
+      replicaCount: 1
+      message: podinfo
+  interval: 1m0s 
 ```
 
 ###### Example
@@ -116,12 +134,12 @@ received for an AddonLayer,
     * The dependent layer is identified by a combination of name and a version.
       i.e base@0.1.2 means that a layer with name "base" and spec.version = 0.1.2 is expected.
     * If the dependent layer isn't found, return nil and requeue the request
-      to process after 10 mins.
+      to process after the configured interrval.
     * If the layer is found, check whether the status of the layer is set to
       successfully deployed by inspecting the status subresource of that custom
       resource.
     * If the layer is not successfully deployed yet, return to requeue the request
-      after 10 mins.    
+      after the configured interrval.
 * If the dependent layer is successfully deployed, then proceed to deploy this layers'
   addons. Return error on failure which will trigger an exponential backoff.
 

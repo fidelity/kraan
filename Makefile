@@ -26,6 +26,7 @@ export VERSION?=master
 export REPO ?=docker.pkg.github.com/${GITHUB_ORG}/${GITHUB_REPO}
 # Image URL to use all building/pushing image targets
 IMG ?= ${REPO}/${PROJECT}:${VERSION}
+CHART_VERSION ?=
 ALL_GO_PACKAGES:=$(shell find ${CURDIR}/main/ ${CURDIR}/controllers/ ${CURDIR}/api/ ${CURDIR}/pkg/ \
 	-type f -name *.go -exec dirname {} \; | sort --uniq)
 GO_CHECK_PACKAGES:=$(shell echo $(subst $() $(),\\n,$(ALL_GO_PACKAGES)) | \
@@ -91,12 +92,18 @@ godocs: ${GO_DOCS_ARTIFACTS}
 
 release:
 <<<<<<< HEAD
+<<<<<<< HEAD
 	test ${CHART_VERSION} || $(echo "please set CHART_VERSION";exit)
 =======
+=======
+>>>>>>> build-release-v0.1.08
 	if [ -z ${CHART_VERSION} ]; then
 		echo "please set CHART_VERSION"
 		exit
 	fi
+<<<<<<< HEAD
+>>>>>>> build-release-v0.1.08
+=======
 >>>>>>> build-release-v0.1.08
 	git checkout -b build-release-${CHART_VERSION} || exit
 	sed -i s/appVersion\:\ v0.1.x/appVersion\:\ ${VERSION}/ chart/Chart.yaml

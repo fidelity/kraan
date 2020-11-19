@@ -93,8 +93,11 @@ godocs: ${GO_DOCS_ARTIFACTS}
 release:
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 	test ${CHART_VERSION} || $(echo "please set CHART_VERSION";exit)
 =======
+=======
+>>>>>>> build-release-v0.1.08
 =======
 >>>>>>> build-release-v0.1.08
 	if [ -z ${CHART_VERSION} ]; then
@@ -102,6 +105,9 @@ release:
 		exit
 	fi
 <<<<<<< HEAD
+<<<<<<< HEAD
+>>>>>>> build-release-v0.1.08
+=======
 >>>>>>> build-release-v0.1.08
 =======
 >>>>>>> build-release-v0.1.08
@@ -109,6 +115,7 @@ release:
 	sed -i s/appVersion\:\ v0.1.x/appVersion\:\ ${VERSION}/ chart/Chart.yaml
 	sed -i s/version\:\ v0.1.x/version\:\ ${CHART_VERSION}/ chart/Chart.yaml
 	helm package --version ${CHART_VERSION} chart
+	git checkout chart/Chart.yaml
 	git add -A
 	git commit -a -m "create release for chart version ${CHART_VERSION}"
 	git checkout gh-pages || exit

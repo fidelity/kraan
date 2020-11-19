@@ -38,6 +38,7 @@ kraan:
 
     args:
       logLevel: 0
+      syncPeriod: 1m
 
     devmode: false
 

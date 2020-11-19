@@ -10,11 +10,8 @@ function usage()
     echo "options:"
    echo "'--log-level' N, where N is 1 for debug message and 2 or higher for trace level debugging"
    echo "'--debug' for verbose output"
-   echo "This script will create a temporary directory and copy the addons.yaml and addons-source.yaml"
-   echo " files from testdata/addons tothe temporary directory. It will then set the environmental"
-   echo "variable DATA_PATH to the temporary directory. This will cause the kraan-controller to process"
-   echo "the addons layers using the temporary directory as its root directory when storing files it"
-   echo "retrieves from this git repository's testdata/addons directory using the source controller."
+   echo "This script will create a temporary directory call /tmp/kraan-local-exec which the kraan-controller"
+   echo "will use as its root directory when storing files it retrieves from this git repository"
 }
 
 function args() {
@@ -41,22 +38,17 @@ function args() {
 
 args "$@"
 base_dir="$(git rev-parse --show-toplevel)"
-work_dir="$(mktemp -d -t kraan-XXXXXX)"
-mkdir -p "${work_dir}"/testdata/addons
-cp -rf "${base_dir}"/testdata/addons/addons*.yaml "${work_dir}"/testdata/addons
+work_dir="${TMPDIR:-/tmp}/kraan-local-exec"
+mkdir -p "${work_dir}"
 export DATA_PATH="${work_dir}"
 echo "Running kraan-controller with DATA_PATH set to ${DATA_PATH}"
-echo "You may change files in ${work_dir}/testdata/addons to test kraan-controller"
-echo "Edit and then kubectl apply ${work_dir}/testdata/addons/addons.yaml to cause kraan-controller to reprocess layers."
-echo "Edit and then kubectl apply ${work_dir}/testdata/addons/addons-source.yaml to cause kraan-controller to reprocess source controller data."
-echo "In order to allow for this scenario the temporary directory will not be deleted so you are responsible for deleting this directory"
 echo ""
 echo "if you want change and rerun the kraan-controller you should type..."
 echo "kubectl -n gotk-system port-forward svc/source-controller 8090:80 &"
 echo "export DATA_PATH=${work_dir}"
 echo "export SC_HOST=localhost:8090"
 echo "kraan-controller -zap-encoder=json ${log_level} 2>&1 | tee ${DATA_PATH}/kraan.log | grep "^{" | jq -r"
-read -p "Pausing to allow user to make manual changes to testdata in ${work_dir}/testdata/addons, press enter to continue"
+read -p "press enter to continue"
 
 kubectl -n gotk-system port-forward svc/source-controller 8090:80 &
 export SC_HOST=localhost:8090

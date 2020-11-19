@@ -135,6 +135,10 @@ const (
 	// PruningCondition represents the fact that the addons are being pruned.
 	PruningCondition string = "Pruning"
 
+	// PendingCondition represents the fact that the addons are pending being processed.
+	// Used when source is not ready.
+	PendingCondition string = "Pending"
+
 	// ApplyPendingCondition represents the fact that the addons are pending being applied.
 	// Used when applying is pending a prereq being met.
 	ApplyPendingCondition string = "ApplyPending"
@@ -150,7 +154,50 @@ const (
 
 	// HoldCondition represents the fact that addons are on hold.
 	HoldCondition string = "Hold"
+
+	// NotDeployed represents resource status of present in layer source but not deployed on the cluster
+	NotDeployed string = "NotDeployed"
+
+	// Deployed represents resource status of deployed on the cluster
+	Deployed string = "Deployed"
+
+	// ClusterOnly represents resource status of present in on the cluster but not in layer source
+	ClusterOnly string = "NoSource"
 )
+
+type Resource struct {
+	// Namespace of resource.
+	// +optional
+	Namespace string `json:"namespace,omitempty"`
+
+	// Name of resource.
+	// +required
+	Name string `json:"name"`
+
+	// Kind of the resource.
+	// +required
+	Kind string `json:"kind"`
+
+	// LastTransitionTime is the timestamp corresponding to the last status
+	// change of this resource.
+	// +required
+	LastTransitionTime metav1.Time `json:"lastTransitionTime"`
+
+	// Status of the resource.
+	// +required
+	Status string `json:"status"`
+}
+
+type Resources []Resource
+
+func (r Resources) Len() int      { return len(r) }
+func (r Resources) Swap(i, j int) { r[i], r[j] = r[j], r[i] }
+func (r Resources) Less(i, j int) bool {
+	if r[i].Namespace == r[j].Namespace {
+		return r[i].Name < r[j].Name
+	}
+	return r[i].Namespace < r[j].Namespace
+}
 
 // AddonsLayerStatus defines the observed status.
 type AddonsLayerStatus struct {
@@ -173,6 +220,10 @@ type AddonsLayerStatus struct {
 	// DeployedRevision is the source revsion that has been deployed.
 	// +required
 	DeployedRevision string `json:"revision"`
+
+	// Resources is a list of resources managed by this layer.
+	// +optional
+	Resources []Resource `json:"resources"`
 }
 
 const (

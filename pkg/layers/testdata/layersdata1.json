@@ -443,6 +443,76 @@
                 "observedGeneration": 2,
                 "revision": "master/abcdef"
             }
+        },
+        {
+            "apiVersion": "kraan.io/v1alpha1",
+            "kind": "AddonsLayer",
+            "metadata": {
+                "name": "one-dependsSNR",
+                "generation": 1
+            },
+            "spec": {
+                "interval": "1m",
+                "prereqs": {
+                    "dependsOn": [
+                        "no-dependsSNR@0.1.01"
+                    ]
+                },
+                "source": {
+                    "name": "gen-rev-ok",
+                    "namespace": "gotk-system",
+                    "path": "./addons/mgmt"
+                },
+                "version": "0.1.01"
+            },
+            "status": {
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2020-08-26T13:10:13Z",
+                        "reason": "AddonsLayer is Deployed",
+                        "status": "True",
+                        "type": "Deployed",
+                        "version": "0.1.01"
+                    }
+                ],
+                "state": "Deployed",
+                "version": "0.1.01",
+                "observedGeneration": 1,
+                "revision": "master/abcdef"
+            }
+        },
+        {
+            "apiVersion": "kraan.io/v1alpha1",
+            "kind": "AddonsLayer",
+            "metadata": {
+                "name": "no-dependsSNR",
+                "generation": 2
+            },
+            "spec": {
+                "hold": false,
+                "interval": "1m",
+                "source": {
+                    "name": "cond-not-ready",
+                    "namespace": "gotk-system",
+                    "path": "./addons/bootstrap"
+                },
+                "version": "0.1.01"
+            },
+            "status": {
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2020-08-26T13:10:13Z",
+                        "reason": "AddonsLayer is Deployed",
+                        "status": "True",
+                        "type": "Deployed",
+                        "version": "0.1.01"
+                    }
+                ],
+                "state": "Deployed",
+                "version": "0.1.01",
+                "observedGeneration": 2,
+                "revision": "master/abcdef"
+            }
         }
     ],
     "kind": "List"

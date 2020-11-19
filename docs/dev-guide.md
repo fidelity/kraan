@@ -17,7 +17,7 @@ This project requires the following software:
 
 You can install [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder), [golangci-lint](https://github.com/golangci/golangci-lint), [mockgen](https://github.com/golang/mock), [helm](https://helm.sh/), [kind](https://kind.sigs.k8s.io/docs/) and [gotk](https://toolkit.fluxcd.io/) using the 'setup.sh' script:
 
-    source bin/setup.sh
+    bin/setup.sh
 
 ## Build
 
@@ -25,13 +25,19 @@ The Makefile in the project's top level directory will compile, build and test a
 
     make
 
-If changes are made to go source imports you may need to perform a go mod vendor, type:
-
-    make gomod-update
-
 Alternatively you can run make in a docker container.
 
     make check
+
+If you change the golang source in the `api` directory such that the custom resource definition is changed you need to rin `make manifests` to regenerate the crd yaml in `config/crd/bases/kraan.io_addonslayers.yaml` and then cut an paste the contents of this file into `chart/templates/kraan/crd.yaml`, retaining the first and last line of this file.
+
+A shell script is provided to perform `goimports`, `gofmt`, run linter and tests on a per package basis.
+
+    bin/package.sh  <relative path to package>
+
+For example to run this on the `kubectl` package:
+
+    bin/package.sh pkg/internal/kubectl
 
 To build docker image type:
 
@@ -57,27 +63,26 @@ Helm Charts are deployed to github pages so can be accessed via repo: kraan http
     helm search repo --regexp kraan --versions
 
 ## Creating a Release
-To create a release set `VERSION` to the release version and `REPO` to 'kraan' then build and push the image:
+To create a release set `VERSION` to the Kraan-Controller version, `REPO` to 'kraan' and `CHART_VERSION` to the chart version, then build and push the image:
 
-    export VERSION=vx.y.z
+    export VERSION=v0.1.xx
     export REPO=kraan
     make clean-build
     make build
     make docker-push
+    export CHART_VERSION=v0.1.xx
     make release
 
 The 'release' target will update the tag in the values file, package the chart and deploy it to gh-pages.
 
-Finally use githuweb interface to create a tag.
+Finally use github web interface to create a tag.
 
 ## Deployment
 
 A shell script is provided to deploy the artifacts necessary to test the kraan-controller to a kubernetes cluster. It does this using a helm client to install a helm chart containing the Kraan Controller and the GitOps Toolkit (GOTK) components it uses.
 
-    scripts/deploy.sh --help
-
     https://github.com/fidelity/kraan.git
-    USAGE: deploy.sh [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--testdata]
+    USAGE: deploy.sh [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--testdata] [--helm <upgrade| install>]
         [--kraan-image-reg <registry name>] [--kraan-image-repo <repo-name>] [--kraan-image-tag] [--kraan-dev]
         [--kraan-image-pull-secret auto | <filename>] [--gitops-image-pull-secret auto | <filename>]
         [--gitops-image-reg <repo-name>] [--kraan-loglevel N] [--prometheus <namespace>] [--values-files <file names>]
@@ -87,7 +92,7 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
     Install the Kraan Addon Manager and gitops source controller to a Kubernetes cluster
 
     Options:
-    '--upgrade' to perform helm upgrade rather than helm install.
+    '--helm' perform helm upgrade or install, if you don't specify either script will not deploy helm chart.
     '--kraan-image-pull-secret' set to 'auto' to generate image pull secrets from ~/.docker/config.json
                                 or supply name of file containing image pull secret defintion to apply.
                                 The secret should be called 'kraan-regcred'.
@@ -149,17 +154,14 @@ To test the kraan-controller you can run it on your local machine against a kube
     USAGE: run-controller.sh [--log-level N] [--debug]
     Run the Kraan Addon Manager on local machine
     options:
-    '--log-level' N, where N is 1 for debug messages and 2 or higher for trace level debugging
+    '--log-level' N, where N is 1 for debug message and 2 or higher for trace level debugging
     '--debug' for verbose output
-    This script will create a temporary directory and copy the addons.yaml and addons-source.yaml
-    files from testdata/addons tothe temporary directory. It will then set the environmental
-    variable DATA_PATH to the temporary directory. This will cause the kraan-controller to process
-    the addons layers using the temporary directory as its root directory when storing files it
-    retrieves from this git repository's testdata/addons directory using the source controller.
+    This script will create a temporary directory call /tmp/kraan-local-exec which the kraan-controller
+    will use as its root directory when storing files it retrieves from this git repository
 
-The kraan-controller will reprocess all AddonsLayers perioidically. This period defaults to 30 seconds but can be set using a command line argument.
+The kraan-controller will reprocess all AddonsLayers perioidically. This period defaults to 1 minute but can be set using a command line argument.
 
-    kraan-controller -sync-period=1m
+    kraan-controller -sync-period=2m
 
 The reprocessing period can also be set to a period in seconds using the 's' suffix, i.e. 20s.
 
@@ -172,9 +174,7 @@ The `SC_HOST` environmental variable can be used to set the host component of th
     kubectl -n gotk-system port-forward svc/source-controller 8090:80 &
 	export SC_HOST=localhost:8090
 
-If you elected to use the `--testdata` option when setting up the cluster test data wil be added. Alternatively, you can do this by applying `.testdata/addons/addons-source.yaml` and `.testdata/addons/addons.yaml` to deploy the source controller custom resource and AddonsLayers custom resources respectively. This will cause the kraan-controller to operate on the testdata in the `./testdata` directory of this repository using the `master` branch. If you want to test against other branches use the copy of these files the `scripts/run-controller.sh` creates. Edit then apply those files.
-
-If you want to use the kraan-controller to deploy items defined in your own repository edit the 'addons-source.yaml' file in the temporary directory to reference the repository and branch containing your addons definitions and apply it to the cluster. Then edit the `.testdata/addons/addons.yaml` file to define the addons layers and apply that.
+If you elected to use the `--testdata` option when setting up the cluster test data wil be added. Alternatively, you can do this by applying `.testdata/addons/addons-source.yaml` and `.testdata/addons/addons.yaml` to deploy the source controller custom resource and AddonsLayers custom resources respectively. This will cause the kraan-controller to operate on the testdata in the `./testdata` directory of this repository using the `master` branch.
 
 ### Integration Tests
 
@@ -182,3 +182,18 @@ To run integration tests:
 
     make integration
 
+## Debugging
+
+The Kraan Controller emits json format log records. Most log record contains a number of common fields that can be used to select log messages to display when examining log data.
+
+field name | Description
+--------- | -----------
+function | The function name, in format `package.interface/object.method/function`
+source | The source file, just file name, not full path name
+line | The line number
+kind | The kind for log messages relating to owned or watched objects
+layer | The layer name for log messages relating to addons layers
+msg | The message text
+logger | name of the logger, one of   `controller-runtime.manager`, `controller-runtime`, `metrics`, `initialization`, `kraan.controller.applier`, `kraan.controller.reconciler` or `kraan.manager.controller`
+level | Level of message. This will be `info`, `debug` or `Level(-N)`, where 'N' is the trace level. Levels 2 to 4 are currently used.<br>Level 4 is exclusively used by tracing of function entry and exit.
+ts | timestamp of log message

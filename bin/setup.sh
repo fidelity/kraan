@@ -38,6 +38,8 @@ function install_kubebuilder() {
     # move to a long-term location and put it on your path
     # (you'll need to set the KUBEBUILDER_ASSETS env var if you put it somewhere else)
     $sudo mv /tmp/kubebuilder_${kubebuilder_version}_${os}_${arch} /usr/local/kubebuilder
+    echo "add the following to your bash profile"
+    echo "export PATH=\$PATH:/usr/local/kubebuilder/bin"
 }
 
 function install_helm() {

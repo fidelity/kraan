@@ -155,6 +155,34 @@ spec:
               description: ObservedGeneration is the last reconciled generation.
               format: int64
               type: integer
+            resources:
+              description: Resources is a list of resources managed by this layer.
+              items:
+                properties:
+                  kind:
+                    description: Kind of the resource.
+                    type: string
+                  lastTransitionTime:
+                    description: LastTransitionTime is the timestamp corresponding
+                      to the last status change of this resource.
+                    format: date-time
+                    type: string
+                  name:
+                    description: Name of resource.
+                    type: string
+                  namespace:
+                    description: Namespace of resource.
+                    type: string
+                  status:
+                    description: Status of the resource.
+                    type: string
+                required:
+                - kind
+                - lastTransitionTime
+                - name
+                - status
+                type: object
+              type: array
             revision:
               description: DeployedRevision is the source revsion that has been deployed.
               type: string

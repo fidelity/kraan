@@ -139,7 +139,7 @@ func main() { //nolint:funlen // ok
 	flag.DurationVar(
 		&syncPeriod,
 		"sync-period",
-		time.Second*30,
+		time.Second*60,
 		"period between reprocessing of all AddonsLayers.",
 	)
 

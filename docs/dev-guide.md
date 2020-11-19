@@ -17,7 +17,7 @@ This project requires the following software:
 
 You can install [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder), [golangci-lint](https://github.com/golangci/golangci-lint), [mockgen](https://github.com/golang/mock), [helm](https://helm.sh/), [kind](https://kind.sigs.k8s.io/docs/) and [gotk](https://toolkit.fluxcd.io/) using the 'setup.sh' script:
 
-    source bin/setup.sh
+    bin/setup.sh
 
 ## Build
 
@@ -25,13 +25,19 @@ The Makefile in the project's top level directory will compile, build and test a
 
     make
 
-If changes are made to go source imports you may need to perform a go mod vendor, type:
-
-    make gomod-update
-
 Alternatively you can run make in a docker container.
 
     make check
+
+If you change the golang source in the `api` directory such that the custom resource definition is changed you need to rin `make manifests` to regenerate the crd yaml in `config/crd/bases/kraan.io_addonslayers.yaml` and then cut an paste the contents of this file into `chart/templates/kraan/crd.yaml`, retaining the first and last line of this file.
+
+A shell script is provided to perform `goimports`, `gofmt`, run linter and tests on a per package basis.
+
+    bin/package.sh  <relative path to package>
+
+For example to run this on the `kubectl` package:
+
+    bin/package.sh pkg/internal/kubectl
 
 To build docker image type:
 
@@ -153,9 +159,9 @@ To test the kraan-controller you can run it on your local machine against a kube
     This script will create a temporary directory call /tmp/kraan-local-exec which the kraan-controller
     will use as its root directory when storing files it retrieves from this git repository
 
-The kraan-controller will reprocess all AddonsLayers perioidically. This period defaults to 30 seconds but can be set using a command line argument.
+The kraan-controller will reprocess all AddonsLayers perioidically. This period defaults to 1 minute but can be set using a command line argument.
 
-    kraan-controller -sync-period=1m
+    kraan-controller -sync-period=2m
 
 The reprocessing period can also be set to a period in seconds using the 's' suffix, i.e. 20s.
 

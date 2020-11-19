@@ -55,8 +55,9 @@ deployed together. The detailed design documentation can be found [here](docs/de
 
 ## Usage
 
-The project is currently a work in progress and hence no releases yet. 
-See [Developer Guide](docs/dev-guide.md) for development an usage instructions.
+See [User Guide](docs/user-guide.md) for usage instructions.
+
+See [Developer Guide](docs/dev-guide.md) for development.
 
 ## Contributions
 

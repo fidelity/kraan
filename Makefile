@@ -26,6 +26,7 @@ export VERSION?=master
 export REPO ?=docker.pkg.github.com/${GITHUB_ORG}/${GITHUB_REPO}
 # Image URL to use all building/pushing image targets
 IMG ?= ${REPO}/${PROJECT}:${VERSION}
+CHART_VERSION ?=
 ALL_GO_PACKAGES:=$(shell find ${CURDIR}/main/ ${CURDIR}/controllers/ ${CURDIR}/api/ ${CURDIR}/pkg/ \
 	-type f -name *.go -exec dirname {} \; | sort --uniq)
 GO_CHECK_PACKAGES:=$(shell echo $(subst $() $(),\\n,$(ALL_GO_PACKAGES)) | \
@@ -90,11 +91,15 @@ godocs: ${GO_DOCS_ARTIFACTS}
 
 
 release:
-	test ${CHART_VERSION} || echo "please set CHART_VERSION";exit
+	if [ -z ${CHART_VERSION} ]; then
+		echo "please set CHART_VERSION"
+		exit
+	fi
 	git checkout -b build-release-${CHART_VERSION} || exit
 	sed -i s/appVersion\:\ v0.1.x/appVersion\:\ ${VERSION}/ chart/Chart.yaml
 	sed -i s/version\:\ v0.1.x/version\:\ ${CHART_VERSION}/ chart/Chart.yaml
 	helm package --version ${CHART_VERSION} chart
+	git checkout chart/Chart.yaml
 	git add -A
 	git commit -a -m "create release for chart version ${CHART_VERSION}"
 	git checkout gh-pages || exit

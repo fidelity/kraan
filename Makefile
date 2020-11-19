@@ -90,7 +90,7 @@ godocs: ${GO_DOCS_ARTIFACTS}
 
 
 release:
-	test ${CHART_VERSION} || echo "please set CHART_VERSION";exit
+	test ${CHART_VERSION} || $(echo "please set CHART_VERSION";exit)
 	git checkout -b build-release-${CHART_VERSION} || exit
 	sed -i s/appVersion\:\ v0.1.x/appVersion\:\ ${VERSION}/ chart/Chart.yaml
 	sed -i s/version\:\ v0.1.x/version\:\ ${CHART_VERSION}/ chart/Chart.yaml

@@ -242,18 +242,43 @@ func (a KubectlLayerApplier) getHelmReleases(ctx context.Context, layer layers.L
 	return foundHrs, nil
 }
 
+func (a KubectlLayerApplier) applyHelmReleaseObjects(ctx context.Context, layer layers.Layer, objs map[string]*helmctlv2.HelmRelease) error {
+	logging.TraceCall(a.getLog(layer))
+	defer logging.TraceExit(a.getLog(layer))
+	a.logTrace("helm release resources be applied", layer, "objects", logging.LogJSON(objs))
+	for _, obj := range objs {
+		a.logTrace("applying helm release resource", layer, "object", logging.LogJSON(obj))
+		err := a.applyObject(ctx, layer, obj)
+		if err != nil {
+			return errors.Wrapf(err, "%s - failed to apply layer helm release resource", logging.CallerStr(logging.Me))
+		}
+		a.logDebug("helm release resource successfully applied", layer, logging.GetObjKindNamespaceName(obj)...)
+	}
+	return nil
+}
+
+func (a KubectlLayerApplier) applyHelmRepoObjects(ctx context.Context, layer layers.Layer, objs []*sourcev1.HelmRepository) error {
+	logging.TraceCall(a.getLog(layer))
+	defer logging.TraceExit(a.getLog(layer))
+	a.logTrace("helm repository resources be applied", layer, "objects", logging.LogJSON(objs))
+	for _, obj := range objs {
+		a.logTrace("applying helm repositoryresource", layer, "object", logging.LogJSON(obj))
+		err := a.applyObject(ctx, layer, obj)
+		if err != nil {
+			return errors.Wrapf(err, "%s - failed to apply layer helm repository resource", logging.CallerStr(logging.Me))
+		}
+		a.logDebug("helm repository resource successfully applied", layer, logging.GetObjKindNamespaceName(obj)...)
+	}
+	return nil
+}
+
+/*
 func (a KubectlLayerApplier) applyObjects(ctx context.Context, layer layers.Layer, objs []runtime.Object) error {
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
 	a.logTrace("resources be applied", layer, "objects", logging.LogJSON(objs))
 	for _, obj := range objs {
 		a.logTrace("applying resource", layer, "object", logging.LogJSON(obj))
-		/*
-			res, err := controllerutil.CreateOrUpdate(ctx, a.client, obj, func() error {
-				fmt.Fprintln(os.Stderr, "mutate")
-				return nil
-			})
-		*/
 		err := a.applyObject(ctx, layer, obj)
 		if err != nil {
 			return errors.Wrapf(err, "%s - failed to apply layer resources", logging.CallerStr(logging.Me))
@@ -262,6 +287,7 @@ func (a KubectlLayerApplier) applyObjects(ctx context.Context, layer layers.Laye
 	}
 	return nil
 }
+*/
 
 func (a KubectlLayerApplier) getHelmRepos(ctx context.Context, layer layers.Layer) (foundHrs []*sourcev1.HelmRepository, err error) {
 	logging.TraceCall(a.getLog(layer))
@@ -428,6 +454,13 @@ func (a KubectlLayerApplier) getSourceHelmReleases(layer layers.Layer) (hrs map[
 		return nil, errors.WithMessagef(err, "%s - failed to decode helm releases", logging.CallerStr(logging.Me))
 	}
 
+	// Check for kraan.updateVersion annotation
+	for _, source := range sourceHrs {
+		if err := a.processUpdateVersionAnnotation(layer, source); err != nil {
+			return nil, errors.WithMessagef(err, "%s - failed to process updateVersion annotation", logging.CallerStr(logging.Me))
+		}
+	}
+
 	hrs = map[string]*helmctlv2.HelmRelease{}
 	for _, hr := range sourceHrs {
 		hrs[getLabel(hr.ObjectMeta)] = hr
@@ -473,16 +506,26 @@ func (a KubectlLayerApplier) getSourceAndClusterHelmReleases(ctx context.Context
 func (a KubectlLayerApplier) Apply(ctx context.Context, layer layers.Layer) (err error) {
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
-	a.logDebug("applying", layer)
+	a.logDebug("applying", layer, logging.CallerStr(logging.Me))
 
-	hrs, err := a.getSourceResources(layer)
+	sourceHrs, err := a.getSourceHelmReleases(layer)
 	if err != nil {
-		return errors.WithMessagef(err, "%s - failed to get source resources", logging.CallerStr(logging.Me))
+		return errors.WithMessagef(err, "%s - failed to get source helm releases", logging.CallerStr(logging.Me))
 	}
 
-	err = a.applyObjects(ctx, layer, hrs)
+	err = a.applyHelmReleaseObjects(ctx, layer, sourceHrs)
 	if err != nil {
-		return errors.WithMessagef(err, "%s - failed to apply objects", logging.CallerStr(logging.Me))
+		return errors.WithMessagef(err, "%s - failed to apply helmrelease objects", logging.CallerStr(logging.Me))
+	}
+
+	hrs, err := a.getSourceHelmRepos(layer)
+	if err != nil {
+		return errors.WithMessagef(err, "%s - failed to get source helm repos", logging.CallerStr(logging.Me))
+	}
+
+	err = a.applyHelmRepoObjects(ctx, layer, hrs)
+	if err != nil {
+		return errors.WithMessagef(err, "%s - failed to apply helmrepo objects", logging.CallerStr(logging.Me))
 	}
 	return nil
 }
@@ -604,6 +647,31 @@ func (a KubectlLayerApplier) PruneIsRequired(ctx context.Context, layer layers.L
 	}
 
 	return pruneRequired, pruneHrs, nil
+}
+
+// processUpdateVersionAnnotation checks for kraan.updateVersion annotation set to true and updates values to include current version.
+func (a KubectlLayerApplier) processUpdateVersionAnnotation(layer layers.Layer, source *helmctlv2.HelmRelease) error {
+	annotations := source.GetAnnotations()
+	for k, v := range annotations {
+		if k == "kraan.updateVersion" && v == "true" {
+			a.logTrace("values for chart with annotation", layer, append(logging.GetObjKindNamespaceName(source), "values", logging.LogJSON(source.Spec.Values))...)
+			var values map[string]interface{}
+			if source.Spec.Values != nil {
+				err := json.Unmarshal(source.Spec.Values.Raw, &values)
+				if err != nil {
+					return errors.WithMessagef(err, "%s - failed convert values to json string", logging.CallerStr(logging.Me))
+				}
+			}
+			values["kraanVersion"] = layer.GetSpec().Version
+			newJSON, err := json.Marshal(values)
+			if err != nil {
+				return errors.WithMessagef(err, "%s - failed convert updated values to json string", logging.CallerStr(logging.Me))
+			}
+			source.Spec.Values.Raw = newJSON
+			a.logTrace("values for chart after update", layer, append(logging.GetObjKindNamespaceName(source), "values", logging.LogJSON(source.Spec.Values))...)
+		}
+	}
+	return nil
 }
 
 // ApplyIsRequired returns true if any resources need to be applied for this AddonsLayer

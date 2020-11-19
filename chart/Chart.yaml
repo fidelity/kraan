@@ -2,21 +2,5 @@ apiVersion: v2
 description: A Helm chart for kraan controller
 name: kraan-controller
 type: application
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-appVersion: v0.1.07
-=======
-appVersion: v0.1.08
->>>>>>> build-release-
-=======
-appVersion: v0.1.08
->>>>>>> build-release-v0.1.08
-=======
-appVersion: v0.1.08
->>>>>>> build-release-v0.1.08
-=======
-appVersion: v0.1.08
->>>>>>> build-release-v0.1.08
-version: v0.1.08
+appVersion: v0.1.x
+version: v0.1.x

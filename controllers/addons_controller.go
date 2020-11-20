@@ -31,7 +31,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
+	kscheme "k8s.io/client-go/kubernetes/scheme"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -177,6 +180,22 @@ type AddonsLayerReconciler struct {
 	Applier  apply.LayerApplier
 	Repos    repos.Repos
 	Metrics  metrics.Metrics
+	Recorder record.EventRecorder
+}
+
+// EventRecorder returns an EventRecorder type that can be
+// used to post Events to different object's lifecycles.
+func eventRecorder(
+	kubeClient kubernetes.Interface) record.EventRecorder {
+	eventBroadcaster := record.NewBroadcaster()
+	//eventBroadcaster.StartLogging(setupLog.Infof)
+	eventBroadcaster.StartRecordingToSink(
+		&typedcorev1.EventSinkImpl{
+			Interface: kubeClient.CoreV1().Events("")})
+	recorder := eventBroadcaster.NewRecorder(
+		kscheme.Scheme,
+		corev1.EventSource{Component: "kraan-controller"})
+	return recorder
 }
 
 // NewReconciler returns an AddonsLayerReconciler instance
@@ -193,6 +212,7 @@ func NewReconciler(config *rest.Config, client client.Client, logger logr.Logger
 	if err != nil {
 		return nil, errors.WithMessagef(err, "%s - failed to create reconciler", logging.CallerStr(logging.Me))
 	}
+	reconciler.Recorder = eventRecorder(reconciler.k8client)
 	reconciler.Context = context.Background()
 	reconciler.Applier, err = apply.NewApplier(client, logger.WithName("applier"), scheme)
 	if err != nil {
@@ -245,6 +265,11 @@ func (r *AddonsLayerReconciler) processApply(l layers.Layer) (statusReconciled b
 
 	ctx := r.Context
 	applier := r.Applier
+
+	if !l.DependenciesDeployed() {
+		l.SetRequeue()
+		return true, nil
+	}
 
 	applyIsRequired, err := applier.ApplyIsRequired(ctx, l)
 	if err != nil {
@@ -496,11 +521,16 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (res ctrl.Result, er
 
 	log := r.Log.WithValues("layer", req.NamespacedName.Name)
 
-	l := layers.CreateLayer(ctx, r.Client, r.k8client, log, addonsLayer)
+	l := layers.CreateLayer(ctx, r.Client, r.k8client, log, r.Recorder, r.Scheme, addonsLayer)
 	deployedRevision, err := r.processAddonLayer(l)
 	if err != nil {
 		l.StatusUpdate(kraanv1alpha1.FailedCondition, kraanv1alpha1.AddonsLayerFailedReason, errors.Cause(err).Error())
 		log.Error(err, "failed to process addons layer", logging.GetFunctionAndSource(logging.MyCaller)...)
+	}
+
+	if l.GetSpec().Version != l.GetFullStatus().Version {
+		l.SetUpdated()
+		l.GetFullStatus().Version = l.GetSpec().Version
 	}
 
 	if l.GetAddonsLayer().Generation != l.GetFullStatus().ObservedGeneration {
@@ -565,7 +595,7 @@ func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.
 	layerList := []layers.Layer{}
 	addons := []reconcile.Request{}
 	for _, addon := range addonsList.Items {
-		layer := layers.CreateLayer(r.Context, r.Client, r.k8client, r.Log, &addon) //nolint:scopelint // ok
+		layer := layers.CreateLayer(r.Context, r.Client, r.k8client, r.Log, r.Recorder, r.Scheme, &addon) //nolint:scopelint // ok
 		if layer.GetSpec().Source.Name == srcRepo.Name && layer.GetSpec().Source.NameSpace == srcRepo.Namespace {
 			r.Log.V(1).Info("layer is using this source", append(logging.GetGitRepoInfo(srcRepo), append(logging.GetFunctionAndSource(logging.MyCaller), "layers", addons)...)...)
 			layerList = append(layerList, layer)

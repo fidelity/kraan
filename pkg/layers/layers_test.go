@@ -16,8 +16,10 @@ import (
 	fakediscovery "k8s.io/client-go/discovery/fake"
 	fakeK8s "k8s.io/client-go/kubernetes/fake"
 	fakeTest "k8s.io/client-go/testing"
+	"k8s.io/client-go/tools/record"
 
 	//k8sscheme "k8s.io/client-go/kubernetes/scheme"
+	extv1b1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
@@ -29,7 +31,16 @@ var (
 	testScheme = runtime.NewScheme()
 	// testCtx    = context.Background()
 	fakeK8sClient *fakeK8s.Clientset
+	scheme        = runtime.NewScheme()
 )
+
+func init() {
+	_ = corev1.AddToScheme(scheme) // nolint:errcheck // ok
+	//_ = helmctlv2.AddToScheme(scheme)     // nolint:errcheck // ok
+	_ = kraanv1alpha1.AddToScheme(scheme) // nolint:errcheck // ok
+	_ = sourcev1.AddToScheme(scheme)      // nolint:errcheck // ok
+	_ = extv1b1.AddToScheme(scheme)       // nolint:errcheck // ok
+}
 
 const (
 	holdSet       = "hold-set"
@@ -119,7 +130,8 @@ func getLayer(layerName, testDataFileName, reposDataFileName string) (layers.Lay
 	if data == nil {
 		return nil, fmt.Errorf("failed to find item: %s in test data", layerName)
 	}
-	return layers.CreateLayer(context.Background(), client, fakeK8sClient, logger, data), nil
+	fakeRecorder := record.NewFakeRecorder(1000)
+	return layers.CreateLayer(context.Background(), client, fakeK8sClient, logger, fakeRecorder, scheme, data), nil
 }
 
 func testDelayedRequeue(t *testing.T, l layers.Layer) bool {
@@ -504,77 +516,7 @@ func TestHold(t *testing.T) {
 				Reason:  kraanv1alpha1.AddonsLayerK8sVersionReason,
 				Message: kraanv1alpha1.AddonsLayerK8sVersionMsg},
 			},
-		}}, {
-		name:      "set status when maximum number of conditions already",
-		layerName: maxConditions,
-		status:    kraanv1alpha1.PruningCondition,
-		reason:    kraanv1alpha1.AddonsLayerPruningReason,
-		message:   kraanv1alpha1.AddonsLayerPruningMsg,
-		expected: &kraanv1alpha1.AddonsLayerStatus{
-			State:   kraanv1alpha1.PruningCondition,
-			Version: versionOne,
-			Conditions: []kraanv1alpha1.Condition{
-				{
-					Status:  corev1.ConditionFalse,
-					Version: versionOne,
-					Type:    kraanv1alpha1.PruningCondition,
-					Reason:  kraanv1alpha1.AddonsLayerPruningReason,
-					Message: kraanv1alpha1.AddonsLayerPruningMsg},
-				{
-					Status:  corev1.ConditionFalse,
-					Version: versionOne,
-					Type:    kraanv1alpha1.ApplyPendingCondition,
-					Reason:  "waiting for layer: test-layer2, version: 0.1.01 to be applied.",
-					Message: "Layer: test-layer2, current state: Applying."},
-				{
-					Status:  corev1.ConditionFalse,
-					Version: versionOne,
-					Type:    kraanv1alpha1.ApplyingCondition,
-					Reason:  kraanv1alpha1.AddonsLayerApplyingReason,
-					Message: kraanv1alpha1.AddonsLayerApplyingMsg},
-				{
-					Status:  corev1.ConditionFalse,
-					Version: versionOne,
-					Type:    kraanv1alpha1.DeployedCondition,
-					Reason:  kraanv1alpha1.AddonsLayerDeployedReason,
-					Message: ""},
-				{
-					Status:  corev1.ConditionFalse,
-					Version: versionOne,
-					Type:    kraanv1alpha1.K8sVersionCondition,
-					Reason:  kraanv1alpha1.AddonsLayerK8sVersionReason,
-					Message: kraanv1alpha1.AddonsLayerK8sVersionMsg},
-				{
-					Status:  corev1.ConditionFalse,
-					Version: versionOne,
-					Type:    kraanv1alpha1.PruningCondition,
-					Reason:  kraanv1alpha1.AddonsLayerPruningReason,
-					Message: kraanv1alpha1.AddonsLayerPruningMsg},
-				{
-					Status:  corev1.ConditionFalse,
-					Version: versionOne,
-					Type:    kraanv1alpha1.ApplyPendingCondition,
-					Reason:  "waiting for layer: test-layer2, version: 0.1.01 to be applied.",
-					Message: "Layer: test-layer2, current state: Applying."},
-				{
-					Status:  corev1.ConditionFalse,
-					Version: versionOne,
-					Type:    kraanv1alpha1.ApplyingCondition,
-					Reason:  kraanv1alpha1.AddonsLayerApplyingReason,
-					Message: kraanv1alpha1.AddonsLayerApplyingMsg},
-				{
-					Status:  corev1.ConditionFalse,
-					Version: versionOne,
-					Type:    kraanv1alpha1.DeployedCondition,
-					Reason:  kraanv1alpha1.AddonsLayerDeployedReason,
-					Message: ""},
-				{
-					Status:  corev1.ConditionTrue,
-					Version: versionOne,
-					Type:    kraanv1alpha1.PruningCondition,
-					Reason:  kraanv1alpha1.AddonsLayerPruningReason,
-					Message: kraanv1alpha1.AddonsLayerPruningMsg},
-			}}}}
+		}}}
 
 	for _, test := range tests {
 		l, e := getLayer(test.layerName, layersData, reposData)

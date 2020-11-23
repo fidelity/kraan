@@ -87,7 +87,7 @@ gotk:
 
     image:
       repository: ghcr.io/fluxcd
-      tag: v0.2.1
+      tag: v0.3.0
 
     imagePullSecrets:
       name:
@@ -136,7 +136,7 @@ gotk:
 
     image:
       repository: ghcr.io/fluxcd
-      tag: v0.2.0
+      tag: v0.3.0
     
     proxy: true
 

@@ -341,8 +341,6 @@ fi
 
 kubectl apply ${dry_run} -f "${base_dir}"/samples/namespace.yaml
 
-create_git_credentials_secret "${base_dir}/testdata/templates/template-http.yaml" "${work_dir}/kraan-http.yaml"
-
 if [ -n "${gitops_regcred}" ] ; then
   create_regcred gotk-system "${gitops_regcred}" gotk
 fi
@@ -409,6 +407,7 @@ if [ -n "${helm_action}" ] ; then
 fi
 
 if [ $apply_testdata -gt 0 ]; then
+  create_git_credentials_secret "${base_dir}/testdata/templates/template-http.yaml" "${work_dir}/kraan-http.yaml"
   create_addons_source_yaml "${base_dir}/testdata/addons/addons-source.yaml" "${work_dir}/addons-source.yaml"
   # Create namespaces for each addon layer
   kubectl apply ${dry_run} -f "${base_dir}"/testdata/namespaces.yaml

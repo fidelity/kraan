@@ -93,6 +93,7 @@ Parameter | Description | Default
 `gotk.helmController.tolerations` | tolerations for `helm-controller` | `{}`
 `gotk.helmController.nodeSelector` | nodeSelector settings for `helm-controller` | `{}`
 `gotk.helmController.affinity` | affinity settings for `helm-controller` | `{}`
+
 Specify each parameter using the `--set key=value[,key=value]` argument to `helm install` or use the `--values` to specify a comma seperated list of values files. The `samples` directory contains some example values files.
 # Usage
 

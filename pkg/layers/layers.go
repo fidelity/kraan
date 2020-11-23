@@ -16,8 +16,11 @@ import (
 	"golang.org/x/mod/semver"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/reference"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
@@ -83,12 +86,15 @@ type KraanLayer struct {
 	client      client.Client
 	k8client    kubernetes.Interface
 	log         logr.Logger
+	recorder    record.EventRecorder
+	ref         *corev1.ObjectReference
 	Layer       `json:"-"`
 	addonsLayer *kraanv1alpha1.AddonsLayer
 }
 
 // CreateLayer creates a layer object.
-func CreateLayer(ctx context.Context, client client.Client, k8client kubernetes.Interface, log logr.Logger, addonsLayer *kraanv1alpha1.AddonsLayer) Layer {
+func CreateLayer(ctx context.Context, client client.Client, k8client kubernetes.Interface, log logr.Logger,
+	recorder record.EventRecorder, scheme *runtime.Scheme, addonsLayer *kraanv1alpha1.AddonsLayer) Layer {
 	l := &KraanLayer{
 		requeue:     false,
 		delayed:     false,
@@ -97,9 +103,14 @@ func CreateLayer(ctx context.Context, client client.Client, k8client kubernetes.
 		log:         log,
 		client:      client,
 		k8client:    k8client,
+		recorder:    recorder,
 		addonsLayer: addonsLayer,
 	}
 	l.delay = l.addonsLayer.Spec.Interval.Duration
+	var err error
+	if l.ref, err = reference.GetReference(scheme, addonsLayer); err != nil {
+		log.Error(err, "failed to get reference")
+	}
 	return l
 }
 
@@ -166,17 +177,6 @@ func (l *KraanLayer) CheckK8sVersion() bool {
 	return semver.Compare(versionInfo.String(), l.GetRequiredK8sVersion()) >= 0
 }
 
-func (l *KraanLayer) trimConditions() {
-	logging.TraceCall(l.GetLogger())
-	defer logging.TraceExit(l.GetLogger())
-	length := len(l.addonsLayer.Status.Conditions)
-	if length < MaxConditions {
-		return
-	}
-	trimedCond := l.addonsLayer.Status.Conditions[length-MaxConditions:]
-	l.addonsLayer.Status.Conditions = trimedCond
-}
-
 func (l *KraanLayer) setStatus(status, reason, message string) {
 	logging.TraceCall(l.GetLogger())
 	defer logging.TraceExit(l.GetLogger())
@@ -186,7 +186,7 @@ func (l *KraanLayer) setStatus(status, reason, message string) {
 		if last.Reason == reason && last.Message == message && last.Type == status {
 			return
 		}
-		last.Status = corev1.ConditionFalse
+		l.addonsLayer.Status.Conditions = []kraanv1alpha1.Condition{}
 	}
 
 	l.addonsLayer.Status.Conditions = append(l.addonsLayer.Status.Conditions, kraanv1alpha1.Condition{
@@ -197,7 +197,6 @@ func (l *KraanLayer) setStatus(status, reason, message string) {
 		Reason:             reason,
 		Message:            message,
 	})
-	l.trimConditions()
 	l.addonsLayer.Status.State = status
 	l.addonsLayer.Status.Version = l.addonsLayer.Spec.Version
 	l.updated = true
@@ -205,6 +204,7 @@ func (l *KraanLayer) setStatus(status, reason, message string) {
 	if l.addonsLayer.Status.Resources == nil {
 		l.addonsLayer.Status.Resources = []kraanv1alpha1.Resource{}
 	}
+	l.recorder.Event(l.ref, corev1.EventTypeNormal, reason, message)
 }
 
 // SetStatusK8sVersion sets the addon layer's status to waiting for required K8s Version.

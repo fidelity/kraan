@@ -96,12 +96,13 @@ func (mr *MockLayerApplierMockRecorder) ApplyIsRequired(ctx, layer interface{}) 
 }
 
 // ApplyWasSuccessful mocks base method
-func (m *MockLayerApplier) ApplyWasSuccessful(ctx context.Context, layer layers.Layer) (bool, error) {
+func (m *MockLayerApplier) ApplyWasSuccessful(ctx context.Context, layer layers.Layer) (bool, string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ApplyWasSuccessful", ctx, layer)
 	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // ApplyWasSuccessful indicates an expected call of ApplyWasSuccessful

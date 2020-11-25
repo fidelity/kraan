@@ -44,7 +44,7 @@ type LayerApplier interface {
 	Prune(ctx context.Context, layer layers.Layer, pruneHrs []*helmctlv2.HelmRelease) (err error)
 	PruneIsRequired(ctx context.Context, layer layers.Layer) (pruneRequired bool, pruneHrs []*helmctlv2.HelmRelease, err error)
 	ApplyIsRequired(ctx context.Context, layer layers.Layer) (applyIsRequired bool, err error)
-	ApplyWasSuccessful(ctx context.Context, layer layers.Layer) (applyIsRequired bool, err error)
+	ApplyWasSuccessful(ctx context.Context, layer layers.Layer) (applyIsRequired bool, hrName string, err error)
 	GetResources(ctx context.Context, layer layers.Layer) (resources []kraanv1alpha1.Resource, err error)
 }
 
@@ -545,7 +545,7 @@ func (a KubectlLayerApplier) Prune(ctx context.Context, layer layers.Layer, prun
 }
 
 // getResourceInfo updates a resource object with details from object on cluster
-func (a KubectlLayerApplier) getResourceInfo(layer layers.Layer, resource kraanv1alpha1.Resource, conditions []fluxmeta.Condition) kraanv1alpha1.Resource {
+func (a KubectlLayerApplier) getResourceInfo(layer layers.Layer, resource kraanv1alpha1.Resource, conditions []metav1.Condition) kraanv1alpha1.Resource {
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
 
@@ -556,7 +556,7 @@ func (a KubectlLayerApplier) getResourceInfo(layer layers.Layer, resource kraanv
 	}
 	resource.LastTransitionTime = cond.LastTransitionTime
 
-	if cond.Status == corev1.ConditionTrue {
+	if cond.Status == metav1.ConditionTrue {
 		resource.Status = kraanv1alpha1.Deployed
 		return resource
 	}
@@ -564,7 +564,7 @@ func (a KubectlLayerApplier) getResourceInfo(layer layers.Layer, resource kraanv
 	return resource
 }
 
-func (a KubectlLayerApplier) getReadyCondition(layer layers.Layer, conditions []fluxmeta.Condition) *fluxmeta.Condition {
+func (a KubectlLayerApplier) getReadyCondition(layer layers.Layer, conditions []metav1.Condition) *metav1.Condition {
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
 
@@ -780,38 +780,22 @@ func (a KubectlLayerApplier) sourceHasRepoChanged(layer layers.Layer, source, fo
 }
 
 // ApplyWasSuccessful returns true if all of the resources in this AddonsLayer are in the Success phase
-func (a KubectlLayerApplier) ApplyWasSuccessful(ctx context.Context, layer layers.Layer) (applyIsRequired bool, err error) {
+func (a KubectlLayerApplier) ApplyWasSuccessful(ctx context.Context, layer layers.Layer) (applyIsRequired bool, hrName string, err error) {
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
 	clusterHrs, err := a.getHelmReleases(ctx, layer)
 	if err != nil {
-		return false, errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
+		return false, "", errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
 	}
 
-	for _, hr := range clusterHrs {
-		if !a.checkHR(*hr, layer) {
+	for key, hr := range clusterHrs {
+		if !fluxmeta.InReadyCondition(hr.Status.Conditions) {
 			a.logInfo("unsuccessful HelmRelease deployment", layer, append(logging.GetObjKindNamespaceName(hr), "resource", hr)...)
-			return false, nil
+			return false, key, nil
 		}
 	}
 
-	return true, nil
-}
-
-func (a KubectlLayerApplier) checkHR(hr helmctlv2.HelmRelease, layer layers.Layer) bool {
-	logging.TraceCall(a.getLog(layer))
-	defer logging.TraceExit(a.getLog(layer))
-	a.logDebug("Check HelmRelease", layer, logging.GetObjKindNamespaceName(hr.DeepCopyObject())...)
-	// TODO - We could replace this entire function with a single call to fluxmeta.HasReadyCondition,
-	//        except for the logging.  This adapts checkHR to the v2beta1 HelmController
-	//        api to preserve pre-existing log messages.
-	if !fluxmeta.HasReadyCondition(hr.Status.Conditions) {
-		a.logDebug("HelmRelease for AddonsLayer not installed", layer, "resource", hr)
-		return false
-	}
-	cond := fluxmeta.GetCondition(hr.Status.Conditions, fluxmeta.ReadyCondition)
-	a.logDebug("HelmRelease installed", layer, append(logging.GetObjKindNamespaceName(hr.DeepCopyObject()), "condition", cond)...)
-	return cond.Status == corev1.ConditionTrue
+	return true, "", nil
 }
 
 func CompareAsJSON(one, two interface{}) bool {

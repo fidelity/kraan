@@ -58,6 +58,7 @@ Parameter | Description | Default
 `kraan.kraanController.imagePullSecrets.name` | name of  Kraan Controller's `imagePullSecrets` |
 `kraan.kraanController.image.repository` | Kraan Controller'srepository | `kraan`
 `kraan.kraanController.image.tag` | Kraan Controller's image tag | `.chart.AppVersion`
+`kraan.kraanController.image.imagePullPolicy` | Kraan Controller's image pull policy | InNotPresent
 `kraan.kraanController.args.logLevel` | Kraan Controller's log level, 0 for info, 1 for debug, 2 or greater for trace levels | `0`
 `kraan.kraanController.args.syncPeriod` | The period between reprocessing of all AddonsLayers | `1m`
 `kraan.kraanController.devmode` | set to true when running a development image to allow writes to container filesystem | `false`
@@ -75,7 +76,8 @@ Parameter | Description | Default
 `gotk.sourceController.prometheus.enabled` | apply prometheus annotations to  `source-controller` | `true`
 `gotk.sourceController.imagePullSecrets.name` | name of  Source Controller's `imagePullSecrets` |
 `gotk.sourceController.image.repository` | Source Controller'srepository | `ghcr.io/fluxcd`
-`gotk.sourceController.image.tag` | Source Controller's image tag | `v0.2.1`
+`gotk.sourceController.image.tag` | Source Controller's image tag | `v0.4.1`
+`gotk.sourceController.image.imagePullPolicy` | image pull policy | InNotPresent
 `gotk.sourceController.resources` | resource settings for `source-controller` | `limits:`<br>&nbsp;&nbsp;&nbsp;&nbsp;`cpu: 1000m`<br>&nbsp;&nbsp;&nbsp;&nbsp;`memory: 1Gi`<br>`requests:`<br>&nbsp;&nbsp;&nbsp;&nbsp;`cpu: 500m`<br>&nbsp;&nbsp;&nbsp;&nbsp;`memory: 128Mi`
 `gotk.sourceController.tolerations` | tolerations for `source-controller` | `{}`
 `gotk.sourceController.nodeSelector` | nodeSelector settings for `source-controller` | `{}`
@@ -88,7 +90,8 @@ Parameter | Description | Default
 `gotk.helmController.prometheus.enabled` | apply prometheus annotations to  `helm-controller` | `true`
 `gotk.helmController.imagePullSecrets.name` | name of  Helm Controller's `imagePullSecrets` |
 `gotk.helmController.image.repository` | Helm Controller'srepository | `ghcr.io/fluxcd`
-`gotk.helmController.image.tag` | Helm Controller's image tag | `v0.2.0`
+`gotk.helmController.image.tag` | Helm Controller's image tag | `v0.4.1`
+`gotk.helmController.image.imagePullPolicy` | image pull policy | InNotPresent
 `gotk.helmController.resources` | resource settings for `helm-controller` | `limits:`<br>&nbsp;&nbsp;&nbsp;&nbsp;`cpu: 1000m`<br>&nbsp;&nbsp;&nbsp;&nbsp;`memory: 1Gi`<br>`requests:`<br>&nbsp;&nbsp;&nbsp;&nbsp;`cpu: 500m`<br>&nbsp;&nbsp;&nbsp;&nbsp;`memory: 128Mi`
 `gotk.helmController.tolerations` | tolerations for `helm-controller` | `{}`
 `gotk.helmController.nodeSelector` | nodeSelector settings for `helm-controller` | `{}`
@@ -109,6 +112,8 @@ An AddonsLayer can also optionally include a `prereqs` element containing the mi
 ## Processing Controls
 
 The `interval` field is used to specify the period to wait before reprocessing an AddonsLayer. Note that all AddonsLayers are reprocessed periodically. The period between reprocessing of all AddonsLayers defaults to one minute but can set using the `syncPeriod` value, see Configuration section above.
+
+The `timeout` field is used to set the period to wait for HelmReleases to be deployed before setting the AddonsLayer's status to failed.
 
 The `hold` setting can be used to prevent processing of the AddonsLayer. Set to `true` to enable this feature.
 ## Versions

@@ -20,6 +20,7 @@ import (
 
 	//k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	extv1b1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
@@ -235,7 +236,7 @@ func TestSetUpdated(t *testing.T) {
 	}
 }
 
-func compareConditions(actual, expected []kraanv1alpha1.Condition) error {
+func compareConditions(actual, expected []metav1.Condition) error {
 	if len(actual) != len(expected) {
 		return fmt.Errorf("mismatch in number of conditions")
 	}
@@ -257,16 +258,12 @@ func compareConditions(actual, expected []kraanv1alpha1.Condition) error {
 			return fmt.Errorf("mismatch in condition: %d, type..\nActual: %s\nExpected: %s",
 				index, condition.Type, expect.Type)
 		}
-		if condition.Version != expect.Version {
-			return fmt.Errorf("mismatch in condition: %d, version...\nActual: %s\nExpected: %s",
-				index, condition.Version, expect.Version)
-		}
 	}
 	return nil
 }
 
 func resetConditions(l layers.Layer) {
-	l.GetFullStatus().Conditions = []kraanv1alpha1.Condition{}
+	l.GetFullStatus().Conditions = []metav1.Condition{}
 }
 
 func displayStatus(status *kraanv1alpha1.AddonsLayerStatus) string {
@@ -310,11 +307,10 @@ func TestSetStatusSetting(t *testing.T) { // nolint:funlen // ok
 		expected: &kraanv1alpha1.AddonsLayerStatus{
 			State:   kraanv1alpha1.K8sVersionCondition,
 			Version: versionOne,
-			Conditions: []kraanv1alpha1.Condition{{
-				Status:  corev1.ConditionTrue,
-				Version: versionOne,
+			Conditions: []metav1.Condition{{
+				Status:  metav1.ConditionTrue,
 				Type:    kraanv1alpha1.K8sVersionCondition,
-				Reason:  kraanv1alpha1.AddonsLayerK8sVersionReason,
+				Reason:  kraanv1alpha1.K8sVersionCondition,
 				Message: kraanv1alpha1.AddonsLayerK8sVersionMsg},
 			},
 		}}, {
@@ -323,11 +319,10 @@ func TestSetStatusSetting(t *testing.T) { // nolint:funlen // ok
 		expected: &kraanv1alpha1.AddonsLayerStatus{
 			State:   kraanv1alpha1.PruningCondition,
 			Version: versionOne,
-			Conditions: []kraanv1alpha1.Condition{{
-				Status:  corev1.ConditionTrue,
-				Version: versionOne,
+			Conditions: []metav1.Condition{{
+				Status:  metav1.ConditionTrue,
 				Type:    kraanv1alpha1.PruningCondition,
-				Reason:  kraanv1alpha1.AddonsLayerPruningReason,
+				Reason:  kraanv1alpha1.PruningCondition,
 				Message: kraanv1alpha1.AddonsLayerPruningMsg},
 			},
 		}}, {
@@ -336,11 +331,10 @@ func TestSetStatusSetting(t *testing.T) { // nolint:funlen // ok
 		expected: &kraanv1alpha1.AddonsLayerStatus{
 			State:   kraanv1alpha1.ApplyingCondition,
 			Version: versionOne,
-			Conditions: []kraanv1alpha1.Condition{{
-				Status:  corev1.ConditionTrue,
-				Version: versionOne,
+			Conditions: []metav1.Condition{{
+				Status:  metav1.ConditionTrue,
 				Type:    kraanv1alpha1.ApplyingCondition,
-				Reason:  kraanv1alpha1.AddonsLayerApplyingReason,
+				Reason:  kraanv1alpha1.ApplyingCondition,
 				Message: kraanv1alpha1.AddonsLayerApplyingMsg},
 			},
 		}}, {
@@ -349,12 +343,11 @@ func TestSetStatusSetting(t *testing.T) { // nolint:funlen // ok
 		expected: &kraanv1alpha1.AddonsLayerStatus{
 			State:   kraanv1alpha1.DeployedCondition,
 			Version: versionOne,
-			Conditions: []kraanv1alpha1.Condition{{
-				Status:  corev1.ConditionTrue,
-				Version: versionOne,
+			Conditions: []metav1.Condition{{
+				Status:  metav1.ConditionTrue,
 				Type:    kraanv1alpha1.DeployedCondition,
-				Reason:  "AddonsLayer version 0.1.01 is Deployed",
-				Message: ""},
+				Reason:  kraanv1alpha1.DeployedCondition,
+				Message: "AddonsLayer version 0.1.01 is Deployed, All HelmReleases deployed"},
 			},
 		}},
 	}
@@ -371,13 +364,11 @@ func TestSetStatusSetting(t *testing.T) { // nolint:funlen // ok
 func TestSetStatusUpdate(t *testing.T) {
 	type testsData struct {
 		status   string
-		reason   string
 		message  string
 		expected *kraanv1alpha1.AddonsLayerStatus
 	}
 
 	const (
-		reason  = "the reason"
 		message = "the message"
 	)
 
@@ -388,16 +379,14 @@ func TestSetStatusUpdate(t *testing.T) {
 
 	tests := []testsData{{
 		status:  kraanv1alpha1.ApplyingCondition,
-		reason:  reason,
 		message: message,
 		expected: &kraanv1alpha1.AddonsLayerStatus{
 			State:   kraanv1alpha1.ApplyingCondition,
 			Version: versionOne,
-			Conditions: []kraanv1alpha1.Condition{{
-				Status:  corev1.ConditionTrue,
-				Version: versionOne,
+			Conditions: []metav1.Condition{{
+				Status:  metav1.ConditionTrue,
 				Type:    kraanv1alpha1.ApplyingCondition,
-				Reason:  reason,
+				Reason:  kraanv1alpha1.ApplyingCondition,
 				Message: message},
 			},
 		}},
@@ -405,7 +394,7 @@ func TestSetStatusUpdate(t *testing.T) {
 
 	for number, test := range tests {
 		resetConditions(l)
-		l.StatusUpdate(test.status, test.reason, test.message)
+		l.StatusUpdate(test.status, test.message)
 		if err := compareStatus(l.GetFullStatus(), test.expected); err != nil {
 			t.Fatalf("test: %d, failed, error: %s", number+1, err.Error())
 		}
@@ -428,11 +417,10 @@ func TestHold(t *testing.T) {
 		status: &kraanv1alpha1.AddonsLayerStatus{
 			State:   kraanv1alpha1.HoldCondition,
 			Version: versionOne,
-			Conditions: []kraanv1alpha1.Condition{{
-				Status:  corev1.ConditionTrue,
-				Version: versionOne,
+			Conditions: []metav1.Condition{{
+				Status:  metav1.ConditionTrue,
 				Type:    kraanv1alpha1.HoldCondition,
-				Reason:  kraanv1alpha1.AddonsLayerHoldReason,
+				Reason:  kraanv1alpha1.HoldCondition,
 				Message: kraanv1alpha1.AddonsLayerHoldMsg},
 			},
 		}},

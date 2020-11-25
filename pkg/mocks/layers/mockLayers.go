@@ -7,9 +7,9 @@ package mocks
 import (
 	context "context"
 	v1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
-	meta "github.com/fluxcd/pkg/apis/meta"
 	logr "github.com/go-logr/logr"
 	gomock "github.com/golang/mock/gomock"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	reflect "reflect"
 	time "time"
 )
@@ -98,15 +98,15 @@ func (mr *MockLayerMockRecorder) SetStatusDeployed() *gomock.Call {
 }
 
 // StatusUpdate mocks base method
-func (m *MockLayer) StatusUpdate(status, reason, message string) {
+func (m *MockLayer) StatusUpdate(status, message string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "StatusUpdate", status, reason, message)
+	m.ctrl.Call(m, "StatusUpdate", status, message)
 }
 
 // StatusUpdate indicates an expected call of StatusUpdate
-func (mr *MockLayerMockRecorder) StatusUpdate(status, reason, message interface{}) *gomock.Call {
+func (mr *MockLayerMockRecorder) StatusUpdate(status, message interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StatusUpdate", reflect.TypeOf((*MockLayer)(nil).StatusUpdate), status, reason, message)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StatusUpdate", reflect.TypeOf((*MockLayer)(nil).StatusUpdate), status, message)
 }
 
 // IsHold mocks base method
@@ -339,6 +339,18 @@ func (mr *MockLayerMockRecorder) SetUpdated() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUpdated", reflect.TypeOf((*MockLayer)(nil).SetUpdated))
 }
 
+// SetDeleted mocks base method
+func (m *MockLayer) SetDeleted() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetDeleted")
+}
+
+// SetDeleted indicates an expected call of SetDeleted
+func (mr *MockLayerMockRecorder) SetDeleted() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDeleted", reflect.TypeOf((*MockLayer)(nil).SetDeleted))
+}
+
 // GetRequiredK8sVersion mocks base method
 func (m *MockLayer) GetRequiredK8sVersion() string {
 	m.ctrl.T.Helper()
@@ -410,7 +422,7 @@ func (mr *MockLayerMockRecorder) GetAddonsLayer() *gomock.Call {
 }
 
 // RevisionReady mocks base method
-func (m *MockLayer) RevisionReady(conditions []meta.Condition, revision string) (bool, string) {
+func (m *MockLayer) RevisionReady(conditions []v1.Condition, revision string) (bool, string) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RevisionReady", conditions, revision)
 	ret0, _ := ret[0].(bool)

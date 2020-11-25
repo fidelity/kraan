@@ -47,7 +47,7 @@
                         "reason": "AddonsLayer is Deployed",
                         "status": "True",
                         "type": "Deployed",
-                        "version": "0.1.01"
+                        "message": "All HelmReleases deployed"
                     }
                 ],
                 "state": "Deployed",
@@ -84,7 +84,7 @@
                         "reason": "AddonsLayer is Deployed",
                         "status": "True",
                         "type": "Deployed",
-                        "version": "0.1.01"
+                        "message": "All HelmReleases deployed"
                     }
                 ],
                 "state": "Deployed",
@@ -117,7 +117,7 @@
                         "reason": "AddonsLayer is Deployed",
                         "status": "True",
                         "type": "Deployed",
-                        "version": "0.1.01"
+                        "message": "All HelmReleases deployed"
                     }
                 ],
                 "state": "Deployed",
@@ -154,7 +154,7 @@
                         "reason": "AddonsLayer is Deployed",
                         "status": "True",
                         "type": "Deployed",
-                        "version": "0.1.01"
+                        "message": "All HelmReleases deployed"
                     }
                 ],
                 "state": "Deployed",
@@ -191,11 +191,10 @@
                         "reason": "AddonsLayer is Deployed",
                         "status": "True",
                         "type": "Deployed",
-                        "version": "0.1.01"
+                        "message": "All HelmReleases deployed"
                     }
                 ],
                 "state": "Deployed",
-                "version": "0.1.01",
                 "observedGeneration": 1,
                 "revision": "master/abcdef"
             }
@@ -228,11 +227,10 @@
                         "reason": "AddonsLayer is Deployed",
                         "status": "True",
                         "type": "Deployed",
-                        "version": "0.1.01"
+                        "message": "All HelmReleases deployed"
                     }
                 ],
                 "state": "Deployed",
-                "version": "0.1.01",
                 "observedGeneration": 1,
                 "revision": "master/abcdef"
             }
@@ -265,11 +263,10 @@
                         "reason": "AddonsLayer is Deployed",
                         "status": "True",
                         "type": "Deployed",
-                        "version": "0.1.01"
+                        "message": "All HelmReleases deployed"
                     }
                 ],
                 "state": "Deployed",
-                "version": "0.1.01",
                 "observedGeneration": 1,
                 "revision": "master/abcdef"
             }
@@ -302,7 +299,7 @@
                         "reason": "AddonsLayer is Deployed",
                         "status": "True",
                         "type": "Deployed",
-                        "version": "0.1.01"
+                        "message": "All HelmReleases deployed"
                     }
                 ],
                 "state": "Deployed",
@@ -335,7 +332,7 @@
                         "reason": "AddonsLayer is Deployed",
                         "status": "True",
                         "type": "Deployed",
-                        "version": "0.1.01"
+                        "message": "All HelmReleases deployed"
                     }
                 ],
                 "state": "Deployed",
@@ -368,7 +365,7 @@
                         "reason": "AddonsLayer is Deployed",
                         "status": "True",
                         "type": "Deployed",
-                        "version": "0.1.01"
+                        "message": "All HelmReleases deployed"
                     }
                 ],
                 "state": "Deployed",
@@ -401,7 +398,7 @@
                         "reason": "AddonsLayer is Deployed",
                         "status": "True",
                         "type": "Deployed",
-                        "version": "0.1.01"
+                        "message": "All HelmReleases deployed"
                     }
                 ],
                 "state": "Deployed",
@@ -434,8 +431,7 @@
                             "message": "The applying status means the manager is either applying the yaml files or waiting for the HelmReleases to successfully deploy.",
                             "reason": "AddonsLayer is being applied",
                             "status": "False",
-                            "type": "Applying",
-                            "version": "0.1.01"
+                            "type": "Applying"
                         }
                 ],
                 "state": "Applying",
@@ -472,7 +468,7 @@
                         "reason": "AddonsLayer is Deployed",
                         "status": "True",
                         "type": "Deployed",
-                        "version": "0.1.01"
+                        "message": "All HelmReleases deployed"
                     }
                 ],
                 "state": "Deployed",
@@ -505,7 +501,7 @@
                         "reason": "AddonsLayer is Deployed",
                         "status": "True",
                         "type": "Deployed",
-                        "version": "0.1.01"
+                        "message": "All HelmReleases deployed"
                     }
                 ],
                 "state": "Deployed",

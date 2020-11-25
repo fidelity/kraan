@@ -55,7 +55,7 @@ spec:
           value: {{ .Values.global.env.noProxy }}
         {{- end }}
         image: {{ .Values.gotk.sourceController.image.repository }}/source-controller:{{ .Values.gotk.sourceController.image.tag }}
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: {{ .Values.gotk.helmController.image.imagePullPolicy | default "IfNotPresent" }}
         livenessProbe:
           httpGet:
             path: /

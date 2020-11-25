@@ -12,6 +12,8 @@ function usage()
    echo "'--debug' for verbose output"
    echo "This script will create a temporary directory call /tmp/kraan-local-exec which the kraan-controller"
    echo "will use as its root directory when storing files it retrieves from this git repository"
+   echo "It assumes that the source-controller service is running in gotk-system namespace."
+   echo "Also, Kraan Controller namespace is set to gotk-system too using RUNTIME_NAMESPACE environmental variable."
 }
 
 function args() {
@@ -52,4 +54,5 @@ read -p "press enter to continue"
 
 kubectl -n gotk-system port-forward svc/source-controller 8090:80 &
 export SC_HOST=localhost:8090
+export RUNTIME_NAMESPACE=gotk-system
 kraan-controller -zap-encoder=json ${log_level} 2>&1 | tee ${work_dir}/kraan.log | grep "^{" | jq -r

@@ -5,8 +5,8 @@
 package mocks
 
 import (
-	v1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 	gomock "github.com/golang/mock/gomock"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	reflect "reflect"
 	time "time"
@@ -48,7 +48,7 @@ func (mr *MockMetricsMockRecorder) Init() *gomock.Call {
 }
 
 // RecordCondition mocks base method
-func (m *MockMetrics) RecordCondition(obj runtime.Object, condition v1alpha1.Condition, deleted bool) {
+func (m *MockMetrics) RecordCondition(obj runtime.Object, condition v1.Condition, deleted bool) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "RecordCondition", obj, condition, deleted)
 }

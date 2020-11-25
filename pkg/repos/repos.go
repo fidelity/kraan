@@ -16,6 +16,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 
+	"github.com/fidelity/kraan/pkg/common"
 	"github.com/fidelity/kraan/pkg/internal/tarconsumer"
 	"github.com/fidelity/kraan/pkg/logging"
 )
@@ -134,7 +135,8 @@ func (r *reposData) Delete(name string) {
 	defer logging.TraceExit(r.log)
 	r.Lock()
 	defer r.Unlock()
-	if _, found := r.repos[name]; found {
+	if repo, found := r.repos[name]; found {
+		_ = repo.TidyAll() // nolint:errcheck // ok
 		delete(r.repos, name)
 	}
 }
@@ -145,6 +147,9 @@ type Repo interface {
 	GetSourceNameSpace() string
 	SyncRepo() error
 	TidyRepo() error
+	TidyAll() error
+	AddUser(name string)
+	RemoveUser(namer string) bool
 	LinkData(layerPath, sourcePath string) error
 	GetGitRepo() *sourcev1.GitRepository
 	GetPath() string
@@ -171,6 +176,7 @@ type repoData struct {
 	Repo         `json:"-"`
 	sync.RWMutex `json:"-"`
 	syncLock     sync.RWMutex
+	users        []string
 }
 
 // newRepo creates a repo.
@@ -193,6 +199,7 @@ func (r *reposData) newRepo(path string, sourceRepo *sourcev1.GitRepository) Rep
 		path:        path,
 		repo:        sourceRepo,
 		tarConsumer: tarconsumer.NewTarConsumer(r.ctx, r.client, url),
+		users:       []string{},
 	}
 	return repo
 }
@@ -276,6 +283,35 @@ func (r *repoData) TidyRepo() error {
 	return nil
 }
 
+func (r *repoData) TidyAll() error {
+	return r.tidyAll()
+}
+
+func (r *repoData) tidyAll() error {
+	dataPathParts := strings.Split(r.GetDataPath(), "/")
+	dirName := strings.Join(dataPathParts[:len(dataPathParts)-1], "/")
+
+	if err := os.RemoveAll(dirName); err != nil {
+		return errors.Wrapf(err, "%s - failed to remove directory: %s", logging.CallerStr(logging.Me), dirName)
+	}
+	return nil
+}
+
+func (r *repoData) RemoveUser(name string) bool {
+	r.syncLock.Lock()
+	defer r.syncLock.Unlock()
+	r.users = common.RemoveString(r.users, name)
+	return len(r.users) == 0
+}
+
+func (r *repoData) AddUser(name string) {
+	r.syncLock.Lock()
+	defer r.syncLock.Unlock()
+	if !common.ContainsString(r.users, name) {
+		r.users = append(r.users, name)
+	}
+}
+
 func (r *repoData) removeDirs(path, exclude string) error {
 	r.log.V(2).Info("processing directory",
 		append(logging.GetGitRepoInfo(r.repo), append(logging.GetFunctionAndSource(logging.MyCaller), "path", path, "exclude", exclude)...)...)
@@ -291,7 +327,7 @@ func (r *repoData) removeDirs(path, exclude string) error {
 				r.log.V(1).Info("removing directory", append(logging.GetGitRepoInfo(r.repo),
 					append(logging.GetFunctionAndSource(logging.MyCaller), "path", dirName)...)...)
 				if e := os.RemoveAll(dirName); e != nil {
-					return errors.Wrapf(err, "%s - failed to remove directory: %s", logging.CallerStr(logging.Me), dirName)
+					return errors.Wrapf(e, "%s - failed to remove directory: %s", logging.CallerStr(logging.Me), dirName)
 				}
 			}
 		}

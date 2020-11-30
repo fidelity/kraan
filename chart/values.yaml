@@ -21,9 +21,9 @@ kraan:
   kraanController:
     enabled: true
     name: kraan-controller
-  
+
     extraPodAnnotations: {}
-    
+
     extraLabels: {}
 
     prometheus:
@@ -50,7 +50,8 @@ kraan:
         cpu: 500m
         memory: 128Mi
 
-    tolerations: []
+    tolerations:
+      []
       # - key: "key"
       #   operator: "Equal|Exists"
       #   value: "value"
@@ -77,9 +78,9 @@ gotk:
     enabled: true
 
     name: source-controller
-  
+
     extraPodAnnotations: {}
-    
+
     extraLabels: {}
 
     prometheus:
@@ -87,11 +88,11 @@ gotk:
 
     image:
       repository: ghcr.io/fluxcd
-      tag: v0.3.0
+      tag: v0.4.1
 
     imagePullSecrets:
       name:
-    
+
     proxy: true
 
     resources:
@@ -102,7 +103,8 @@ gotk:
         cpu: 500m
         memory: 128Mi
 
-    tolerations: []
+    tolerations:
+      []
       # - key: "key"
       #   operator: "Equal|Exists"
       #   value: "value"
@@ -136,8 +138,8 @@ gotk:
 
     image:
       repository: ghcr.io/fluxcd
-      tag: v0.3.0
-    
+      tag: v0.4.1
+
     proxy: true
 
     resources:
@@ -148,7 +150,8 @@ gotk:
         cpu: 500m
         memory: 128Mi
 
-    tolerations: []
+    tolerations:
+      []
       # - key: "key"
       #   operator: "Equal|Exists"
       #   value: "value"

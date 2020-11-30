@@ -33,14 +33,14 @@ Options:
   '--gitops-image-pull-secret' set to 'auto' to generate image pull secrets from ~/.docker/config.json
                                or supply name of file containing image pull secret defintion to apply.
                                The secret should be called 'gotk-regcred'.
-  '--gitops-proxy'    set to 'auto' to generate proxy setting for gotk components using value of HTTPS_PROXY 
+  '--gitops-proxy'    set to 'auto' to generate proxy setting for gotk components using value of HTTPS_PROXY
                       environment variable or supply the proxy url to use.
   '--values-files'    provide a comma separated list of yaml files containing values you want to set.
                       see samples directory for examples.
 
-  '--deploy-kind' create a new kind cluster and deploy to it. Otherwise the script will deploy to an existing 
-                  cluster. The KUBECONFIG environmental variable or ~/.kube/config should be set to a cluster 
-                  admin user for the cluster you want to use. This cluster must be running API version 16 or 
+  '--deploy-kind' create a new kind cluster and deploy to it. Otherwise the script will deploy to an existing
+                  cluster. The KUBECONFIG environmental variable or ~/.kube/config should be set to a cluster
+                  admin user for the cluster you want to use. This cluster must be running API version 16 or
                   greater.
   '--prometheus'  install promethus stack in specified namespace
   '--testdata'    deploy testdata comprising addons layers and source controller custom resources to the target cluster.
@@ -160,7 +160,7 @@ function args() {
   if [ $no_git_auth -eq 0 ] ; then
     check_git_credentials
     # If GIT_CREDENTIALS are not set warn the user but set up the cluster without a credentials secret
-    if [ -z "${GIT_USER:-}" ] ; then 
+    if [ -z "${GIT_USER:-}" ] ; then
       echo "GIT_USER is not set to the git user name"
       # usage; exit 1
     fi
@@ -217,7 +217,7 @@ function toolkit_refresh() {
     gitops_regcred_arg="--image-pull-secret ${secret_name}"
   fi
   mkdir -p ${work_dir}"/gitops"
-  gotk install --export --components=source-controller,helm-controller ${gitops_repo_arg} ${gitops_regcred_arg} > "${work_dir}"/gitops/gitops.yaml
+  flux install --export --components=source-controller,helm-controller ${gitops_repo_arg} ${gitops_regcred_arg} > "${work_dir}"/gitops/gitops.yaml
   echo "yaml for gitops toolkit is in ${work_dir}/gitops/gitops.yaml"
 }
 
@@ -230,7 +230,7 @@ function create_regcred() {
       return
     fi
     jq -r '{auths: .auths}' ~/.docker/config.json > "${work_dir}"/image_pull_secret.json
-    kubectl -n "${namespace}" delete  --ignore-not-found=true secret ${name_prefix}-regcred 
+    kubectl -n "${namespace}" delete  --ignore-not-found=true secret ${name_prefix}-regcred
     kubectl -n "${namespace}" create secret generic ${name_prefix}-regcred \
       --from-file=.dockerconfigjson="${work_dir}"/image_pull_secret.json \
       --type=kubernetes.io/dockerconfigjson
@@ -284,7 +284,7 @@ function install_prometheus_helm_repo {
     helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
     return
   fi
-  set -e  
+  set -e
 }
 
 function install_prometheus_helm_release {
@@ -296,7 +296,7 @@ function install_prometheus_helm_release {
     helm install prometheus prometheus-community/prometheus --namespace "${ns}"
     return
   fi
-  set -e 
+  set -e
 }
 
 function install_prometheus {

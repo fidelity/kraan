@@ -12,6 +12,8 @@ import (
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+
+	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 )
 
 const (
@@ -44,6 +46,26 @@ func GetObjNamespaceName(obj k8sruntime.Object) (result []interface{}) {
 	return result
 }
 
+// GetLayer gets layer, returning object name for AddonsLayer.kraan.io objects or owner name for others
+func GetLayer(obj k8sruntime.Object) string {
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	kind := fmt.Sprintf("%s.%s", gvk.Kind, gvk.Group)
+	mobj, ok := (obj).(metav1.Object)
+	if !ok {
+		return "layer not available"
+	}
+	if kind == "AddonsLayer.kraan.io" {
+		return mobj.GetName()
+	}
+	owners := mobj.GetOwnerReferences()
+	for _, owner := range owners {
+		if owner.Kind == "AddonsLayer" && owner.APIVersion == "kraan.io/v1alpha1" {
+			return owner.Name
+		}
+	}
+	return "layer not available"
+}
+
 // GetObjKindNamespaceName gets object kind namespace and name for logging
 func GetObjKindNamespaceName(obj k8sruntime.Object) (result []interface{}) {
 	gvk := obj.GetObjectKind().GroupVersionKind()
@@ -63,9 +85,22 @@ func GetGitRepoInfo(srcRepo *sourcev1.GitRepository) (result []interface{}) {
 	return result
 }
 
+// GetLayerInfo gets AddonsLayer details for logging
+func GetLayerInfo(src *kraanv1alpha1.AddonsLayer) (result []interface{}) {
+	result = append(result, "kind", LayerKind())
+	result = append(result, GetObjNamespaceName(src)...)
+	result = append(result, "status", src.Status.State)
+	return result
+}
+
 // GitRepoSourceKind returns the gitrepository kind
 func GitRepoSourceKind() string {
 	return fmt.Sprintf("%s.%s", sourcev1.GitRepositoryKind, sourcev1.GroupVersion)
+}
+
+// LayerKind returns the AddonsLayer kind
+func LayerKind() string {
+	return fmt.Sprintf("%s.%s", kraanv1alpha1.AddonsLayerKind, kraanv1alpha1.GroupVersion)
 }
 
 // CallerInfo hold the function name and source file/line from which a call was made

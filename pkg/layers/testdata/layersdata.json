@@ -23,10 +23,9 @@
                         {
                                 "type": "K8sVersion",
                                 "status": "True",
-                                "version": "0.1.01",
                                 "lastTransitionTime": null,
-                                "reason": "AddonsLayer is waiting for the required K8sVersion",
-                                "message": "The k8sVersion status means the manager has detected that the AddonsLayer needs a higher version of the Kubernetes API than the current version running on the cluster."
+                                "message": "AddonsLayer is waiting for the required K8sVersion",
+                                "reason": "K8sVersion"
                         }
                 ],
                 "state": "K8sVersion",
@@ -135,10 +134,10 @@
                 "conditions": [
                         {
                             "lastTransitionTime": null,
-                            "reason": "AddonsLayer is Deployed",
+                            "reason": "Deployed",
                             "status": "True",
                             "type": "Deployed",
-                            "version": "0.1.01"
+                            "message": "All HelmReleases deployed"
                         }
                 ],
                 "state": "K8sVersion",

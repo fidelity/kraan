@@ -116,6 +116,9 @@ spec:
               install:
                 description: Install holds the configuration for Helm install actions for this HelmRelease.
                 properties:
+                  createNamespace:
+                    description: CreateNamespace tells the Helm install action to create the HelmReleaseSpec.TargetNamespace if it does not exist yet. On uninstall, the namespace will not be garbage collected.
+                    type: boolean
                   disableHooks:
                     description: DisableHooks prevents hooks from running during the Helm install action.
                     type: boolean
@@ -152,7 +155,7 @@ spec:
                 description: Interval at which to reconcile the Helm release.
                 type: string
               kubeConfig:
-                description: KubeConfig for reconciling the HelmRelease on a remote cluster.
+                description: KubeConfig for reconciling the HelmRelease on a remote cluster. When specified, KubeConfig takes precedence over ServiceAccountName.
                 properties:
                   secretRef:
                     description: SecretRef holds the name to a secret that contains a 'value' key with the kubeconfig file as the value. It must be in the same namespace as the HelmRelease. It is recommended that the kubeconfig is self-contained, and the secret is regularly updated if credentials such as a cloud-access-token expire. Cloud specific `cmd-path` auth helpers will not function without adding binaries and credentials to the Pod that is responsible for reconciling the HelmRelease.
@@ -192,6 +195,9 @@ spec:
                     description: Timeout is the time to wait for any individual Kubernetes operation (like Jobs for hooks) during the performance of a Helm rollback action. Defaults to 'HelmReleaseSpec.Timeout'.
                     type: string
                 type: object
+              serviceAccountName:
+                description: The name of the Kubernetes service account to impersonate when reconciling this HelmRelease.
+                type: string
               suspend:
                 description: Suspend tells the controller to suspend reconciliation for this HelmRelease, it does not apply to already started reconciliations. Defaults to false.
                 type: boolean

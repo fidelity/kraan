@@ -108,19 +108,19 @@ else
     echo "mockgen version: `mockgen -version`"
 fi
 
-gotk --version >/dev/null 2>&1 
+flux --version >/dev/null 2>&1 
 ret_code="${?}"
 if [[ "${ret_code}" != "0" ]] ; then
-    echo "Installing latest version of gotk cli"
+    echo "Installing latest version of flux cli"
     curl -s https://toolkit.fluxcd.io/install.sh | $sudo bash
-    gotk --version >/dev/null 2>&1 
+    flux --version >/dev/null 2>&1 
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then
-        echo "Failed to install gotk"
+        echo "Failed to install flux"
         return
     fi
 else
-    echo "gotk version: `gotk --version`"
+    echo "flux version: `flux --version`"
 fi
 
 helm version 2>&1 | grep ${helm_version} >/dev/null

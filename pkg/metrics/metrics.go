@@ -12,13 +12,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
-
-	"github.com/fidelity/kraan/api/v1alpha1"
 )
 
 type Metrics interface {
 	Init()
-	RecordCondition(obj runtime.Object, condition v1alpha1.Condition, deleted bool)
+	RecordCondition(obj runtime.Object, condition metav1.Condition, deleted bool)
 	RecordDuration(obj runtime.Object, start time.Time)
 }
 
@@ -62,7 +60,7 @@ func (m *metricsData) Init() {
 }
 
 // RecordCondition records condition metrics
-func (m *metricsData) RecordCondition(obj runtime.Object, condition v1alpha1.Condition, deleted bool) {
+func (m *metricsData) RecordCondition(obj runtime.Object, condition metav1.Condition, deleted bool) {
 	for _, status := range []string{string(corev1.ConditionTrue), string(corev1.ConditionFalse), string(corev1.ConditionUnknown), ConditionDeleted} {
 		var value float64
 		if deleted {

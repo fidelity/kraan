@@ -233,6 +233,46 @@ func (mr *MockRepoMockRecorder) TidyRepo() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TidyRepo", reflect.TypeOf((*MockRepo)(nil).TidyRepo))
 }
 
+// TidyAll mocks base method
+func (m *MockRepo) TidyAll() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TidyAll")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// TidyAll indicates an expected call of TidyAll
+func (mr *MockRepoMockRecorder) TidyAll() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TidyAll", reflect.TypeOf((*MockRepo)(nil).TidyAll))
+}
+
+// AddUser mocks base method
+func (m *MockRepo) AddUser(name string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "AddUser", name)
+}
+
+// AddUser indicates an expected call of AddUser
+func (mr *MockRepoMockRecorder) AddUser(name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddUser", reflect.TypeOf((*MockRepo)(nil).AddUser), name)
+}
+
+// RemoveUser mocks base method
+func (m *MockRepo) RemoveUser(namer string) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveUser", namer)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// RemoveUser indicates an expected call of RemoveUser
+func (mr *MockRepoMockRecorder) RemoveUser(namer interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveUser", reflect.TypeOf((*MockRepo)(nil).RemoveUser), namer)
+}
+
 // LinkData mocks base method
 func (m *MockRepo) LinkData(layerPath, sourcePath string) error {
 	m.ctrl.T.Helper()

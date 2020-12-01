@@ -12,10 +12,10 @@ This project requires the following software:
     golang version >= 1.14.6
     mockgen = v1.4.4
     kubebuilder = v2.3.1
-    gotk = latest
+    flux = latest
     helm - v3.3.4
 
-You can install [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder), [golangci-lint](https://github.com/golangci/golangci-lint), [mockgen](https://github.com/golang/mock), [helm](https://helm.sh/), [kind](https://kind.sigs.k8s.io/docs/) and [gotk](https://toolkit.fluxcd.io/) using the 'setup.sh' script:
+You can install [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder), [golangci-lint](https://github.com/golangci/golangci-lint), [mockgen](https://github.com/golang/mock), [helm](https://helm.sh/), [kind](https://kind.sigs.k8s.io/docs/) and [flux](https://toolkit.fluxcd.io/) using the 'setup.sh' script:
 
     bin/setup.sh
 
@@ -55,6 +55,7 @@ Then to deploy the docker container:
 If the `VERSION` is not set `master` is used. The REPO will default to `docker.pkg.github.com/fidelity/kraan` which only users with privileges on the `fidelity` organization will be able to push to. However if you fork the Kraan repository then the default will be `docker.pkg.github.com/<org/user you forked to>/kraan`.
 
 ## Releases
+
 The offical releases use docker hub repository: kraan/kraan-controller. The 'master' tag will be contain a version of kraan built from the master branch. Release versions will be deployed to this repository for public use.
 
 Helm Charts are deployed to github pages so can be accessed via repo: kraan https://fidelity.github.io/kraan/
@@ -63,6 +64,7 @@ Helm Charts are deployed to github pages so can be accessed via repo: kraan http
     helm search repo --regexp kraan --versions
 
 ## Creating a Release
+
 To create a release set `VERSION` to the Kraan-Controller version, `REPO` to 'kraan' and `CHART_VERSION` to the chart version, then build and push the image:
 
     export VERSION=v0.1.xx
@@ -77,9 +79,18 @@ The 'release' target will update the tag in the values file, package the chart a
 
 Finally use github web interface to create a tag.
 
+## Updating Gitops Toolkit Components
+
+To update the gitops toolkit components (Helm Controller and Source Controller) run the deploy.sh script with the '--toolkit' option
+
+    scripts/deploy.sh --toolkit
+
+Then compare the file produced with the equivalent sections in the chart directory and updat the chart files accordingly.
+Once the changes are tested and merged into master, create a new chart release as described above.
+
 ## Deployment
 
-A shell script is provided to deploy the artifacts necessary to test the kraan-controller to a kubernetes cluster. It does this using a helm client to install a helm chart containing the Kraan Controller and the GitOps Toolkit (GOTK) components it uses.
+A shell script is provided to deploy the artifacts necessary to test the kraan-controller to a kubernetes cluster. It does this using a helm client to install a helm chart containing the Kraan Controller and the GitOps Toolkit (flux) components it uses.
 
     https://github.com/fidelity/kraan.git
     USAGE: deploy.sh [--debug] [--dry-run] [--toolkit] [--deploy-kind] [--testdata] [--helm <upgrade| install>]
@@ -172,7 +183,7 @@ The `SC_TIMEOUT` environmental variable can be used to set the timeout period fo
 The `SC_HOST` environmental variable can be used to set the host component of the source controller's artifact url. This is useful when running the kraan-controller out of cluster to enable it to access the source controller via a local address using kubectl port-forward, i.e.
 
     kubectl -n gotk-system port-forward svc/source-controller 8090:80 &
-	export SC_HOST=localhost:8090
+    export SC_HOST=localhost:8090
 
 If you elected to use the `--testdata` option when setting up the cluster test data wil be added. Alternatively, you can do this by applying `.testdata/addons/addons-source.yaml` and `.testdata/addons/addons.yaml` to deploy the source controller custom resource and AddonsLayers custom resources respectively. This will cause the kraan-controller to operate on the testdata in the `./testdata` directory of this repository using the `master` branch.
 

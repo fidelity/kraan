@@ -35,6 +35,7 @@ kraan:
     image:
       repository: kraan
       tag:
+      imagePullPolicy:
 
     args:
       logLevel: 0
@@ -89,6 +90,7 @@ gotk:
     image:
       repository: ghcr.io/fluxcd
       tag: v0.4.1
+      imagePullPolicy:
 
     imagePullSecrets:
       name:
@@ -139,6 +141,7 @@ gotk:
     image:
       repository: ghcr.io/fluxcd
       tag: v0.4.1
+      imagePullPolicy:
 
     proxy: true
 

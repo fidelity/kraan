@@ -1,6 +1,5 @@
 /*
 
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -17,7 +16,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -39,11 +37,14 @@ type PreReqs struct {
 
 // SourceSpec defines a source location using the source types supported by the GitOps Toolkit source controller.
 type SourceSpec struct {
-	// The name of the gitrepositories.source.fluxcd.io custom resource to use
+	// The kind of the resource to use, currently only supports gitrepositories.source.toolkit.fluxcd.io
+	// +optional
+	Kind string `json:"kind"`
+	// The name of the resource to use
 	// +required
 	Name string `json:"name"`
 
-	// The namespace of the gitrepositories.source.fluxcd.io custom resource to use
+	// The namespace of the resource to use
 	// +optional
 	NameSpace string `json:"namespace"`
 
@@ -71,7 +72,7 @@ type AddonsLayerSpec struct {
 	// The interval at which to check for changes.
 	// Defaults to controller's default
 	// +optional
-	Interval metav1.Duration `json:"interval"`
+	Interval *metav1.Duration `json:"interval"`
 
 	// Timeout for operations.
 	// Defaults to 'Interval' duration.
@@ -81,51 +82,6 @@ type AddonsLayerSpec struct {
 	// Version is the version of the addon layer
 	// +required
 	Version string `json:"version"`
-}
-
-// Condition contains condition information for an AddonLayer.
-/*
-Copyright 2020 The Flux CD contributors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-type Condition struct {
-	// Type of the condition, currently ('Ready').
-	// +required
-	Type string `json:"type"`
-
-	// Status of the condition, one of ('True', 'False', 'Unknown').
-	// +required
-	Status corev1.ConditionStatus `json:"status"`
-
-	// Version, the version the status relates to.
-	// +required
-	Version string `json:"version,omitempty"`
-
-	// LastTransitionTime is the timestamp corresponding to the last status
-	// change of this condition.
-	// +required
-	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
-
-	// Reason is a brief machine readable explanation for the condition's last
-	// transition.
-	// +required
-	Reason string `json:"reason,omitempty"`
-
-	// Message is a human readable description of the details of the last
-	// transition, complementing reason.
-	// +optional
-	Message string `json:"message,omitempty"`
 }
 
 const (
@@ -155,14 +111,20 @@ const (
 	// HoldCondition represents the fact that addons are on hold.
 	HoldCondition string = "Hold"
 
+	// DeletedCondition represents the fact that the addons layer has been deleted.
+	DeletedCondition string = "Deleted"
+
 	// NotDeployed represents resource status of present in layer source but not deployed on the cluster
 	NotDeployed string = "NotDeployed"
 
 	// Deployed represents resource status of deployed on the cluster
 	Deployed string = "Deployed"
 
-	// ClusterOnly represents resource status of present in on the cluster but not in layer source
-	ClusterOnly string = "NoSource"
+	// Name of finalizer
+	AddonsFinalizer = "finalizers.kraan.io"
+
+	// AddonsLayerKind is the string representation of a AddonsLayer.
+	AddonsLayerKind = "AddonsLayer"
 )
 
 type Resource struct {
@@ -203,7 +165,7 @@ func (r Resources) Less(i, j int) bool {
 type AddonsLayerStatus struct {
 	// Conditions history.
 	// +optional
-	Conditions []Condition `json:"conditions,omitempty"`
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
 	// State is the current state of the layer.
 	// +required
@@ -227,47 +189,26 @@ type AddonsLayerStatus struct {
 }
 
 const (
-	// AddonsLayerK8sVersionReason represents the addons layer is wating for the required K8s Version.
-	AddonsLayerK8sVersionReason string = "AddonsLayer is waiting for the required K8sVersion"
+	// AddonsLayerK8sVersionMsg represents the addons layer is wating for the required K8s Version.
+	AddonsLayerK8sVersionMsg string = "AddonsLayer is waiting for the required K8sVersion"
 
-	// AddonsLayerK8sVersionMsg explains that the addons k8s Version state.
-	AddonsLayerK8sVersionMsg string = ("The k8sVersion status means the manager has detected" +
-		" that the AddonsLayer needs a higher version of the Kubernetes API than the current" +
-		" version running on the cluster.")
+	// AddonsLayerPruningMsg represents the fact that the addons are being pruned.
+	AddonsLayerPruningMsg string = "AddonsLayer is being pruned"
 
-	// AddonsLayerPruningReason represents the fact that the addons are being pruned.
-	AddonsLayerPruningReason string = "AddonsLayer is being pruned"
+	// AddonsLayerApplyPendingMsg represents the fact that the applying of addons is pending.
+	AddonsLayerApplyPendingMsg string = "Deployment of the AddonsLayer is pending because layers it is depends on are not deployed"
 
-	// AddonsLayerPruningMsg explains that pruning status.
-	AddonsLayerPruningMsg string = "The pruning status means the manager is pruning objects removed from this layer"
+	// AddonsLayerApplyingMsg represents the fact that the addons are being deployed.
+	AddonsLayerApplyingMsg string = "AddonsLayer is being applied"
 
-	// AddonsLayerApplyPendingReason represents the fact that the applying of addons is pending.
-	AddonsLayerApplyPendingReason string = "Deployment of the AddonsLayer is pending because layers it is depends on are not deployed"
+	// AddonsLayerFailedMsg represents the fact that the deployment of the addons failed.
+	AddonsLayerFailedMsg string = "AddonsLayer failed"
 
-	// AddonsLayerApplyPendingMsg explains that the addons ApplyPending state.
-	AddonsLayerApplyPendingMsg string = ("The ApplyPending status means the manager has detected that the AddonsLayer" +
-		" needs to be applied a layer that ome or more layers depends on has not been applied yet")
+	// AddonsLayerHoldMsg represents the fact that addons are on hold.
+	AddonsLayerHoldMsg string = "AddonsLayer is on hold, preventing execution"
 
-	// AddonsLayerApplyingReason represents the fact that the addons are being deployed.
-	AddonsLayerApplyingReason string = "AddonsLayer is being applied"
-
-	// AddonsLayerApplyingMsg explains that the addons are being deployed.
-	AddonsLayerApplyingMsg string = ("The applying status means the manager is either applying the yaml files" +
-		" or waiting for the HelmReleases to successfully deploy.")
-
-	// AddonsLayerFailedReason represents the fact that the deployment of the addons failed.
-	AddonsLayerFailedReason string = "AddonsLayer processsing has failed"
-
-	// AddonsLayerHoldReason represents the fact that addons are on hold.
-	AddonsLayerHoldReason string = "AddonsLayer is on hold, preventing execution"
-
-	// AddonsLayerHoldMsg explains the hold status.
-	AddonsLayerHoldMsg string = ("AddonsLayer custom resource has the 'Hold' element set to ture" +
-		" preventing it from being processed. To clear this state update the custom resource object" +
-		" setting Hold to false")
-
-	// AddonsLayerDeployedReason represents the fact that the addons has been successfully deployed.
-	AddonsLayerDeployedReason string = "AddonsLayer is Deployed"
+	// AddonsLayerDeployedMsg represents the fact that the addons has been successfully deployed.
+	AddonsLayerDeployedMsg string = "HelmReleases in AddonsLayer are Deployed"
 )
 
 // AddonsLayer is the Schema for the addons API.
@@ -280,7 +221,7 @@ const (
 // +kubebuilder:printcolumn:name="Source",type=string,JSONPath=`.spec.source.name`
 // +kubebuilder:printcolumn:name="Path",type=string,JSONPath=`.spec.source.path`
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.state",description=""
-// +kubebuilder:printcolumn:name="Reason",type="string",JSONPath=".status.conditions[?(@.status==\"True\")].reason",description=""
+// +kubebuilder:printcolumn:name="Message",type="string",JSONPath=".status.conditions[?(@.status==\"True\")].message",description=""
 type AddonsLayer struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

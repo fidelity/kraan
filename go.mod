@@ -4,11 +4,11 @@ go 1.14
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/fluxcd/helm-controller/api v0.1.1
-	github.com/fluxcd/pkg/apis/meta v0.1.0
-	github.com/fluxcd/pkg/runtime v0.1.2
+	github.com/fluxcd/helm-controller/api v0.3.0
+	github.com/fluxcd/pkg/apis/meta v0.4.0
+	github.com/fluxcd/pkg/runtime v0.3.0
 	github.com/fluxcd/pkg/untar v0.0.5
-	github.com/fluxcd/source-controller/api v0.1.0
+	github.com/fluxcd/source-controller/api v0.3.0
 	github.com/go-delve/delve v1.5.0 // indirect
 	github.com/go-logr/logr v0.2.1
 	github.com/go-logr/zapr v0.2.0 // indirect
@@ -23,7 +23,7 @@ require (
 	github.com/paulcarlton-ww/go-utils v0.0.0-20200729094929-4657992b390c // indirect
 	github.com/peterh/liner v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.0.0
+	github.com/prometheus/client_golang v1.7.1
 	github.com/sirupsen/logrus v1.7.0 // indirect
 	github.com/spf13/cobra v1.0.0 // indirect
 	go.starlark.net v0.0.0-20200929122913-88a10930eb75 // indirect
@@ -33,9 +33,9 @@ require (
 	golang.org/x/sys v0.0.0-20201005065044-765f4ea38db3 // indirect
 	golang.org/x/tools v0.0.0-20201002184944-ecd9fd270d5d // indirect
 	google.golang.org/protobuf v1.24.0 // indirect
-	k8s.io/api v0.19.2
-	k8s.io/apiextensions-apiserver v0.18.9
-	k8s.io/apimachinery v0.19.2
-	k8s.io/client-go v0.19.2
+	k8s.io/api v0.19.3
+	k8s.io/apiextensions-apiserver v0.19.3
+	k8s.io/apimachinery v0.19.3
+	k8s.io/client-go v0.19.3
 	sigs.k8s.io/controller-runtime v0.6.3
 )

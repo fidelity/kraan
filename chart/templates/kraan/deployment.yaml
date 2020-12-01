@@ -36,7 +36,7 @@ spec:
       containers:
       - name: manager
         image: {{ .Values.kraan.kraanController.image.repository }}/kraan-controller:{{ .Values.kraan.kraanController.image.tag  | default .Chart.AppVersion }}
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: {{ .Values.kraan.kraanController.image.imagePullPolicy | default "IfNotPresent" }}
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: {{ .Values.kraan.kraanController.devmode }}
@@ -53,6 +53,10 @@ spec:
         - --zap-encoder=json
         - --sync-period={{ .Values.kraan.kraanController.args.syncPeriod }}
         env:
+        - name: RUNTIME_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
         - name: DATA_PATH
           value: /controller/data
         ports:

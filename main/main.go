@@ -41,6 +41,7 @@ import (
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 	"github.com/fidelity/kraan/controllers"
+	"github.com/fidelity/kraan/pkg/common"
 	"github.com/fidelity/kraan/pkg/repos"
 )
 
@@ -154,6 +155,11 @@ func main() { //nolint:funlen // ok
 	loggerType := fmt.Sprintf("%T", logger)
 	lvl := CheckLogLevels(logger)
 	setupLog.Info("logger configured", "loggerType", loggerType, "logLevels", lvl)
+
+	if common.GetRuntimeNamespace() == "" {
+		setupLog.Error(fmt.Errorf("RUNTIME_NAMESPACE environmental variable not set"), "please set RUNTIME_NAMESPACE environmental variable to Kraan Controller namespace")
+		os.Exit(1)
+	}
 
 	mgr, err := createManager(metricsAddr, healthAddr, enableLeaderElection, leaderElectionNamespace, syncPeriod, logger)
 	if err != nil {

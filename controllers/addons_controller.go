@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"sort"
 	"time"
 
@@ -58,6 +59,10 @@ import (
 var (
 	hrOwnerKey = ".owner"
 	reconciler *AddonsLayerReconciler
+)
+
+const (
+	reasonRegex = "^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$" // Regex for k8s 1.19 conditions reason field
 )
 
 type AddonsLayerReconcilerOptions struct {
@@ -285,6 +290,7 @@ type AddonsLayerReconciler struct {
 	Repos    repos.Repos
 	Metrics  metrics.Metrics
 	Recorder record.EventRecorder
+	regex    *regexp.Regexp
 }
 
 // EventRecorder returns an EventRecorder type that can be
@@ -326,6 +332,10 @@ func NewReconciler(config *rest.Config, client client.Client, logger logr.Logger
 
 	reconciler.Metrics = metrics.NewMetrics()
 
+	reconciler.regex, err = regexp.Compile(reasonRegex)
+	if err != nil {
+		return nil, errors.Wrapf(err, "%s - failed to compile regex", logging.CallerStr(logging.Me))
+	}
 	return reconciler, err
 }
 
@@ -621,7 +631,7 @@ func (r *AddonsLayerReconciler) updateRequeue(l layers.Layer) (res ctrl.Result, 
 	defer logging.TraceExit(r.Log)
 
 	if l.IsUpdated() {
-		if rerr = r.update(r.Context, r.Log, l.GetAddonsLayer()); rerr != nil {
+		if rerr = r.update(r.Context, l.GetAddonsLayer()); rerr != nil {
 			return ctrl.Result{Requeue: true}, errors.WithMessagef(rerr, "%s - failed to update", logging.CallerStr(logging.Me))
 		}
 	}
@@ -677,6 +687,12 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (res ctrl.Result, er
 		See the License for the specific language governing permissions and
 		limitations under the License.
 	*/
+
+	updated, res, err := r.upgradeFix(ctx, addonsLayer)
+	if updated {
+		return res, err
+	}
+
 	if addonsLayer.ObjectMeta.DeletionTimestamp.IsZero() { // nolint: nestif // ok
 		if !common.ContainsString(addonsLayer.ObjectMeta.Finalizers, kraanv1alpha1.AddonsFinalizer) {
 			r.Log.Info("adding finalizer to addonsLayer", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
@@ -729,6 +745,30 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (res ctrl.Result, er
 	return r.updateRequeue(l)
 }
 
+func (r *AddonsLayerReconciler) upgradeFix(ctx context.Context, al *kraanv1alpha1.AddonsLayer) (updated bool, res ctrl.Result, err error) {
+	r.Log.Info("Checking existing conditions", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", al.Name)...)
+	for _, condition := range al.Status.Conditions {
+		if condition.Status == metav1.ConditionFalse {
+			continue
+		}
+		if !r.regex.MatchString(condition.Reason) {
+			newCondition := metav1.Condition{}
+			newCondition.LastTransitionTime = condition.LastTransitionTime
+			newCondition.Status = condition.Status
+			newCondition.Type = condition.Type
+			newCondition.Reason = newCondition.Type
+			newCondition.Message = fmt.Sprintf("%s, %s", condition.Reason, condition.Message)
+			al.Status.Conditions = []metav1.Condition{newCondition}
+			if err := r.update(ctx, al); err != nil {
+				r.Log.Error(err, "unable to update conditions", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", al.Name)...)
+				return true, ctrl.Result{}, err
+			}
+			return true, ctrl.Result{Requeue: true}, nil
+		}
+	}
+	return false, ctrl.Result{}, nil
+}
+
 func (r *AddonsLayerReconciler) recordReadiness(al *kraanv1alpha1.AddonsLayer, deleted bool) {
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
@@ -752,12 +792,12 @@ func (r *AddonsLayerReconciler) recordReadiness(al *kraanv1alpha1.AddonsLayer, d
 	}, deleted)
 }
 
-func (r *AddonsLayerReconciler) update(ctx context.Context, log logr.Logger, a *kraanv1alpha1.AddonsLayer) error {
+func (r *AddonsLayerReconciler) update(ctx context.Context, a *kraanv1alpha1.AddonsLayer) error {
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
-
+	r.Log.V(2).Info("addonsLayer data", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", a.Name, "data", logging.LogJSON(a))...)
 	if err := r.Status().Update(ctx, a); err != nil {
-		log.Error(err, "unable to update AddonsLayer status", logging.GetFunctionAndSource(logging.MyCaller)...)
+		r.Log.Error(err, "unable to update AddonsLayer status", logging.GetFunctionAndSource(logging.MyCaller)...)
 		return errors.Wrapf(err, "%s - failed to update", logging.CallerStr(logging.Me))
 	}
 

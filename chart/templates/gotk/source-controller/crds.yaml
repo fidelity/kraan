@@ -79,6 +79,9 @@ spec:
                     description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
                     type: string
                 type: object
+              suspend:
+                description: This flag tells the controller to suspend the reconciliation of this source.
+                type: boolean
               timeout:
                 default: 20s
                 description: The timeout for download operations, defaults to 20s.
@@ -259,6 +262,9 @@ spec:
                     description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
                     type: string
                 type: object
+              suspend:
+                description: This flag tells the controller to suspend the reconciliation of this source.
+                type: boolean
               timeout:
                 default: 20s
                 description: The timeout for remote Git operations like cloning, defaults to 20s.
@@ -465,6 +471,9 @@ spec:
                 - kind
                 - name
                 type: object
+              suspend:
+                description: This flag tells the controller to suspend the reconciliation of this source.
+                type: boolean
               valuesFile:
                 description: Alternative values file to use as the default chart values, expected to be a relative path in the SourceRef. Ignored when omitted.
                 type: string
@@ -628,6 +637,9 @@ spec:
                     description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
                     type: string
                 type: object
+              suspend:
+                description: This flag tells the controller to suspend the reconciliation of this source.
+                type: boolean
               timeout:
                 default: 60s
                 description: The timeout of index downloading, defaults to 60s.

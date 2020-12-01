@@ -2,22 +2,22 @@
 
 This readme contains guidance for users relating to the deployment and use of Kraan.
 
-# Deployment
+## Deployment
 
 ```console
 helm repo add kraan https://fidelity.github.io/kraan
 helm install kraan kraan/kraan-controller --namespace gotk-system
 ```
 
-## Introduction
+### Introduction
 
 This chart deploys a [Kraan](https://fidelity.github.io/kraan/) and the [Gitops Toolkit](https://toolkit.fluxcd.io/) components it uses on a [Kubernetes](http://kubernetes.io) cluster using the [Helm](https://helm.sh) package manager.
 
-## Prerequisites
+### Prerequisites
 
 - Kubernetes 1.16+
 
-## Installing the Chart
+### Installing the Chart
 
 To install the chart with the release name `kraan` in namespace `gotk-system`:
 
@@ -26,7 +26,7 @@ kubectl create namespace gotk-system
 helm install kraan kraan/kraan-controller --namespace gotk-system
 ```
 
-## Uninstalling the Chart
+### Uninstalling the Chart
 
 To uninstall the `kraan` deployment:
 
@@ -36,7 +36,7 @@ helm uninstall kraan
 
 The command removes all the Kubernetes components associated with the chart and deletes the release.
 
-## Configuration
+### Configuration
 
 The following table lists the configurable parameters of the Prometheus chart and their default values.
 
@@ -98,25 +98,26 @@ Parameter | Description | Default
 `gotk.helmController.affinity` | affinity settings for `helm-controller` | `{}`
 
 Specify each parameter using the `--set key=value[,key=value]` argument to `helm install` or use the `--values` to specify a comma seperated list of values files. The `samples` directory contains some example values files.
-# Usage
+## Usage
 
 The Kraan-Controller is designed to deploy [HelmReleases](https://toolkit.fluxcd.io/guides/helmreleases/) to a Kubernetes cluster. Using `addonslayers.kraan.io` custom resources it retrieves the definitions of one or more HelmReleases from a git repository and applies them to the cluster then waits until they are all successfully deployed before marking the AddonsLayer as `Deployed`. My creating multiple AddonsLayers custom resources and setting the dependencies between them the user can sequence the deployment of multiple layers of addons.
 
-## Git Repository Source
+### Git Repository Source
 
 An AddonsLayer references a `gitrepository.source.toolkit.fluxcd.io` custom resource which it uses to retrieve data from a git repository using the Source-Controller. The `source` element of the AddonsLayer custom resource references a GitRepository custom resource the. The `path` element under `source` is the path relative to the top directory of the git repository referenced by the GitRepository custom resource where the HelmReleases comprising this AddonsLayer are defined.
-## Kubernetes Version Prerequite
+### Kubernetes Version Prerequite
 
 An AddonsLayer can also optionally include a `prereqs` element containing the minimum version of the Kubernetes API required by the AddonsLayer. If specified, the AddonsLayer will not be applied until the cluster API version is greater than or equal to the specified version. The Kraan-Controller will regularly check the Cluster API version.
 
-## Processing Controls
+### Processing Controls
 
 The `interval` field is used to specify the period to wait before reprocessing an AddonsLayer. Note that all AddonsLayers are reprocessed periodically. The period between reprocessing of all AddonsLayers defaults to one minute but can set using the `syncPeriod` value, see Configuration section above.
 
 The `timeout` field is used to set the period to wait for HelmReleases to be deployed before setting the AddonsLayer's status to failed.
 
 The `hold` setting can be used to prevent processing of the AddonsLayer. Set to `true` to enable this feature.
-## Versions
+
+### Versions
 
 The `version` field defines the version of the AddonsLayer. This can be used to define a new version of the AddonsLayer. Changing the version affects other AddonsLayers that are dependent on this layer. If you change the version of an AddonsLayer you need to update the version in `dependsOn` field in the dependent layer to make that layer dependent on the new version of this layer.
 
@@ -124,7 +125,7 @@ Modifying the version field can be used to force redeployment of HelmReleases th
 
 The version field does not need to be updated, simply commiting a change to the git repository branch referenced by the GitRepository custom resource that is referenced in the AddonsLayer's source element or editing that GitRepository to reference a different tag, commit or even a different git repository will cause Kraan to reprocess the AddonsLayer.
 
-## Example AddonsLayers
+### Example AddonsLayers
 
 ```yaml
 apiVersion: kraan.io/v1alpha1
@@ -159,10 +160,85 @@ spec:
         - bootstrap@0.1.01
 ```
 
-## Pruning
+### Pruning
 
 The Kraan-Controller monitors any `hemrelease.helm.toolkit.fluxcd.io` resources owned by a AddonsLayer and reprocesses the AddonsLayer when it detects changes to the HelmReleases it owns. This means that if a HelmRelease is deleted or amended using kubectl or other cluster management tools, Kraan-Controller will redeploy it using the definition in the git repository references by the AddonsLayer source field. To prevent this, set the hold field in the AddonsLayer to `true`.
 
 When processing an AddonsLayer the Kraan-Controller first `prunes` any HelmReleases owned by the AddonsLayer that are not defined in the git repository. This means that removing a HelmRelease definition from a git repository will cause it to be uninstalled from the cluster.
 
 Kraan-Controller performs the prune processing on all AddonLayers without reference to layer dependencies. It then proceeds with deploying addons, waiting for any layers it depends on to be deployed first. This enables a user to move a HelmRelease from one layer to another without risk of deployment failing because the previous layer's deployment is still present. This would potentially occur if a HelmRelease is moved to a layer that its current layer depends on. By performing the pruning first this potential issue is avoided. However, the Kraan-Controller does not wait for pruning of all layers to be completed before proceeding with layer deployment, although it does wait for each layer to be pruned before deploying that layer. This means a deployment might fail because a previous version (defined in another layer) of the HelmRelease has not completed pruning yet. Hoever this issue will be resolved when the pruning has completed.
+
+## Observability
+
+The Kraan Controller generates Kubernetes Events for AddonsLayer custom resources. It also includes the status of the HelmReleases managed by an AddonsLayer in the custom resource status.
+
+```console
+kubectl describe al base
+Name:         base
+Namespace:
+Labels:       <none>
+Annotations:  ...
+API Version:  kraan.io/v1alpha1
+Kind:         AddonsLayer
+Metadata:
+  Creation Timestamp:  2020-11-30T10:31:11Z
+  Finalizers:
+    finalizers.kraan.io
+  Generation:  4
+  Managed Fields: ...
+Spec:
+  Interval:  1m
+  Prereqs:
+    Depends On:
+      bootstrap@0.1.03
+    k8sVersion:  v1.16
+  Source:
+    Kind:   gitrepositories.source.toolkit.fluxcd.io
+    Name:   addons-config
+    Path:   ./testdata/addons/base
+  Timeout:  30s
+  Version:  0.1.03
+Status:
+  Conditions:
+    Last Transition Time:  2020-12-01T10:28:16Z
+    Message:               AddonsLayer failed, HelmRelease: base/microservice-1, not ready
+    Reason:                Failed
+    Status:                True
+    Type:                  Failed
+  Observed Generation:     4
+  Resources:
+    Kind:                  helmreleases.helm.toolkit.fluxcd.io
+    Last Transition Time:  2020-12-01T10:27:57Z
+    Name:                  microservice-1
+    Namespace:             base
+    Status:                TestFailed
+  Revision:                master/6a226b05a5aa0a775c2147d5b8b3b14d1adfa094
+  State:                   Failed
+  Version:                 0.1.03
+Events:
+  Type    Reason                              Age                 From              Message
+  ----    ------                              ----                ----              -------
+  ....
+  Normal  Deployed                            47m                 kraan-controller  AddonsLayer version 0.1.03 is Deployed, All HelmReleases deployed
+  Normal  ApplyPending                        37s                 kraan-controller  Waiting for layer: bootstrap, to apply source revision: main/5bfb0..... Layer: bootstrap, current state: Applying, deployed revision: master/6a226...
+  Normal  Applying                            31s                 kraan-controller  AddonsLayer is being applied
+  Normal  Failed                              1s (x2 over 23s)    kraan-controller  AddonsLayer failed, HelmRelease: base/microservice-1, not ready
+```
+
+A 'HelmRelease not deployed' log message will be emmitted if a HelmRelease fails to deploy. This message includes the layer name as well as HelmRelease namespace and name, e.g.
+
+```json
+{
+  "level": "info",
+  "ts": "2020-12-01T10:28:22.700Z",
+  "logger": "kraan.controller.reconciler",
+  "msg": "HelmRelease not deployed",
+  "function": "controllers.(*AddonsLayerReconciler).setHelmReleaseFailed",
+  "source": "addons_controller.go",
+  "line": 417,
+  "layer": "base",
+  "name": "base/microservice-1"
+}
+```
+
+The Kraan-Controller also generates metrics for `Deployed` and `Failed` conditions.

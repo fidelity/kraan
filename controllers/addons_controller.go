@@ -759,6 +759,9 @@ func (r *AddonsLayerReconciler) upgradeFix(ctx context.Context, al *kraanv1alpha
 			newCondition.Reason = newCondition.Type
 			newCondition.Message = fmt.Sprintf("%s, %s", condition.Reason, condition.Message)
 			al.Status.Conditions = []metav1.Condition{newCondition}
+			if al.Status.Resources == nil {
+				al.Status.Resources = []kraanv1alpha1.Resource{}
+			}
 			if err := r.update(ctx, al); err != nil {
 				r.Log.Error(err, "unable to update conditions", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", al.Name)...)
 				return true, ctrl.Result{}, err

@@ -655,7 +655,7 @@ func (a KubectlLayerApplier) processUpdateVersionAnnotation(layer layers.Layer, 
 	for k, v := range annotations {
 		if k == "kraan.updateVersion" && v == "true" {
 			a.logTrace("values for chart with annotation", layer, append(logging.GetObjKindNamespaceName(source), "values", logging.LogJSON(source.Spec.Values))...)
-			var values map[string]interface{}
+			values := make(map[string]interface{})
 			if source.Spec.Values != nil {
 				err := json.Unmarshal(source.Spec.Values.Raw, &values)
 				if err != nil {

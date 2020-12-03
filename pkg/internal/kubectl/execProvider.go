@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/fidelity/kraan/pkg/logging"
 )
@@ -41,6 +42,10 @@ func (p realExecProvider) ExecCmd(name string, arg ...string) ([]byte, error) {
 	if err != nil {
 		exitError, ok := err.(*exec.ExitError)
 		if ok {
+			if strings.Contains(string(exitError.Stderr), "recognized file extensions are [.json .yaml .yml]") {
+				// Empty directory
+				return []byte("{}"), nil
+			}
 			return nil, fmt.Errorf("%s - kubectl failed, %s, error\n%s", logging.CallerStr(logging.Me), exitError.ProcessState.String(), string(exitError.Stderr))
 		}
 		return nil, err

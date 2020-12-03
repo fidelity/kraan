@@ -102,7 +102,7 @@ release:
 	git checkout chart/Chart.yaml
 	git add -A
 	git commit -a -m "create release for chart version ${CHART_VERSION}"
-	git checkout gh-pages || exit
+	git checkout -B gh-pages --track origin/gh-pages || exit
 	git merge build-release-${CHART_VERSION} -m "package chart version ${CHART_VERSION}"
 	helm repo index --url https://fidelity.github.io/kraan/ .
 	git commit -a -m "release chart version ${CHART_VERSION}"

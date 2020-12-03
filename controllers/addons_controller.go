@@ -145,6 +145,13 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 					r.Log.V(1).Info("old revision", logging.GetGitRepoInfo(oldRepo)...)
 					return true
 				}
+				repo := r.Repos.Add(newRepo)
+				if repo.IsSynced() {
+					r.Log.V(1).Info("no change to revision, but not yet synced",
+						append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetGitRepoInfo(newRepo)...)...)
+					return true
+				}
+
 				r.Log.V(1).Info("no change to revision, not processing",
 					append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetGitRepoInfo(newRepo)...)...)
 				return false

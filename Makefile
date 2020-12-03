@@ -66,7 +66,7 @@ dev-build: gomod ${PROJECT}-check ${PROJECT}-build
 integration: gomod ${PROJECT}-integration
 clean: clean-gomod clean-godocs clean-${PROJECT}-check \
 	clean-${PROJECT}-build clean-check clean-build \
-	clean-dev-build clean-${BUILD_DIR}
+	clean-dev-build clean-builddir-${BUILD_DIR} mkdir-${BUILD_DIR}
 
 
 # Specific CI targets.
@@ -75,11 +75,11 @@ clean: clean-gomod clean-godocs clean-${PROJECT}-check \
 ci-check: check build
 	$(MAKE) -C build
 
-clean-${BUILD_DIR}:
+clean-builddir-${BUILD_DIR}:
 	rm -rf ${BUILD_DIR}
 
-${BUILD_DIR}:
-	mkdir -p $@
+mkdir-${BUILD_DIR}:
+	mkdir -p ${BUILD_DIR}
 
 clean-godocs:
 	rm -f ${GO_DOCS_ARTIFACTS}
@@ -126,7 +126,7 @@ gomod-update: go.mod ${PROJECT_SOURCES}
 	go build ./...
 
 clean-${PROJECT}-check:
-	$(foreach target,${GO_CHECK_PACKAGES},
+	$(foreach target,${GO_CHECK_PACKAGES}, \
 		$(MAKE) -C ${target} --makefile=${CURDIR}/makefile.mk clean;)
 
 ${PROJECT}-check: ${GO_CHECK_PACKAGES}
@@ -160,14 +160,14 @@ clean-check:
 check: DOCKER_SOURCES=Dockerfile-check ${MAKE_SOURCES} ${PROJECT_SOURCES}
 check: DOCKER_BUILD_OPTIONS=--target builder --no-cache
 check: IMG=${PROJECT}-check:${VERSION}
-check: ${BUILD_DIR} ${CHECK_ARTIFACT}
+check: mkdir-${BUILD_DIR} ${CHECK_ARTIFACT}
 
 clean-build:
 	rm -f ${BUILD_ARTIFACT}
 
 build: DOCKER_SOURCES=Dockerfile ${MAKE_SOURCES} ${PROJECT_SOURCES}
 build: IMG=${REPO}/${PROJECT}:${VERSION}
-build: ${BUILD_DIR} ${BUILD_ARTIFACT}
+build: mkdir-${BUILD_DIR} ${BUILD_ARTIFACT}
 
 %-docker.tar: $${DOCKER_SOURCES}
 	docker build --rm --pull=true \
@@ -183,7 +183,7 @@ clean-dev-build:
 
 dev-build: DOCKER_SOURCES=Dockerfile-dev ${MAKE_SOURCES} ${PROJECT_SOURCES}
 dev-build: IMG=${REPO}/${PROJECT}:${VERSION}
-dev-build: ${BUILD_DIR} ${DEV_BUILD_ARTIFACT}
+dev-build: mkdir-${BUILD_DIR} ${DEV_BUILD_ARTIFACT}
 
 %-docker.tar: $${DOCKER_SOURCES}
 	docker build --rm --pull=true \

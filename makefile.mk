@@ -44,14 +44,14 @@ clean-test:
 
 test: ${TEST_ARTIFACT}
 ${TEST_ARTIFACT}: ${GO_SOURCES}
-	if [ -n "${GO_TEST_SOURCES}" ]; then
+	if [ -n "${GO_TEST_SOURCES}" ]; then \
 		{ echo "${YELLOW}Running go test${NC_DIR}" && \
 		  mkdir -p $(dir ${TEST_ARTIFACT}) && \
 		  go test -coverprofile=$@ -v && \
 		  echo "${GREEN}TEST PASSED${NC}"; } || \
 		{ $(MAKE) --makefile=$(lastword $(MAKEFILE_LIST)) clean-test && \
           echo "${RED}TEST FAILED${NC}" && \
-		  exit 1; }
+		  exit 1; } \
 	fi
 
 integration:
@@ -70,11 +70,11 @@ clean-coverage:
 
 coverage: ${COVERAGE_ARTIFACT}
 ${COVERAGE_ARTIFACT}: ${TEST_ARTIFACT}
-	if [ -e "$<" ]; then
+	if [ -e "$<" ]; then \
 		echo "${YELLOW}Running go tool cover${NC_DIR}" && \
 		mkdir -p $(dir ${COVERAGE_ARTIFACT}) && \
 		go tool cover -html=$< -o $@ && \
-		echo "${GREEN}Generated: file://$@${NC}"
+		echo "${GREEN}Generated: file://$@${NC}"; \
 	fi
 
 

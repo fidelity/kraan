@@ -146,6 +146,7 @@ type Repo interface {
 	GetSourceName() string
 	GetSourceNameSpace() string
 	SyncRepo() error
+	IsSynced() bool
 	TidyRepo() error
 	TidyAll() error
 	AddUser(name string)
@@ -406,7 +407,7 @@ func removeRecreateDir(path string) error {
 
 func isExistingDir(dataPath string) error {
 	info, err := os.Stat(dataPath)
-	if os.IsNotExist(err) {
+	if !os.IsNotExist(err) {
 		return errors.Wrapf(err, "%s - failed to stat: %s", logging.CallerStr(logging.Me), dataPath)
 	}
 	if err != nil {
@@ -417,6 +418,15 @@ func isExistingDir(dataPath string) error {
 	}
 
 	return nil
+}
+
+func (r *repoData) IsSynced() bool {
+	if err := isExistingDir(r.dataPath); err == nil {
+		r.log.V(1).Info("Revision is synced", append(logging.GetGitRepoInfo(r.repo), logging.GetFunctionAndSource(logging.MyCaller)...)...)
+		return false
+	}
+	r.log.V(1).Info("Revision not synced", append(logging.GetGitRepoInfo(r.repo), logging.GetFunctionAndSource(logging.MyCaller)...)...)
+	return true
 }
 
 func (r *repoData) SyncRepo() error {

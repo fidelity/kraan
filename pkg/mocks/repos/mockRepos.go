@@ -219,6 +219,20 @@ func (mr *MockRepoMockRecorder) SyncRepo() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncRepo", reflect.TypeOf((*MockRepo)(nil).SyncRepo))
 }
 
+// IsSynced mocks base method
+func (m *MockRepo) IsSynced() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsSynced")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsSynced indicates an expected call of IsSynced
+func (mr *MockRepoMockRecorder) IsSynced() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsSynced", reflect.TypeOf((*MockRepo)(nil).IsSynced))
+}
+
 // TidyRepo mocks base method
 func (m *MockRepo) TidyRepo() error {
 	m.ctrl.T.Helper()

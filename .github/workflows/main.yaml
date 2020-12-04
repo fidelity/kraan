@@ -30,10 +30,7 @@ jobs:
         uses: jitterbit/get-changed-files@v1
         continue-on-error: true
       - run: |
-          contains() {
-              [[ $1 =~ (^|[[:space:]])$2($|[[:space:]]) ]] && exit(0) || exit(1)
-          }
-          if ! contains "${{ steps.files.outputs.all }}" "VERSION"; then
+          if ! echo "${{ steps.files.outputs.all }}" | grep -w -q "VERSION"; then
             echo "./VERSION must be changed in order to run builds and releases"
             exit 1
           fi

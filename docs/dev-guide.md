@@ -90,7 +90,7 @@ Once the changes are tested and merged into master, create a new chart release a
 
 ## Continuous Integration
 
-- All builds require that you update the [`./VERSION`](./VERSION) which maps to the container image tag and helm chart version
+- All PRs require that you update the [`./VERSION`](./VERSION) which maps to the container image tag and helm chart version
 - Any PR against `master` automatically triggers a lint, test, build, and release of the container image tag and helm chart version `<VERSION>-dev`
 - Any git push or merge into `master` triggers a lint, test, build, and release of the container image tag and helm chart version `<VERSION>`
 

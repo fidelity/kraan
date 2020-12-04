@@ -57,7 +57,7 @@ jobs:
         run: ./bin/setup.sh
       - name: Determine Tag
         run: |
-          if "${{ github.event_name }}" == "pull_request"
+          if [ "${{ github.event_name }}" == "pull_request" ]
           then
             export VERSION=$(cat VERSION)-dev
           else

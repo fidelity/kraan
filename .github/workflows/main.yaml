@@ -1,0 +1,77 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the action will run.
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  push:
+    branches: [master]
+    paths-ignore: ["**.md"]
+  pull_request:
+    branches: [master]
+    paths-ignore: ["**.md"]
+
+  # # Allows you to run this workflow manually from the Actions tab
+  # workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-20.04
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - id: files_changed
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: jitterbit/get-changed-files@v1
+        continue-on-error: true
+      - name: Validate VERSION changed
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          if ! echo "${{ steps.files_changed.outputs.all }}" | grep -w -q "VERSION"; then
+            echo "./VERSION must be changed in order to run builds and releases"
+            exit 1
+          fi
+      - name: Setup Go environment
+        uses: actions/setup-go@v2.1.3
+        with:
+          # The Go version to download (if necessary) and use. Supports semver spec and ranges.
+          go-version: 1.15
+      - name: Login to GitHub Packages Docker Registry
+        uses: docker/login-action@v1
+        with:
+          registry: docker.pkg.github.com
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: satackey/action-docker-layer-caching@v0.0.8
+        # Ignore the failure of a step and avoid terminating the job.
+        continue-on-error: true
+      - name: Setup dependencies
+        run: ./bin/setup.sh
+      - name: Determine Tag
+        run: |
+          if "${{ github.event_name }}" == "pull_request"
+          then
+            export VERSION=$(cat VERSION)-dev
+          else
+            export VERSION=$(cat VERSION)
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "CHART_VERSION=$VERSION" >> $GITHUB_ENV
+      - name: Lint, Test, and Build
+        run: |
+          make clean
+          make build
+      - name: Publish Docker Image and Helm Chart
+        run: |
+          make docker-push
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions"
+          make release

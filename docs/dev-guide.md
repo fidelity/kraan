@@ -90,9 +90,10 @@ Once the changes are tested and merged into master, create a new chart release a
 
 ## Continuous Integration
 
-- All PRs require that you update the [`./VERSION`](./VERSION) which maps to the container image tag and helm chart version
-- Any PR against `master` automatically triggers a lint, test, build, and release of the container image tag and helm chart version `<VERSION>-dev`
-- Any git push or merge into `master` triggers a lint, test, build, and release of the container image tag and helm chart version `<VERSION>`
+- If you update the [`./VERSION`](./VERSION) a new release will be made according to the below scenarios
+- If the docker release image version already exists, we DO NOT overwrite the image or chart. Prereleases get overwritten.
+- Any PR against `master` automatically triggers a lint, test, build, and prerelease of the container image tag version `kraan/kraan-controller-prerelease:<VERSION>`.
+- Any git push or merge into `master` triggers a lint, test, build, and release of the container image tag and helm chart version `kraan/kraan-controller:<VERSION>` if `VERSION` has changed.
 
 ## Deployment
 

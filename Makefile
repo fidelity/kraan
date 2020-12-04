@@ -53,7 +53,7 @@ NC:=\033[0m
 	clean-${PROJECT}-check ${PROJECT}-check clean-${PROJECT}-build \
 	${PROJECT}-build ${GO_CHECK_PACKAGES} clean-check check \
 	clean-build build generate manifests deploy docker-push controller-gen \
-	install uninstall lint-build run ${PROJECT}-integration integration
+	install uninstall lint-build run ${PROJECT}-integration integration docker-push-prerelease
 # Stop prints each line of the recipe.
 .SILENT:
 
@@ -182,7 +182,7 @@ clean-dev-build:
 	rm -f ${DEV_BUILD_ARTIFACT}
 
 dev-build: DOCKER_SOURCES=Dockerfile-dev ${MAKE_SOURCES} ${PROJECT_SOURCES}
-dev-build: IMG=${REPO}/${PROJECT}:${VERSION}
+dev-build: IMG=${REPO}/${PROJECT}-prerelease:${VERSION}
 dev-build: mkdir-${BUILD_DIR} ${DEV_BUILD_ARTIFACT}
 
 %-docker.tar: $${DOCKER_SOURCES}
@@ -220,6 +220,8 @@ generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 # Push the docker image
+docker-push-prerelease:
+	docker push ${REPO}/${PROJECT}-prerelease:${VERSION}
 docker-push:
 	docker push ${IMG}
 

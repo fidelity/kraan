@@ -62,7 +62,7 @@ jobs:
       - name: Publish Docker Image and Helm Chart
         run: |
           # add "-dev for PR builds against master"
-          if ${{ github.event_name }} == 'pull_request'
+          if "${{ github.event_name }}" == "pull_request"
           then
             export VERSION=$(cat VERSION)-dev
           else

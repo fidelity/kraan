@@ -28,6 +28,17 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
+      - name: Determine Tag
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]
+          then
+            export VERSION=$(cat VERSION)-dev
+          else
+            export VERSION=$(cat VERSION)
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "CHART_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "using $VERSION as the release version"
       - id: files_changed
         if: ${{ github.event_name == 'pull_request' }}
         uses: jitterbit/get-changed-files@v1
@@ -50,21 +61,11 @@ jobs:
           registry: docker.pkg.github.com
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Setup dependencies
+        run: ./bin/setup.sh
       - uses: satackey/action-docker-layer-caching@v0.0.8
         # Ignore the failure of a step and avoid terminating the job.
         continue-on-error: true
-      - name: Setup dependencies
-        run: ./bin/setup.sh
-      - name: Determine Tag
-        run: |
-          if [ "${{ github.event_name }}" == "pull_request" ]
-          then
-            export VERSION=$(cat VERSION)-dev
-          else
-            export VERSION=$(cat VERSION)
-          fi
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "CHART_VERSION=$VERSION" >> $GITHUB_ENV
       - name: Lint, Test, and Build
         run: |
           make clean

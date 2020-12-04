@@ -7,8 +7,10 @@ on:
   # Triggers the workflow on push or pull request events but only for the master branch
   push:
     branches: [master]
+    paths-ignore: ["**.md"]
   pull_request:
     branches: [master]
+    paths-ignore: ["**.md"]
 
   # # Allows you to run this workflow manually from the Actions tab
   # workflow_dispatch:
@@ -53,23 +55,22 @@ jobs:
         continue-on-error: true
       - name: Setup dependencies
         run: ./bin/setup.sh
-      - name: Lint, Test, and Build
+      - name: Determine Tag
         run: |
-          export VERSION=$(cat VERSION)
-          export CHART_VERSION=$VERSION
-          make clean
-          make build
-      - name: Publish Docker Image and Helm Chart
-        run: |
-          # add "-dev for PR builds against master"
           if "${{ github.event_name }}" == "pull_request"
           then
             export VERSION=$(cat VERSION)-dev
           else
             export VERSION=$(cat VERSION)
           fi
-
-          export CHART_VERSION=$VERSION
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "CHART_VERSION=$VERSION" >> $GITHUB_ENV
+      - name: Lint, Test, and Build
+        run: |
+          make clean
+          make build
+      - name: Publish Docker Image and Helm Chart
+        run: |
           make docker-push
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions"

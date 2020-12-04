@@ -27,9 +27,11 @@ jobs:
         with:
           fetch-depth: 0
       - id: files_changed
+        if: ${{ github.event_name == 'pull_request' }}
         uses: jitterbit/get-changed-files@v1
         continue-on-error: true
       - name: Validate VERSION changed
+        if: ${{ github.event_name == 'pull_request' }}
         run: |
           if ! echo "${{ steps.files_changed.outputs.all }}" | grep -w -q "VERSION"; then
             echo "./VERSION must be changed in order to run builds and releases"
@@ -60,7 +62,7 @@ jobs:
       - name: Publish Docker Image and Helm Chart
         run: |
           # add "-dev for PR builds against master"
-          if ${{ github.event_name == 'push' }} == 'true'
+          if "${{ github.event_name }}" == "pull_request"
           then
             export VERSION=$(cat VERSION)-dev
           else

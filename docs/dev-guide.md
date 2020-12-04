@@ -88,6 +88,13 @@ To update the gitops toolkit components (Helm Controller and Source Controller) 
 Then compare the file produced with the equivalent sections in the chart directory and updat the chart files accordingly.
 Once the changes are tested and merged into master, create a new chart release as described above.
 
+## Continuous Integration
+
+- If you update the [`./VERSION`](./VERSION) a new release will be made according to the below scenarios
+- If the docker release image version already exists, we DO NOT overwrite the image or chart. Prereleases get overwritten.
+- Any PR against `master` automatically triggers a lint, test, build, and prerelease of the container image tag version `kraan/kraan-controller-prerelease:<VERSION>`.
+- Any git push or merge into `master` triggers a lint, test, build, and release of the container image tag and helm chart version `kraan/kraan-controller:<VERSION>` if `VERSION` has changed.
+
 ## Deployment
 
 A shell script is provided to deploy the artifacts necessary to test the kraan-controller to a kubernetes cluster. It does this using a helm client to install a helm chart containing the Kraan Controller and the GitOps Toolkit (flux) components it uses.
@@ -117,14 +124,14 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
     '--gitops-image-pull-secret' set to 'auto' to generate image pull secrets from ~/.docker/config.json
                                 or supply name of file containing image pull secret defintion to apply.
                                 The secret should be called 'gotk-regcred'.
-    '--gitops-proxy'    set to 'auto' to generate proxy setting for gotk components using value of HTTPS_PROXY 
+    '--gitops-proxy'    set to 'auto' to generate proxy setting for gotk components using value of HTTPS_PROXY
                         environment variable or supply the proxy url to use.
     '--values-files'    provide a comma separated list of yaml files containing values you want to set.
                         see samples directory for examples.
 
-    '--deploy-kind' create a new kind cluster and deploy to it. Otherwise the script will deploy to an existing 
-                    cluster. The KUBECONFIG environmental variable or ~/.kube/config should be set to a cluster 
-                    admin user for the cluster you want to use. This cluster must be running API version 16 or 
+    '--deploy-kind' create a new kind cluster and deploy to it. Otherwise the script will deploy to an existing
+                    cluster. The KUBECONFIG environmental variable or ~/.kube/config should be set to a cluster
+                    admin user for the cluster you want to use. This cluster must be running API version 16 or
                     greater.
     '--prometheus'  install promethus stack in specified namespace
     '--testdata'    deploy testdata comprising addons layers and source controller custom resources to the target cluster.
@@ -197,14 +204,14 @@ To run integration tests:
 
 The Kraan Controller emits json format log records. Most log record contains a number of common fields that can be used to select log messages to display when examining log data.
 
-field name | Description
---------- | -----------
-function | The function name, in format `package.interface/object.method/function`
-source | The source file, just file name, not full path name
-line | The line number
-kind | The kind for log messages relating to owned or watched objects
-layer | The layer name for log messages relating to addons layers
-msg | The message text
-logger | name of the logger, one of   `controller-runtime.manager`, `controller-runtime`, `metrics`, `initialization`, `kraan.controller.applier`, `kraan.controller.reconciler` or `kraan.manager.controller`
-level | Level of message. This will be `info`, `debug` or `Level(-N)`, where 'N' is the trace level. Levels 2 to 4 are currently used.<br>Level 4 is exclusively used by tracing of function entry and exit.
-ts | timestamp of log message
+| field name | Description                                                                                                                                                                                          |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| function   | The function name, in format `package.interface/object.method/function`                                                                                                                              |
+| source     | The source file, just file name, not full path name                                                                                                                                                  |
+| line       | The line number                                                                                                                                                                                      |
+| kind       | The kind for log messages relating to owned or watched objects                                                                                                                                       |
+| layer      | The layer name for log messages relating to addons layers                                                                                                                                            |
+| msg        | The message text                                                                                                                                                                                     |
+| logger     | name of the logger, one of `controller-runtime.manager`, `controller-runtime`, `metrics`, `initialization`, `kraan.controller.applier`, `kraan.controller.reconciler` or `kraan.manager.controller`  |
+| level      | Level of message. This will be `info`, `debug` or `Level(-N)`, where 'N' is the trace level. Levels 2 to 4 are currently used.<br>Level 4 is exclusively used by tracing of function entry and exit. |
+| ts         | timestamp of log message                                                                                                                                                                             |

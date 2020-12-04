@@ -53,4 +53,6 @@ jobs:
           export VERSION=$(cat VERSION)
           export CHART_VERSION=$VERSION
           make docker-push
+          git config --global user.email "kraan@fidelity.com"
+          git config --global user.name "Kraan CI"
           make release

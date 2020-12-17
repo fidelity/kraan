@@ -20,6 +20,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -667,7 +668,7 @@ func (a KubectlLayerApplier) processUpdateVersionAnnotation(layer layers.Layer, 
 			if err != nil {
 				return errors.WithMessagef(err, "%s - failed convert updated values to json string", logging.CallerStr(logging.Me))
 			}
-			source.Spec.Values.Raw = newJSON
+			source.Spec.Values = &apiextensionsv1.JSON{Raw: newJSON}
 			a.logTrace("values for chart after update", layer, append(logging.GetObjKindNamespaceName(source), "values", logging.LogJSON(source.Spec.Values))...)
 		}
 	}

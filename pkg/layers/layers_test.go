@@ -137,9 +137,9 @@ func getLayer(layerName, testDataFileName, reposDataFileName string) (layers.Lay
 
 func testDelayedRequeue(t *testing.T, l layers.Layer) bool {
 	l.SetDelayedRequeue()
-	/*k, ok := l.(*layers.KraanLayer)
+	/*k, ok := l.(*layers.kraanLayer)
 	if !ok {
-		t.Errorf("failed to cast layer interface to *layers.KraanLayer")
+		t.Errorf("failed to cast layer interface to *layers.kraanLayer")
 		return false
 	}
 	if !k.requeue {
@@ -176,15 +176,19 @@ func TestSetDelayedRequeue(t *testing.T) {
 
 func testRequeue(t *testing.T, l layers.Layer) bool {
 	l.SetRequeue()
-	/*k, ok := l.(*layers.KraanLayer)
-	if !ok {
-		t.Errorf("failed to cast layer interface to *layers.KraanLayer")
+
+	requeueValue, err := layers.GetField(l, "requeue")
+	if err != nil {
+		t.Errorf("failed to get requeue field value: %s", err.Error())
 		return false
 	}
-	if !k.requeue {
+	t.Logf("requeue, value: %v", requeueValue)
+	requeue := requeueValue.Bool()
+	if !requeue {
 		t.Errorf("failed to set requeue using SetRequeue")
 		return false
-	}*/
+	}
+
 	if !l.NeedsRequeue() {
 		t.Errorf("failed to set requeue using SetRequeue")
 		return false
@@ -207,9 +211,9 @@ func TestSetRequeue(t *testing.T) {
 
 func testUpdated(t *testing.T, l layers.Layer) bool {
 	l.SetUpdated()
-	/*k, ok := l.(*layers.KraanLayer)
+	/*k, ok := l.(*layers.kraanLayer)
 	if !ok {
-		t.Errorf("failed to cast layer interface to *layers.KraanLayer")
+		t.Errorf("failed to cast layer interface to *layers.kraanLayer")
 		return false
 	}
 	if !k.updated {

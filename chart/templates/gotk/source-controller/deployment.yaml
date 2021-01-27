@@ -15,16 +15,19 @@ spec:
       app: source-controller
   template:
     metadata:
+      annotations:
+        prometheus.io/port: "8080"
+        prometheus.io/scrape: "true"
       labels:
         app: source-controller
-        {{- if .Values.global.extraLabels }}   
+        {{- if .Values.global.extraLabels }}
 {{ toYaml .Values.global.extraLabels | indent 8 }}
         {{- end }}
-        {{- if .Values.gotk.sourceController.extraLabels }}   
+        {{- if .Values.gotk.sourceController.extraLabels }}
 {{ toYaml .Values.gotk.sourceController.extraLabels | indent 8 }}
         {{- end }}
       annotations:
-        {{- if .Values.global.extraPodAnnotations }}   
+        {{- if .Values.global.extraPodAnnotations }}
 {{ toYaml .Values.global.extraPodAnnotations | indent 8 }}
         {{- end }}
         {{- if .Values.gotk.sourceController.extraPodAnnotations }}
@@ -40,9 +43,10 @@ spec:
         - --events-addr=
         - --watch-all-namespaces=true
         - --log-level=info
-        - --log-json
+        - --log-encoding=json
         - --enable-leader-election
         - --storage-path=/data
+        - --storage-adv-addr=source-controller.$(RUNTIME_NAMESPACE).svc.cluster.local.
         env:
         - name: RUNTIME_NAMESPACE
           valueFrom:

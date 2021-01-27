@@ -161,8 +161,10 @@ spec:
                     description: SecretRef holds the name to a secret that contains a 'value' key with the kubeconfig file as the value. It must be in the same namespace as the HelmRelease. It is recommended that the kubeconfig is self-contained, and the secret is regularly updated if credentials such as a cloud-access-token expire. Cloud specific `cmd-path` auth helpers will not function without adding binaries and credentials to the Pod that is responsible for reconciling the HelmRelease.
                     properties:
                       name:
-                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                        description: Name of the referent
                         type: string
+                    required:
+                    - name
                     type: object
                 type: object
               maxHistory:
@@ -197,6 +199,11 @@ spec:
                 type: object
               serviceAccountName:
                 description: The name of the Kubernetes service account to impersonate when reconciling this HelmRelease.
+                type: string
+              storageNamespace:
+                description: StorageNamespace used for the Helm storage. Defaults to the namespace of the HelmRelease.
+                maxLength: 63
+                minLength: 1
                 type: string
               suspend:
                 description: Suspend tells the controller to suspend reconciliation for this HelmRelease, it does not apply to already started reconciliations. Defaults to false.

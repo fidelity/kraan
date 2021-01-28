@@ -20,14 +20,14 @@ spec:
         prometheus.io/scrape: "true"
       labels:
         app: helm-controller
-        {{- if .Values.global.extraLabels }}   
+        {{- if .Values.global.extraLabels }}
 {{ toYaml .Values.global.extraLabels | indent 8 }}
         {{- end }}
-        {{- if .Values.gotk.helmController.extraLabels }}   
+        {{- if .Values.gotk.helmController.extraLabels }}
 {{ toYaml .Values.gotk.helmController.extraLabels | indent 8 }}
         {{- end }}
       annotations:
-        {{- if .Values.global.extraPodAnnotations }}   
+        {{- if .Values.global.extraPodAnnotations }}
 {{ toYaml .Values.global.extraPodAnnotations | indent 8 }}
         {{- end }}
         {{- if .Values.gotk.helmController.extraPodAnnotations }}
@@ -43,7 +43,7 @@ spec:
         - --events-addr=
         - --watch-all-namespaces=true
         - --log-level=info
-        - --log-json
+        - --log-encoding=json
         - --enable-leader-election
         env:
         - name: RUNTIME_NAMESPACE
@@ -56,15 +56,22 @@ spec:
         - name: NO_PROXY
           value: {{ .Values.global.env.noProxy }}
         {{- end }}
-        image: {{ .Values.gotk.helmController.image.repository }}/helm-controller:{{ .Values.gotk.helmController.image.tag }}    
+        image: {{ .Values.gotk.helmController.image.repository }}/helm-controller:{{ .Values.gotk.helmController.image.tag }}
         imagePullPolicy: {{ .Values.gotk.helmController.image.imagePullPolicy | default "IfNotPresent" }}
         livenessProbe:
           httpGet:
-            path: /metrics
-            port: http-prom
+            path: /healthz
+            port: healthz
         ports:
         - containerPort: 8080
           name: http-prom
+        - containerPort: 9440
+          name: healthz
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: healthz
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true

@@ -372,6 +372,9 @@ func (r *AddonsLayerReconciler) processPrune(l layers.Layer) (statusReconciled b
 	}
 	if pruneIsRequired {
 		l.SetStatusPruning()
+			// label HRs to be pruned as orphaned if not already labelled, set label value to time now.
+			// if all HR orphan label values are older than the configurable adoption period, proceed with prune
+			// If one or more HR to be pruned have orphan label value less than adoption period ago, requeue in 15 seconds.
 		if pruneErr := applier.Prune(ctx, l, hrs); pruneErr != nil {
 			return true, errors.WithMessagef(pruneErr, "%s - prune failed", logging.CallerStr(logging.Me))
 		}
@@ -588,11 +591,7 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error
 		return "", nil
 	}
 
-	if !l.CheckK8sVersion() {
-		l.SetStatusK8sVersion()
-		l.SetDelayedRequeue()
-		return "", nil
-	}
+	// Moved CheckK8sVersion to after ready and adoption check
 
 	ready, err := r.isReady(l)
 	if err != nil {
@@ -611,6 +610,26 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error
 	}
 
 	defer r.updateResources(l)
+
+	// Look for orphans to adopt
+	// get list of all HRs with orphan label and owner is an addonLayer other than self.
+	// get source and cluster HRs for this layer using sourceHrs, clusterHrs, err := a.GetSourceAndClusterHelmReleases(r.ctx, l)
+	// for each source not on cluster, i.e. not already owned by us
+	//    use client.Get to get HR
+	//    if it has an orphan label change the owner to us and remove label
+	//
+	//    if it is not orphaned, it may be new or it's current owner might not have go to prune check yet so not yet orphaned it.
+	//    If this layer is not dependant on the current owner it may progress to applying before it is orphaned, in which case we update the ownership when applying
+	//    That would mean the previous owner would not see it in their view of what is on the cluster that they own so it would not be processed if not in their source
+
+	//    If it has been included in two layers ownership will get updated repeatedly changed as each layer process it, if the details of the helm chart are different it will repeatedly be redeployed!
+
+
+	if !l.CheckK8sVersion() {
+		l.SetStatusK8sVersion()
+		l.SetDelayedRequeue()
+		return "", nil
+	}
 
 	layerStatusUpdated, err := r.processPrune(l)
 	if err != nil {
@@ -713,6 +732,12 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (res ctrl.Result, er
 	} else {
 		r.Log.Info("addonsLayer is being deleted", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
 		if common.ContainsString(addonsLayer.ObjectMeta.Finalizers, kraanv1alpha1.AddonsFinalizer) {
+
+			// Call applier.GetResources to update resources owned by this layer.
+			// label HRs owned by this layer as orphaned if not already labelled, set label value to time now.
+			// if all HR orphan label values are older than the configurable adoption period, proceed with removal of finalizer
+			// If one or more HR owned by this layer have orphan label value less than adoption period ago, requeue in 15 seconds.
+
 			// Remove our finalizer from the list and update it
 			addonsLayer.ObjectMeta.Finalizers = common.RemoveString(l.GetAddonsLayer().ObjectMeta.Finalizers, kraanv1alpha1.AddonsFinalizer)
 			r.recordReadiness(addonsLayer, true)

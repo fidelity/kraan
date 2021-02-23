@@ -359,6 +359,25 @@ func (r *AddonsLayerReconciler) getK8sClient() (kubernetes.Interface, error) {
 	return clientset, nil
 }
 
+func (r *AddonsLayerReconciler) orphans(l layers.Layer, pruneHrs []*helmctlv2.HelmRelease) (bool, error) {
+	if len(pruneHrs) == 0 {
+		return false, nil
+	}
+
+	orphansPending := false
+
+	for _, hr := range pruneHrs {
+		orphan, err := r.Applier.Orphan(r.Context, l, hr)
+		if err != nil {
+			return true, errors.WithMessagef(err, "%s - check for orphans failed", logging.CallerStr(logging.Me))
+		}
+		
+		orphansPending = orphansPending || orphan
+	}
+
+	return orphansPending, nil
+}
+
 func (r *AddonsLayerReconciler) processPrune(l layers.Layer) (statusReconciled bool, err error) {
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
@@ -370,17 +389,27 @@ func (r *AddonsLayerReconciler) processPrune(l layers.Layer) (statusReconciled b
 	if err != nil {
 		return false, errors.WithMessagef(err, "%s - check for apply required failed", logging.CallerStr(logging.Me))
 	}
+
 	if pruneIsRequired {
 		l.SetStatusPruning()
-			// label HRs to be pruned as orphaned if not already labelled, set label value to time now.
-			// if all HR orphan label values are older than the configurable adoption period, proceed with prune
-			// If one or more HR to be pruned have orphan label value less than adoption period ago, requeue in 15 seconds.
+
+		orphans, orphanErr := r.orphans(l, hrs)
+		if orphanErr != nil {
+			return true, errors.WithMessagef(orphanErr, "%s - orphan check failed", logging.CallerStr(logging.Me))
+		}
+		
+		if orphans { // Outstanding orphans waiting to be adopted
+			l.SetDelayedRequeue() // Schedule requeue
+			return true, nil // don't proceed with prune
+		}
+
 		if pruneErr := applier.Prune(ctx, l, hrs); pruneErr != nil {
 			return true, errors.WithMessagef(pruneErr, "%s - prune failed", logging.CallerStr(logging.Me))
 		}
 		l.SetDelayedRequeue()
 		return true, nil
 	}
+
 	return false, nil
 }
 
@@ -590,8 +619,6 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error
 		l.SetHold()
 		return "", nil
 	}
-
-	// Moved CheckK8sVersion to after ready and adoption check
 
 	ready, err := r.isReady(l)
 	if err != nil {

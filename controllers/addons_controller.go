@@ -359,19 +359,19 @@ func (r *AddonsLayerReconciler) getK8sClient() (kubernetes.Interface, error) {
 	return clientset, nil
 }
 
-func (r *AddonsLayerReconciler) orphans(l layers.Layer, pruneHrs []*helmctlv2.HelmRelease) (bool, error) {
-	if len(pruneHrs) == 0 {
+func (r *AddonsLayerReconciler) orphans(l layers.Layer, hrs []*helmctlv2.HelmRelease) (bool, error) {
+	if len(hrs) == 0 {
 		return false, nil
 	}
 
 	orphansPending := false
 
-	for _, hr := range pruneHrs {
+	for _, hr := range hrs {
 		orphan, err := r.Applier.Orphan(r.Context, l, hr)
 		if err != nil {
 			return true, errors.WithMessagef(err, "%s - check for orphans failed", logging.CallerStr(logging.Me))
 		}
-		
+
 		orphansPending = orphansPending || orphan
 	}
 
@@ -397,10 +397,10 @@ func (r *AddonsLayerReconciler) processPrune(l layers.Layer) (statusReconciled b
 		if orphanErr != nil {
 			return true, errors.WithMessagef(orphanErr, "%s - orphan check failed", logging.CallerStr(logging.Me))
 		}
-		
+
 		if orphans { // Outstanding orphans waiting to be adopted
 			l.SetDelayedRequeue() // Schedule requeue
-			return true, nil // don't proceed with prune
+			return true, nil      // don't proceed with prune
 		}
 
 		if pruneErr := applier.Prune(ctx, l, hrs); pruneErr != nil {
@@ -609,6 +609,28 @@ func (r *AddonsLayerReconciler) isReady(l layers.Layer) (bool, error) {
 	return true, nil
 }
 
+func (r *AddonsLayerReconciler) adopt(l layers.Layer) error {
+	orphanedHrs, err := r.Applier.GetOrphanedHelmReleases(r.Context, l)
+	if err != nil {
+		return errors.WithMessagef(err, "%s - failed to get orphaned helm releases", logging.CallerStr(logging.Me))
+	}
+
+	sourceHrs, _, err := r.Applier.GetSourceAndClusterHelmReleases(r.Context, l)
+	if err != nil {
+		return errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
+	}
+
+	for hrName, hr := range orphanedHrs {
+		if _, ok := sourceHrs[hrName]; ok { // Orphaned HelmRelease is in our source
+			err := r.Applier.Adopt(r.Context, l, hr)
+			if err != nil {
+				return errors.WithMessagef(err, "%s - failed to adopt helm releases", logging.CallerStr(logging.Me))
+			}
+		}
+	}
+	return nil
+}
+
 func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error) { // nolint: gocyclo // ok
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
@@ -638,19 +660,10 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error
 
 	defer r.updateResources(l)
 
-	// Look for orphans to adopt
-	// get list of all HRs with orphan label and owner is an addonLayer other than self.
-	// get source and cluster HRs for this layer using sourceHrs, clusterHrs, err := a.GetSourceAndClusterHelmReleases(r.ctx, l)
-	// for each source not on cluster, i.e. not already owned by us
-	//    use client.Get to get HR
-	//    if it has an orphan label change the owner to us and remove label
-	//
-	//    if it is not orphaned, it may be new or it's current owner might not have go to prune check yet so not yet orphaned it.
-	//    If this layer is not dependant on the current owner it may progress to applying before it is orphaned, in which case we update the ownership when applying
-	//    That would mean the previous owner would not see it in their view of what is on the cluster that they own so it would not be processed if not in their source
-
-	//    If it has been included in two layers ownership will get updated repeatedly changed as each layer process it, if the details of the helm chart are different it will repeatedly be redeployed!
-
+	err = r.adopt(l)
+	if err != nil {
+		return "", errors.WithMessagef(err, "%s - failed to perform adopt processing", logging.CallerStr(logging.Me))
+	}
 
 	if !l.CheckK8sVersion() {
 		l.SetStatusK8sVersion()
@@ -704,7 +717,7 @@ func (r *AddonsLayerReconciler) updateRequeue(l layers.Layer) (res ctrl.Result, 
 // Reconcile process AddonsLayers custom resources.
 // +kubebuilder:rbac:groups=kraan.io,resources=addons,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kraan.io,resources=addons/status,verbs=get;update;patch
-func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (res ctrl.Result, err error) { // nolint:funlen,gocyclo // ok
+func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) { // nolint:funlen,gocyclo,gocognit // ok
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
 
@@ -712,7 +725,7 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (res ctrl.Result, er
 	reconcileStart := time.Now()
 
 	var addonsLayer *kraanv1alpha1.AddonsLayer = &kraanv1alpha1.AddonsLayer{}
-	if err = r.Get(ctx, req.NamespacedName, addonsLayer); err != nil {
+	if err := r.Get(ctx, req.NamespacedName, addonsLayer); err != nil {
 		if apierrors.IsNotFound(err) {
 			r.Log.Info("addonsLayer deleted", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
 		}
@@ -759,12 +772,27 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (res ctrl.Result, er
 	} else {
 		r.Log.Info("addonsLayer is being deleted", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
 		if common.ContainsString(addonsLayer.ObjectMeta.Finalizers, kraanv1alpha1.AddonsFinalizer) {
+			_, clusterHrs, e := r.Applier.GetSourceAndClusterHelmReleases(ctx, l)
+			if e != nil {
+				return ctrl.Result{}, errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
+			}
 
-			// Call applier.GetResources to update resources owned by this layer.
+			hrs := make([]*helmctlv2.HelmRelease, 0, len(clusterHrs))
+
+			for _, value := range clusterHrs {
+				hrs = append(hrs, value)
+			}
+
 			// label HRs owned by this layer as orphaned if not already labelled, set label value to time now.
-			// if all HR orphan label values are older than the configurable adoption period, proceed with removal of finalizer
-			// If one or more HR owned by this layer have orphan label value less than adoption period ago, requeue in 15 seconds.
+			orphans, orphanErr := r.orphans(l, hrs)
+			if orphanErr != nil {
+				return ctrl.Result{}, errors.WithMessagef(orphanErr, "%s - orphan check failed", logging.CallerStr(logging.Me))
+			}
 
+			if orphans { // Outstanding orphans waiting to be adopted
+				l.SetDelayedRequeue()     // Schedule requeue
+				return r.updateRequeue(l) // don't proceed with delete
+			}
 			// Remove our finalizer from the list and update it
 			addonsLayer.ObjectMeta.Finalizers = common.RemoveString(l.GetAddonsLayer().ObjectMeta.Finalizers, kraanv1alpha1.AddonsFinalizer)
 			r.recordReadiness(addonsLayer, true)

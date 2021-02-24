@@ -38,6 +38,7 @@ import (
 const (
 	orphanedLabel = "orphaned"
 )
+
 var (
 	ownerLabel     string                                            = "kraan/layer"
 	newKubectlFunc func(logger logr.Logger) (kubectl.Kubectl, error) = kubectl.NewKubectl
@@ -53,6 +54,8 @@ type LayerApplier interface {
 	GetResources(ctx context.Context, layer layers.Layer) (resources []kraanv1alpha1.Resource, err error)
 	GetSourceAndClusterHelmReleases(ctx context.Context, layer layers.Layer) (sourceHrs, clusterHrs map[string]*helmctlv2.HelmRelease, err error)
 	Orphan(ctx context.Context, layer layers.Layer, hr *helmctlv2.HelmRelease) (bool, error)
+	GetOrphanedHelmReleases(ctx context.Context, layer layers.Layer) (foundHrs map[string]*helmctlv2.HelmRelease, err error)
+	Adopt(ctx context.Context, layer layers.Layer, hr *helmctlv2.HelmRelease) error
 }
 
 // KubectlLayerApplier applies an AddonsLayer to a Kubernetes cluster using the kubectl command.
@@ -117,13 +120,13 @@ func getLabel(hr metav1.ObjectMeta) string {
 	return fmt.Sprintf("%s/%s", hr.GetNamespace(), hr.GetName())
 }
 
-func removeResourceVersion(obj runtime.Object) string {
+func removeResourceVersion(obj runtime.Object) {
 	mobj, ok := (obj).(metav1.Object)
 	if !ok {
-		return fmt.Sprintf("failed to convert runtime.Object to meta.Object")
+		return
 	}
 	mobj.SetResourceVersion("")
-	return fmt.Sprintf("%s/%s", mobj.GetNamespace(), mobj.GetName())
+	return
 }
 
 func getObjLabel(obj runtime.Object) string {
@@ -134,6 +137,29 @@ func getObjLabel(obj runtime.Object) string {
 	return fmt.Sprintf("%s/%s", mobj.GetNamespace(), mobj.GetName())
 }
 
+// GetOrphanedHelmReleases returns a map of HelmReleases that are labeled as orphaned and not owned by layer
+func (a KubectlLayerApplier) GetOrphanedHelmReleases(ctx context.Context, layer layers.Layer) (foundHrs map[string]*helmctlv2.HelmRelease, err error) {
+	logging.TraceCall(a.getLog(layer))
+	defer logging.TraceExit(a.getLog(layer))
+
+	hrList := &helmctlv2.HelmReleaseList{}
+	var labels client.HasLabels = []string{orphanedLabel}
+	listOptions := &client.ListOptions{}
+	labels.ApplyToList(listOptions)
+
+	err = a.client.List(ctx, hrList, listOptions)
+	if err != nil {
+		return nil, errors.Wrapf(err, "%s - failed to list orphaned HelmRelease resources '%s'", logging.CallerStr(logging.Me), layer.GetName())
+	}
+
+	foundHrs = map[string]*helmctlv2.HelmRelease{}
+	for _, hr := range hrList.Items {
+		if !isOwner(layer, &hr) { // nolint: scopelint // ok
+			foundHrs[getLabel(hr.ObjectMeta)] = hr.DeepCopy()
+		}
+	}
+	return foundHrs, nil
+}
 func (a KubectlLayerApplier) decodeHelmReleases(layer layers.Layer, objs []runtime.Object) (hrs []*helmctlv2.HelmRelease, err error) {
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
@@ -539,18 +565,24 @@ func (a KubectlLayerApplier) Apply(ctx context.Context, layer layers.Layer) (err
 
 func isOwner(layer layers.Layer, hr *helmctlv2.HelmRelease) bool {
 	for _, owner := range hr.OwnerReferences {
-		if owner.Kind == "AddonsLayer" && owner.APIVersion == "kraan.io/v1alpha1"  && owner.Name == layer.GetName() {
+		if owner.Kind == "AddonsLayer" && owner.APIVersion == "kraan.io/v1alpha1" && owner.Name == layer.GetName() {
 			return true
 		}
 	}
 	return false
 }
 
+func changeOwner(layer layers.Layer, hr *helmctlv2.HelmRelease) {
+	for index, owner := range hr.OwnerReferences {
+		if owner.Kind == "AddonsLayer" && owner.APIVersion == "kraan.io/v1alpha1" && owner.Name != layer.GetName() {
+			hr.OwnerReferences[index].Name = layer.GetName()
+			hr.OwnerReferences[index].UID = layer.GetAddonsLayer().UID
+		}
+	}
+}
 
 func getTimestamp(dtg string) (*metav1.Time, error) {
-	layout := "2006-02-01T15:04:05.000Z"
-
-	t, err := time.Parse(layout, dtg)
+	t, err := time.Parse(time.RFC3339, dtg)
 	if err != nil {
 		return nil, errors.Wrapf(err, "%s - failed to parse timestamp '%s'", logging.CallerStr(logging.Me), dtg)
 	}
@@ -560,8 +592,9 @@ func getTimestamp(dtg string) (*metav1.Time, error) {
 	return &mt, nil
 }
 
-func orphanLabel(hr *helmctlv2.HelmRelease) (*metav1.Time, error) {
-	for label, value := range hr.GetLabels() {
+func (a KubectlLayerApplier) orphanLabel(ctx context.Context, hr *helmctlv2.HelmRelease) (*metav1.Time, error) {
+	labels := hr.GetLabels()
+	for label, value := range labels {
 		if label == orphanedLabel {
 			dtg, err := getTimestamp(value)
 			if err != nil {
@@ -570,7 +603,38 @@ func orphanLabel(hr *helmctlv2.HelmRelease) (*metav1.Time, error) {
 			return dtg, nil
 		}
 	}
-	return false
+	// Label not present, add it
+	now := metav1.Now()
+	labels[orphanedLabel] = now.Format(time.RFC3339)
+	hr.SetLabels(labels)
+	err := a.client.Update(ctx, hr, &client.UpdateOptions{})
+	if err != nil {
+		return nil, errors.Wrapf(err, "%s - failed to Update helmRelease '%s'", logging.CallerStr(logging.Me), getObjLabel(hr))
+	}
+	return &now, nil
+}
+
+// Adopt sets an orphaned HelmRelease to a new owner.
+// It returns a bool value set to true if the HelmRelease is still waiting for adoption or false if the adoption period has expired.
+func (a KubectlLayerApplier) Adopt(ctx context.Context, layer layers.Layer, hr *helmctlv2.HelmRelease) error {
+	logging.TraceCall(a.getLog(layer))
+	defer logging.TraceExit(a.getLog(layer))
+
+	labels := hr.GetLabels()
+	delete(labels, orphanedLabel)
+	if labels == nil {
+		labels = map[string]string{}
+	}
+	hr.SetLabels(labels)
+
+	changeOwner(layer, hr)
+
+	err := a.client.Update(ctx, hr, &client.UpdateOptions{})
+	if err != nil {
+		return errors.Wrapf(err, "%s - failed to Update helmRelease '%s'", logging.CallerStr(logging.Me), getObjLabel(hr))
+	}
+
+	return nil
 }
 
 // Orphan adds an 'orphan' label to a HelmRelease if not already present.
@@ -604,15 +668,12 @@ func (a KubectlLayerApplier) Orphan(ctx context.Context, layer layers.Layer, hr 
 		return false, nil
 	}
 
+	orphanedTime, err := a.orphanLabel(ctx, theHr)
+	if err != nil {
+		return false, errors.WithMessagef(err, "%s - failed to get/set orphan label '%s'", logging.CallerStr(logging.Me), getObjLabel(hr))
+	}
 
-
-	labels := theHr.GetLabels()
-
-	
-
-	// if all HR orphan label value is older than the configurable adoption period, return false.
-
-	return true, nil
+	return orphanedTime.Add(layer.GetDelay()).After(time.Now()), nil
 }
 
 // Prune the AddonsLayer by removing the Addons found in the cluster that have since been removed from the Layer.

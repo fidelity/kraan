@@ -15,14 +15,14 @@ spec:
     metadata:
       labels:
         app: kraan-controller
-        {{- if .Values.global.extraLabels }}   
+        {{- if .Values.global.extraLabels }}
 {{ toYaml .Values.global.extraLabels | indent 8 }}
         {{- end }}
-        {{- if .Values.kraan.kraanController.extraLabels }}   
+        {{- if .Values.kraan.kraanController.extraLabels }}
 {{ toYaml .Values.kraan.kraanController.extraLabels | indent 8 }}
         {{- end }}
       annotations:
-        {{- if .Values.global.extraPodAnnotations }}   
+        {{- if .Values.global.extraPodAnnotations }}
 {{ toYaml .Values.global.extraPodAnnotations | indent 8 }}
         {{- end }}
         {{- if .Values.kraan.kraanController.extraPodAnnotations }}
@@ -35,7 +35,7 @@ spec:
       serviceAccountName: kraan
       containers:
       - name: manager
-        image: {{ .Values.kraan.kraanController.image.repository }}/kraan-controller:{{ .Values.kraan.kraanController.image.tag  | default .Chart.AppVersion }}
+        image: {{ .Values.kraan.kraanController.image.repository }}/{{ .Values.kraan.kraanController.image.name }}:{{ .Values.kraan.kraanController.image.tag  | default .Chart.AppVersion }}
         imagePullPolicy: {{ .Values.kraan.kraanController.image.imagePullPolicy | default "IfNotPresent" }}
         securityContext:
           allowPrivilegeEscalation: false

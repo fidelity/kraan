@@ -22,11 +22,12 @@ BUILD_DIR:=build/
 GITHUB_USER?=$(shell git config --local  user.name)
 GITHUB_ORG=$(shell git config --get remote.origin.url | sed -nr '/github.com/ s/.*github.com([^"]+).*/\1/p' | cut --characters=2- | cut -f1 -d/)
 GITHUB_REPO=$(shell git config --get remote.origin.url | sed -nr '/github.com/ s/.*github.com([^"]+).*/\1/p'| cut --characters=2- | cut -f2 -d/ | cut -f1 -d.)
-export VERSION?=master
+export VERSION?=$(shell cat VERSION)
 export REPO ?=docker.pkg.github.com/${GITHUB_ORG}/${GITHUB_REPO}
 # Image URL to use all building/pushing image targets
 IMG ?= ${REPO}/${PROJECT}:${VERSION}
-CHART_VERSION ?=
+export CHART_VERSION?=$(shell grep version: chart/Chart.yaml | awk '{print $$2}')
+export CHART_APP_VERSION?=$(shell grep appVersion: chart/Chart.yaml | awk '{print $$2}')
 ALL_GO_PACKAGES:=$(shell find ${CURDIR}/main/ ${CURDIR}/controllers/ ${CURDIR}/api/ ${CURDIR}/pkg/ \
 	-type f -name *.go -exec dirname {} \; | sort --uniq)
 GO_CHECK_PACKAGES:=$(shell echo $(subst $() $(),\\n,$(ALL_GO_PACKAGES)) | \
@@ -89,15 +90,11 @@ godocs: ${GO_DOCS_ARTIFACTS}
 	echo "${YELLOW}Running godocdown: $@${NC}" && \
 	godocdown -output $@ $(shell dirname $@)
 
+validate-versions:
+	./scripts/validate.sh
 
 release:
-	if [ -z ${CHART_VERSION} ]; then
-		echo "please set CHART_VERSION"
-		exit
-	fi
 	git checkout -b build-release-${CHART_VERSION} || exit
-	sed -i s/appVersion\:\ v0.1.x/appVersion\:\ ${VERSION}/ chart/Chart.yaml
-	sed -i s/version\:\ v0.1.x/version\:\ ${CHART_VERSION}/ chart/Chart.yaml
 	helm package --version ${CHART_VERSION} chart
 	git checkout chart/Chart.yaml
 	git add -A

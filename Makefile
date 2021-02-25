@@ -69,6 +69,14 @@ clean: clean-gomod clean-godocs clean-${PROJECT}-check \
 	clean-${PROJECT}-build clean-check clean-build \
 	clean-dev-build clean-builddir-${BUILD_DIR} mkdir-${BUILD_DIR}
 
+setup:
+	./bin/setup.sh
+
+lint:
+	golangci-lint run --concurrency=1 -v --print-resources-usage
+
+test:
+	go test ./...
 
 # Specific CI targets.
 # ci-check: Validated the 'check' target works for debug as it cache will be used

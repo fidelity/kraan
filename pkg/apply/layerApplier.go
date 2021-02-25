@@ -114,7 +114,7 @@ func getLabel(hr metav1.ObjectMeta) string {
 func removeResourceVersion(obj runtime.Object) string {
 	mobj, ok := (obj).(metav1.Object)
 	if !ok {
-		return fmt.Sprintf("failed to convert runtime.Object to meta.Object")
+		return "failed to convert runtime.Object to meta.Object"
 	}
 	mobj.SetResourceVersion("")
 	return fmt.Sprintf("%s/%s", mobj.GetNamespace(), mobj.GetName())
@@ -123,7 +123,7 @@ func removeResourceVersion(obj runtime.Object) string {
 func getObjLabel(obj runtime.Object) string {
 	mobj, ok := (obj).(metav1.Object)
 	if !ok {
-		return fmt.Sprintf("failed to convert runtime.Object to meta.Object")
+		return "failed to convert runtime.Object to meta.Object"
 	}
 	return fmt.Sprintf("%s/%s", mobj.GetNamespace(), mobj.GetName())
 }

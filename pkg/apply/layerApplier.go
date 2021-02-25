@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 	"time"
 
 	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta1"
@@ -154,7 +155,7 @@ func (a KubectlLayerApplier) GetOrphanedHelmReleases(ctx context.Context, layer 
 
 	foundHrs = map[string]*helmctlv2.HelmRelease{}
 	for _, hr := range hrList.Items {
-		if !isOwner(layer, &hr) { // nolint: scopelint // ok
+		if layer.GetName() != layerOwner(&hr) { // nolint: scopelint // ok
 			foundHrs[getLabel(hr.ObjectMeta)] = hr.DeepCopy()
 		}
 	}
@@ -244,6 +245,13 @@ func (a KubectlLayerApplier) addOwnerRefs(layer layers.Layer, objs []runtime.Obj
 			a.logError(err, err.Error(), layer, logging.GetObjKindNamespaceName(robj)...)
 			return err
 		}
+
+		owningLayer := layerOwner(obj)
+		if len(owningLayer) > 0 && owningLayer != layer.GetName() {
+			a.logDebug("resource already owned by another AddonsLayer", layer, logging.GetObjKindNamespaceName(robj)...)
+			return nil
+		}
+
 		a.logDebug("Adding owner ref to resource for AddonsLayer", layer, logging.GetObjKindNamespaceName(robj)...)
 		err := controllerutil.SetControllerReference(layer.GetAddonsLayer(), obj, a.scheme)
 		if err != nil {
@@ -563,13 +571,13 @@ func (a KubectlLayerApplier) Apply(ctx context.Context, layer layers.Layer) (err
 	return nil
 }
 
-func isOwner(layer layers.Layer, hr *helmctlv2.HelmRelease) bool {
-	for _, owner := range hr.OwnerReferences {
-		if owner.Kind == "AddonsLayer" && owner.APIVersion == "kraan.io/v1alpha1" && owner.Name == layer.GetName() {
-			return true
+func layerOwner(obj metav1.Object) string {
+	for _, owner := range obj.GetOwnerReferences() {
+		if owner.Kind == "AddonsLayer" && owner.APIVersion == "kraan.io/v1alpha1" {
+			return owner.Name
 		}
 	}
-	return false
+	return ""
 }
 
 func changeOwner(layer layers.Layer, hr *helmctlv2.HelmRelease) {
@@ -596,7 +604,7 @@ func (a KubectlLayerApplier) orphanLabel(ctx context.Context, hr *helmctlv2.Helm
 	labels := hr.GetLabels()
 	for label, value := range labels {
 		if label == orphanedLabel {
-			dtg, err := getTimestamp(value)
+			dtg, err := getTimestamp(strings.ReplaceAll(value, ".", ":"))
 			if err != nil {
 				return nil, errors.WithMessagef(err, "%s - failed to parse orphaned label value as timestamp", logging.CallerStr(logging.Me))
 			}
@@ -605,7 +613,7 @@ func (a KubectlLayerApplier) orphanLabel(ctx context.Context, hr *helmctlv2.Helm
 	}
 	// Label not present, add it
 	now := metav1.Now()
-	labels[orphanedLabel] = now.Format(time.RFC3339)
+	labels[orphanedLabel] = strings.ReplaceAll(now.Format(time.RFC3339), ":", ".")
 	hr.SetLabels(labels)
 	err := a.client.Update(ctx, hr, &client.UpdateOptions{})
 	if err != nil {
@@ -625,6 +633,7 @@ func (a KubectlLayerApplier) Adopt(ctx context.Context, layer layers.Layer, hr *
 	if labels == nil {
 		labels = map[string]string{}
 	}
+	labels[ownerLabel] = layer.GetName()
 	hr.SetLabels(labels)
 
 	changeOwner(layer, hr)
@@ -663,7 +672,7 @@ func (a KubectlLayerApplier) Orphan(ctx context.Context, layer layers.Layer, hr 
 		return false, fmt.Errorf("failed to convert runtime.Object to HelmRelease")
 	}
 
-	if !isOwner(layer, theHr) {
+	if layer.GetName() != layerOwner(theHr) {
 		a.logDebug("Layer  no longer owns HelmRelease", layer, logging.GetObjKindNamespaceName(hr)...)
 		return false, nil
 	}
@@ -762,7 +771,7 @@ func (a KubectlLayerApplier) GetResources(ctx context.Context, layer layers.Laye
 		}
 		_, ok := sourceHrs[key]
 		if !ok {
-			a.logDebug("HelmRelease not in AddonsLayer source directory but on cluster", layer, "name", sourceHrs[key])
+			a.logDebug("HelmRelease not in AddonsLayer source directory but on cluster", layer, "name", clusterHrs[key])
 			resources = append(resources, a.getResourceInfo(layer, resource, hr.Status.Conditions))
 		}
 	}

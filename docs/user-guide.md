@@ -56,7 +56,8 @@ Parameter | Description | Default
 `kraan.kraanController.extraLabels` | list of labels to add to `kraan-controller` | `{}`
 `kraan.kraanController.prometheus.enabled` | apply prometheus annotations to  `kraan-controller` | `true`
 `kraan.kraanController.imagePullSecrets.name` | name of  Kraan Controller's `imagePullSecrets` |
-`kraan.kraanController.image.repository` | Kraan Controller'srepository | `kraan`
+`kraan.kraanController.image.repository` | Kraan Controller's repository | `kraan`
+`kraan.kraanController.image.name` | Kraan Controller's image name | `kraan-controller`
 `kraan.kraanController.image.tag` | Kraan Controller's image tag | `.chart.AppVersion`
 `kraan.kraanController.image.imagePullPolicy` | Kraan Controller's image pull policy | InNotPresent
 `kraan.kraanController.args.logLevel` | Kraan Controller's log level, 0 for info, 1 for debug, 2 or greater for trace levels | `0`
@@ -75,8 +76,9 @@ Parameter | Description | Default
 `gotk.sourceController.extraLabels` | list of labels to add to `source-controller` | `{}`
 `gotk.sourceController.prometheus.enabled` | apply prometheus annotations to  `source-controller` | `true`
 `gotk.sourceController.imagePullSecrets.name` | name of  Source Controller's `imagePullSecrets` |
-`gotk.sourceController.image.repository` | Source Controller'srepository | `ghcr.io/fluxcd`
-`gotk.sourceController.image.tag` | Source Controller's image tag | `v0.4.1`
+`gotk.sourceController.image.repository` | Source Controller's repository | `ghcr.io/fluxcd`
+`gotk.sourceController.image.name` | Source Controller's image name | `source-controller`
+`gotk.sourceController.image.tag` | Source Controller's image tag | `v0.7.1`
 `gotk.sourceController.image.imagePullPolicy` | image pull policy | InNotPresent
 `gotk.sourceController.resources` | resource settings for `source-controller` | `limits:`<br>&nbsp;&nbsp;&nbsp;&nbsp;`cpu: 1000m`<br>&nbsp;&nbsp;&nbsp;&nbsp;`memory: 1Gi`<br>`requests:`<br>&nbsp;&nbsp;&nbsp;&nbsp;`cpu: 500m`<br>&nbsp;&nbsp;&nbsp;&nbsp;`memory: 128Mi`
 `gotk.sourceController.tolerations` | tolerations for `source-controller` | `{}`
@@ -89,8 +91,9 @@ Parameter | Description | Default
 `gotk.helmController.extraLabels` | list of labels to add to `helm-controller` | `{}`
 `gotk.helmController.prometheus.enabled` | apply prometheus annotations to  `helm-controller` | `true`
 `gotk.helmController.imagePullSecrets.name` | name of  Helm Controller's `imagePullSecrets` |
-`gotk.helmController.image.repository` | Helm Controller'srepository | `ghcr.io/fluxcd`
-`gotk.helmController.image.tag` | Helm Controller's image tag | `v0.4.1`
+`gotk.helmController.image.repository` | Helm Controller's repository | `ghcr.io/fluxcd`
+`gotk.helmController.image.name` | Source Controller's image name | `helm-controller`
+`gotk.helmController.image.tag` | Helm Controller's image tag | `v0.6.1`
 `gotk.helmController.image.imagePullPolicy` | image pull policy | InNotPresent
 `gotk.helmController.resources` | resource settings for `helm-controller` | `limits:`<br>&nbsp;&nbsp;&nbsp;&nbsp;`cpu: 1000m`<br>&nbsp;&nbsp;&nbsp;&nbsp;`memory: 1Gi`<br>`requests:`<br>&nbsp;&nbsp;&nbsp;&nbsp;`cpu: 500m`<br>&nbsp;&nbsp;&nbsp;&nbsp;`memory: 128Mi`
 `gotk.helmController.tolerations` | tolerations for `helm-controller` | `{}`
@@ -98,6 +101,7 @@ Parameter | Description | Default
 `gotk.helmController.affinity` | affinity settings for `helm-controller` | `{}`
 
 Specify each parameter using the `--set key=value[,key=value]` argument to `helm install` or use the `--values` to specify a comma seperated list of values files. The `samples` directory contains some example values files.
+
 ## Usage
 
 The Kraan-Controller is designed to deploy [HelmReleases](https://toolkit.fluxcd.io/guides/helmreleases/) to a Kubernetes cluster. Using `addonslayers.kraan.io` custom resources it retrieves the definitions of one or more HelmReleases from a git repository and applies them to the cluster then waits until they are all successfully deployed before marking the AddonsLayer as `Deployed`. My creating multiple AddonsLayers custom resources and setting the dependencies between them the user can sequence the deployment of multiple layers of addons.
@@ -105,6 +109,7 @@ The Kraan-Controller is designed to deploy [HelmReleases](https://toolkit.fluxcd
 ### Git Repository Source
 
 An AddonsLayer references a `gitrepository.source.toolkit.fluxcd.io` custom resource which it uses to retrieve data from a git repository using the Source-Controller. The `source` element of the AddonsLayer custom resource references a GitRepository custom resource the. The `path` element under `source` is the path relative to the top directory of the git repository referenced by the GitRepository custom resource where the HelmReleases comprising this AddonsLayer are defined.
+
 ### Kubernetes Version Prerequite
 
 An AddonsLayer can also optionally include a `prereqs` element containing the minimum version of the Kubernetes API required by the AddonsLayer. If specified, the AddonsLayer will not be applied until the cluster API version is greater than or equal to the specified version. The Kraan-Controller will regularly check the Cluster API version.
@@ -112,6 +117,8 @@ An AddonsLayer can also optionally include a `prereqs` element containing the mi
 ### Processing Controls
 
 The `interval` field is used to specify the period to wait before reprocessing an AddonsLayer. Note that all AddonsLayers are reprocessed periodically. The period between reprocessing of all AddonsLayers defaults to one minute but can set using the `syncPeriod` value, see Configuration section above.
+
+The `interval` field is also used to define the period to wait for another layer to adopt a HelmRelease that has been removed from a layer. See Pruning section below for more details.
 
 The `timeout` field is used to set the period to wait for HelmReleases to be deployed before setting the AddonsLayer's status to failed.
 
@@ -162,11 +169,12 @@ spec:
 
 ### Pruning
 
-The Kraan-Controller monitors any `hemrelease.helm.toolkit.fluxcd.io` resources owned by a AddonsLayer and reprocesses the AddonsLayer when it detects changes to the HelmReleases it owns. This means that if a HelmRelease is deleted or amended using kubectl or other cluster management tools, Kraan-Controller will redeploy it using the definition in the git repository references by the AddonsLayer source field. To prevent this, set the hold field in the AddonsLayer to `true`.
+The Kraan-Controller monitors any `helmrelease.helm.toolkit.fluxcd.io` resources owned by a AddonsLayer and reprocesses the AddonsLayer when it detects changes to the HelmReleases it owns. This means that if a HelmRelease is deleted or amended using kubectl or other cluster management tools, Kraan-Controller will redeploy it using the definition in the git repository references by the AddonsLayer source field. To prevent this, set the hold field in the AddonsLayer to `true`.
 
 When processing an AddonsLayer the Kraan-Controller first `prunes` any HelmReleases owned by the AddonsLayer that are not defined in the git repository. This means that removing a HelmRelease definition from a git repository will cause it to be uninstalled from the cluster.
 
-Kraan-Controller performs the prune processing on all AddonLayers without reference to layer dependencies. It then proceeds with deploying addons, waiting for any layers it depends on to be deployed first. This enables a user to move a HelmRelease from one layer to another without risk of deployment failing because the previous layer's deployment is still present. This would potentially occur if a HelmRelease is moved to a layer that its current layer depends on. By performing the pruning first this potential issue is avoided. However, the Kraan-Controller does not wait for pruning of all layers to be completed before proceeding with layer deployment, although it does wait for each layer to be pruned before deploying that layer. This means a deployment might fail because a previous version (defined in another layer) of the HelmRelease has not completed pruning yet. Hoever this issue will be resolved when the pruning has completed.
+Kraan-Controller performs the prune processing on all AddonLayers without reference to layer dependencies. It then proceeds with deploying addons, waiting for any layers it depends on to be deployed first. Before pruning HelmReleases the Kraan-Controller waits for a configurable period of time to see if the HelmRelease has been moved to another layer.
+The `interval` field of the layer a HelmRelease has been removed from is used to define the period to wait for another layer to adopt a HelmRelease that has been removed from that layer. When a HelmRelease is removed from a layer an `orphaned` label containing the current date and time is added to the HelmRelease. The pruning process will be deferred for the `interval` period before proceeding with the uninstallation of the HelmRelease. This is designed to allow time for another layer to adopt the HelmRelease if it is now defined in its repository source. The HelmRelease is adopted by removing the orphaned label and changing the owner.
 
 ## Observability
 

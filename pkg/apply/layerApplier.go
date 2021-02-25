@@ -547,7 +547,7 @@ func (a KubectlLayerApplier) GetSourceAndClusterHelmReleases(ctx context.Context
 func (a KubectlLayerApplier) Apply(ctx context.Context, layer layers.Layer) (err error) {
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
-	a.logDebug("applying", layer, logging.CallerStr(logging.Me))
+	a.logDebug("applying", layer)
 
 	sourceHrs, err := a.getSourceHelmReleases(layer)
 	if err != nil {

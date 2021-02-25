@@ -1,8 +1,5 @@
-# This is a basic workflow to help you get started with Actions
-
 name: CI
 
-# Controls when the action will run.
 on:
   # Triggers the workflow on push or pull request events but only for the master branch
   push:
@@ -12,36 +9,21 @@ on:
     branches: [master]
     paths-ignore: ["**.md"]
 
-  # # Allows you to run this workflow manually from the Actions tab
-  # workflow_dispatch:
-
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
+  docker-build:
     runs-on: ubuntu-20.04
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
       - name: Determine Tag
         run: |
-          if [ "${{ github.event_name }}" == "pull_request" ]
-          then
-            export VERSION=$(cat VERSION)-dev
-          else
-            export VERSION=$(cat VERSION)
-          fi
+          [ "${{ github.event_name }}" == "pull_request" ] && export VERSION=$(cat VERSION)-dev || export VERSION=$(cat VERSION)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "CHART_VERSION=$VERSION" >> $GITHUB_ENV
           echo "REPO=kraan" >> $GITHUB_ENV
           echo "using $VERSION as the release version"
       - name: Setup Go environment
-        uses: actions/setup-go@v2.1.3
+        uses: actions/setup-go@v2
         with:
           # The Go version to download (if necessary) and use. Supports semver spec and ranges.
           go-version: 1.15
@@ -52,18 +34,17 @@ jobs:
           password: ${{ secrets.DOCKER_TOKEN }}
       - name: Setup dependencies
         run: ./bin/setup.sh
-      - uses: satackey/action-docker-layer-caching@v0.0.8
-        # Ignore the failure of a step and avoid terminating the job.
-        continue-on-error: true
+      # - uses: satackey/action-docker-layer-caching@v0
+      #   # Ignore the failure of a step and avoid terminating the job.
+      #   continue-on-error: true
       - name: Prerelease - Lint, Test, Build, and Push
-        if: ${{ github.event_name == 'pull_request' }}
+        if: github.event_name == 'pull_request'
         run: |
           make clean
           make dev-build
           make docker-push-prerelease
-      ### MASTER STEPS ONLY
-      - name: Release - Lint, Test, Build, and Push with Helm Chart release
-        if: ${{ github.event_name == 'push' }}
+      - name: Release - Lint, Test, Build, and Push
+        if: github.event_name == 'push'
         run: |
           if docker pull kraan/kraan-controller:$VERSION; then
             echo "image already exists. Skipping..."
@@ -72,7 +53,52 @@ jobs:
           make clean
           make build
           make docker-push
-          # publish helm chart
+
+  integration-test:
+    needs: docker-build
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Setup dependencies
+        run: ./bin/setup.sh
+      - uses: engineerd/setup-kind@v0.5.0
+      - name: Integration Test
+        run: |
+          [ "${{ github.event_name }}" == "pull_request" ] && export DOCKER_IMG='kraan-controller-prerelease' || export DOCKER_IMG='kraan-controller'
+          [ "${{ github.event_name }}" == "pull_request" ] && export VERSION=$(cat VERSION)-dev || export VERSION=$(cat VERSION)
+          export CHART_VERSION=$VERSION
+          export REPO=kraan
+          kubectl cluster-info
+
+          echo "installing kraan..."
+          helm install kraan --set kraan.kraanController.image.name=$DOCKER_IMG --set kraan.kraanController.image.tag=${VERSION} --set kraan.kraanController.resources=null --set gotk.sourceController.resources=null --set gotk.helmController.resources=null --wait --timeout=2m --create-namespace --namespace gotk-system chart || (kubectl describe deploy -n gotk-system && kubectl describe po -n gotk-system && false)
+
+          echo "setting up test..."
+          kubectl apply -f ./testdata/namespaces.yaml
+          kubectl apply -f ./testdata/addons/addons-source.yaml
+          kubectl patch gitrepository addons-config -n gotk-system -p "{\"spec\": {\"ref\": {\"branch\": \"$GITHUB_HEAD_REF\"}}}" --type=merge
+          kubectl apply -f ./testdata/addons/addons-repo.yaml
+          kubectl apply -f ./testdata/addons/addons.yaml
+
+          echo "waiting 5m for test to pass..."
+          kubectl wait al --for=condition=Deployed --all --timeout=5m || (kubectl get po -A && false)
+
+  helm-publish:
+    if: github.event_name == 'push'
+    needs: integration-test
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Setup dependencies
+        run: ./bin/setup.sh
+      - name: Publish Helm Chart
+        run: |
+          [ "${{ github.event_name }}" == "pull_request" ] && export VERSION=$(cat VERSION)-dev || export VERSION=$(cat VERSION)
+          export CHART_VERSION=$VERSION
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions"
           make release

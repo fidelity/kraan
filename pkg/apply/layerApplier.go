@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
+	"time"
 
 	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta1"
 	fluxmeta "github.com/fluxcd/pkg/apis/meta"
@@ -34,6 +36,10 @@ import (
 	"github.com/fidelity/kraan/pkg/logging"
 )
 
+const (
+	orphanedLabel = "orphaned"
+)
+
 var (
 	ownerLabel     string                                            = "kraan/layer"
 	newKubectlFunc func(logger logr.Logger) (kubectl.Kubectl, error) = kubectl.NewKubectl
@@ -47,6 +53,10 @@ type LayerApplier interface {
 	ApplyIsRequired(ctx context.Context, layer layers.Layer) (applyIsRequired bool, err error)
 	ApplyWasSuccessful(ctx context.Context, layer layers.Layer) (applyIsRequired bool, hrName string, err error)
 	GetResources(ctx context.Context, layer layers.Layer) (resources []kraanv1alpha1.Resource, err error)
+	GetSourceAndClusterHelmReleases(ctx context.Context, layer layers.Layer) (sourceHrs, clusterHrs map[string]*helmctlv2.HelmRelease, err error)
+	Orphan(ctx context.Context, layer layers.Layer, hr *helmctlv2.HelmRelease) (bool, error)
+	GetOrphanedHelmReleases(ctx context.Context, layer layers.Layer) (foundHrs map[string]*helmctlv2.HelmRelease, err error)
+	Adopt(ctx context.Context, layer layers.Layer, hr *helmctlv2.HelmRelease) error
 }
 
 // KubectlLayerApplier applies an AddonsLayer to a Kubernetes cluster using the kubectl command.
@@ -111,13 +121,13 @@ func getLabel(hr metav1.ObjectMeta) string {
 	return fmt.Sprintf("%s/%s", hr.GetNamespace(), hr.GetName())
 }
 
-func removeResourceVersion(obj runtime.Object) string {
+func removeResourceVersion(obj runtime.Object) {
 	mobj, ok := (obj).(metav1.Object)
 	if !ok {
-		return fmt.Sprintf("failed to convert runtime.Object to meta.Object")
+		return
 	}
 	mobj.SetResourceVersion("")
-	return fmt.Sprintf("%s/%s", mobj.GetNamespace(), mobj.GetName())
+	return
 }
 
 func getObjLabel(obj runtime.Object) string {
@@ -128,6 +138,29 @@ func getObjLabel(obj runtime.Object) string {
 	return fmt.Sprintf("%s/%s", mobj.GetNamespace(), mobj.GetName())
 }
 
+// GetOrphanedHelmReleases returns a map of HelmReleases that are labeled as orphaned and not owned by layer
+func (a KubectlLayerApplier) GetOrphanedHelmReleases(ctx context.Context, layer layers.Layer) (foundHrs map[string]*helmctlv2.HelmRelease, err error) {
+	logging.TraceCall(a.getLog(layer))
+	defer logging.TraceExit(a.getLog(layer))
+
+	hrList := &helmctlv2.HelmReleaseList{}
+	var labels client.HasLabels = []string{orphanedLabel}
+	listOptions := &client.ListOptions{}
+	labels.ApplyToList(listOptions)
+
+	err = a.client.List(ctx, hrList, listOptions)
+	if err != nil {
+		return nil, errors.Wrapf(err, "%s - failed to list orphaned HelmRelease resources '%s'", logging.CallerStr(logging.Me), layer.GetName())
+	}
+
+	foundHrs = map[string]*helmctlv2.HelmRelease{}
+	for _, hr := range hrList.Items {
+		if layer.GetName() != layerOwner(&hr) { // nolint: scopelint // ok
+			foundHrs[getLabel(hr.ObjectMeta)] = hr.DeepCopy()
+		}
+	}
+	return foundHrs, nil
+}
 func (a KubectlLayerApplier) decodeHelmReleases(layer layers.Layer, objs []runtime.Object) (hrs []*helmctlv2.HelmRelease, err error) {
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
@@ -212,6 +245,13 @@ func (a KubectlLayerApplier) addOwnerRefs(layer layers.Layer, objs []runtime.Obj
 			a.logError(err, err.Error(), layer, logging.GetObjKindNamespaceName(robj)...)
 			return err
 		}
+
+		owningLayer := layerOwner(obj)
+		if len(owningLayer) > 0 && owningLayer != layer.GetName() {
+			a.logDebug("resource already owned by another AddonsLayer", layer, logging.GetObjKindNamespaceName(robj)...)
+			return nil
+		}
+
 		a.logDebug("Adding owner ref to resource for AddonsLayer", layer, logging.GetObjKindNamespaceName(robj)...)
 		err := controllerutil.SetControllerReference(layer.GetAddonsLayer(), obj, a.scheme)
 		if err != nil {
@@ -486,8 +526,8 @@ func (a KubectlLayerApplier) getSourceHelmRepos(layer layers.Layer) (hrs []*sour
 	return hrs, nil
 }
 
-// getSourceAndClusterHelmReleases returns source and cluster helmreleases
-func (a KubectlLayerApplier) getSourceAndClusterHelmReleases(ctx context.Context, layer layers.Layer) (sourceHrs, clusterHrs map[string]*helmctlv2.HelmRelease, err error) {
+// GetSourceAndClusterHelmReleases returns source and cluster helmreleases
+func (a KubectlLayerApplier) GetSourceAndClusterHelmReleases(ctx context.Context, layer layers.Layer) (sourceHrs, clusterHrs map[string]*helmctlv2.HelmRelease, err error) {
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
 
@@ -529,6 +569,120 @@ func (a KubectlLayerApplier) Apply(ctx context.Context, layer layers.Layer) (err
 		return errors.WithMessagef(err, "%s - failed to apply helmrepo objects", logging.CallerStr(logging.Me))
 	}
 	return nil
+}
+
+func layerOwner(obj metav1.Object) string {
+	for _, owner := range obj.GetOwnerReferences() {
+		if owner.Kind == "AddonsLayer" && owner.APIVersion == "kraan.io/v1alpha1" {
+			return owner.Name
+		}
+	}
+	return ""
+}
+
+func changeOwner(layer layers.Layer, hr *helmctlv2.HelmRelease) {
+	for index, owner := range hr.OwnerReferences {
+		if owner.Kind == "AddonsLayer" && owner.APIVersion == "kraan.io/v1alpha1" && owner.Name != layer.GetName() {
+			hr.OwnerReferences[index].Name = layer.GetName()
+			hr.OwnerReferences[index].UID = layer.GetAddonsLayer().UID
+		}
+	}
+}
+
+func getTimestamp(dtg string) (*metav1.Time, error) {
+	t, err := time.Parse(time.RFC3339, dtg)
+	if err != nil {
+		return nil, errors.Wrapf(err, "%s - failed to parse timestamp '%s'", logging.CallerStr(logging.Me), dtg)
+	}
+
+	mt := metav1.NewTime(t)
+
+	return &mt, nil
+}
+
+func (a KubectlLayerApplier) orphanLabel(ctx context.Context, hr *helmctlv2.HelmRelease) (*metav1.Time, error) {
+	labels := hr.GetLabels()
+	for label, value := range labels {
+		if label == orphanedLabel {
+			dtg, err := getTimestamp(strings.ReplaceAll(value, ".", ":"))
+			if err != nil {
+				return nil, errors.WithMessagef(err, "%s - failed to parse orphaned label value as timestamp", logging.CallerStr(logging.Me))
+			}
+			return dtg, nil
+		}
+	}
+	// Label not present, add it
+	now := metav1.Now()
+	labels[orphanedLabel] = strings.ReplaceAll(now.Format(time.RFC3339), ":", ".")
+	hr.SetLabels(labels)
+	err := a.client.Update(ctx, hr, &client.UpdateOptions{})
+	if err != nil {
+		return nil, errors.Wrapf(err, "%s - failed to Update helmRelease '%s'", logging.CallerStr(logging.Me), getObjLabel(hr))
+	}
+	return &now, nil
+}
+
+// Adopt sets an orphaned HelmRelease to a new owner.
+// It returns a bool value set to true if the HelmRelease is still waiting for adoption or false if the adoption period has expired.
+func (a KubectlLayerApplier) Adopt(ctx context.Context, layer layers.Layer, hr *helmctlv2.HelmRelease) error {
+	logging.TraceCall(a.getLog(layer))
+	defer logging.TraceExit(a.getLog(layer))
+
+	labels := hr.GetLabels()
+	delete(labels, orphanedLabel)
+	if labels == nil {
+		labels = map[string]string{}
+	}
+	labels[ownerLabel] = layer.GetName()
+	hr.SetLabels(labels)
+
+	changeOwner(layer, hr)
+
+	err := a.client.Update(ctx, hr, &client.UpdateOptions{})
+	if err != nil {
+		return errors.Wrapf(err, "%s - failed to Update helmRelease '%s'", logging.CallerStr(logging.Me), getObjLabel(hr))
+	}
+
+	return nil
+}
+
+// Orphan adds an 'orphan' label to a HelmRelease if not already present.
+// It returns a bool value set to true if the HelmRelease is still waiting for adoption or false if the adoption period has expired.
+func (a KubectlLayerApplier) Orphan(ctx context.Context, layer layers.Layer, hr *helmctlv2.HelmRelease) (pending bool, err error) {
+	logging.TraceCall(a.getLog(layer))
+	defer logging.TraceExit(a.getLog(layer))
+
+	// label HR to as orphan if not already labelled, set label value to time now.
+	key, err := client.ObjectKeyFromObject(hr)
+	if err != nil {
+		return false, errors.Wrapf(err, "%s - failed to get an ObjectKey '%s'", logging.CallerStr(logging.Me), getObjLabel(hr))
+	}
+	existing := hr.DeepCopyObject()
+	err = a.client.Get(ctx, key, existing)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			removeResourceVersion(hr)
+			a.logDebug("HelmRelease not found", layer, logging.GetObjKindNamespaceName(hr)...)
+			return false, nil
+		}
+		return false, errors.Wrapf(err, "%s - failed to get HelmRelease '%s'", logging.CallerStr(logging.Me), key)
+	}
+	theHr, ok := existing.(*helmctlv2.HelmRelease)
+	if !ok {
+		return false, fmt.Errorf("failed to convert runtime.Object to HelmRelease")
+	}
+
+	if layer.GetName() != layerOwner(theHr) {
+		a.logDebug("Layer  no longer owns HelmRelease", layer, logging.GetObjKindNamespaceName(hr)...)
+		return false, nil
+	}
+
+	orphanedTime, err := a.orphanLabel(ctx, theHr)
+	if err != nil {
+		return false, errors.WithMessagef(err, "%s - failed to get/set orphan label '%s'", logging.CallerStr(logging.Me), getObjLabel(hr))
+	}
+
+	return orphanedTime.Add(layer.GetDelay()).After(time.Now()), nil
 }
 
 // Prune the AddonsLayer by removing the Addons found in the cluster that have since been removed from the Layer.
@@ -582,7 +736,7 @@ func (a KubectlLayerApplier) GetResources(ctx context.Context, layer layers.Laye
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
 
-	sourceHrs, clusterHrs, err := a.getSourceAndClusterHelmReleases(ctx, layer)
+	sourceHrs, clusterHrs, err := a.GetSourceAndClusterHelmReleases(ctx, layer)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
 	}
@@ -617,7 +771,7 @@ func (a KubectlLayerApplier) GetResources(ctx context.Context, layer layers.Laye
 		}
 		_, ok := sourceHrs[key]
 		if !ok {
-			a.logDebug("HelmRelease not in AddonsLayer source directory but on cluster", layer, "name", sourceHrs[key])
+			a.logDebug("HelmRelease not in AddonsLayer source directory but on cluster", layer, "name", clusterHrs[key])
 			resources = append(resources, a.getResourceInfo(layer, resource, hr.Status.Conditions))
 		}
 	}
@@ -629,7 +783,7 @@ func (a KubectlLayerApplier) PruneIsRequired(ctx context.Context, layer layers.L
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
 
-	sourceHrs, clusterHrs, err := a.getSourceAndClusterHelmReleases(ctx, layer)
+	sourceHrs, clusterHrs, err := a.GetSourceAndClusterHelmReleases(ctx, layer)
 	if err != nil {
 		return false, nil, errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
 	}
@@ -680,7 +834,7 @@ func (a KubectlLayerApplier) ApplyIsRequired(ctx context.Context, layer layers.L
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
 
-	sourceHrs, clusterHrs, err := a.getSourceAndClusterHelmReleases(ctx, layer)
+	sourceHrs, clusterHrs, err := a.GetSourceAndClusterHelmReleases(ctx, layer)
 	if err != nil {
 		return false, errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
 	}

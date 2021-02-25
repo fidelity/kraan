@@ -6,71 +6,36 @@ package mocks
 
 import (
 	context "context"
-	gomock "github.com/golang/mock/gomock"
 	http "net/http"
 	reflect "reflect"
+
+	gomock "github.com/golang/mock/gomock"
 )
 
-// MockTarConsumer is a mock of TarConsumer interface
+// MockTarConsumer is a mock of TarConsumer interface.
 type MockTarConsumer struct {
 	ctrl     *gomock.Controller
 	recorder *MockTarConsumerMockRecorder
 }
 
-// MockTarConsumerMockRecorder is the mock recorder for MockTarConsumer
+// MockTarConsumerMockRecorder is the mock recorder for MockTarConsumer.
 type MockTarConsumerMockRecorder struct {
 	mock *MockTarConsumer
 }
 
-// NewMockTarConsumer creates a new mock instance
+// NewMockTarConsumer creates a new mock instance.
 func NewMockTarConsumer(ctrl *gomock.Controller) *MockTarConsumer {
 	mock := &MockTarConsumer{ctrl: ctrl}
 	mock.recorder = &MockTarConsumerMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockTarConsumer) EXPECT() *MockTarConsumerMockRecorder {
 	return m.recorder
 }
 
-// SetCtx mocks base method
-func (m *MockTarConsumer) SetCtx(ctx context.Context) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetCtx", ctx)
-}
-
-// SetCtx indicates an expected call of SetCtx
-func (mr *MockTarConsumerMockRecorder) SetCtx(ctx interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetCtx", reflect.TypeOf((*MockTarConsumer)(nil).SetCtx), ctx)
-}
-
-// SetURL mocks base method
-func (m *MockTarConsumer) SetURL(utl string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetURL", utl)
-}
-
-// SetURL indicates an expected call of SetURL
-func (mr *MockTarConsumerMockRecorder) SetURL(utl interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetURL", reflect.TypeOf((*MockTarConsumer)(nil).SetURL), utl)
-}
-
-// SetHTTPClient mocks base method
-func (m *MockTarConsumer) SetHTTPClient(httpClient *http.Client) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetHTTPClient", httpClient)
-}
-
-// SetHTTPClient indicates an expected call of SetHTTPClient
-func (mr *MockTarConsumerMockRecorder) SetHTTPClient(httpClient interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetHTTPClient", reflect.TypeOf((*MockTarConsumer)(nil).SetHTTPClient), httpClient)
-}
-
-// GetTar mocks base method
+// GetTar mocks base method.
 func (m *MockTarConsumer) GetTar(ctx context.Context) ([]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetTar", ctx)
@@ -79,8 +44,44 @@ func (m *MockTarConsumer) GetTar(ctx context.Context) ([]byte, error) {
 	return ret0, ret1
 }
 
-// GetTar indicates an expected call of GetTar
+// GetTar indicates an expected call of GetTar.
 func (mr *MockTarConsumerMockRecorder) GetTar(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTar", reflect.TypeOf((*MockTarConsumer)(nil).GetTar), ctx)
+}
+
+// SetCtx mocks base method.
+func (m *MockTarConsumer) SetCtx(ctx context.Context) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetCtx", ctx)
+}
+
+// SetCtx indicates an expected call of SetCtx.
+func (mr *MockTarConsumerMockRecorder) SetCtx(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetCtx", reflect.TypeOf((*MockTarConsumer)(nil).SetCtx), ctx)
+}
+
+// SetHTTPClient mocks base method.
+func (m *MockTarConsumer) SetHTTPClient(httpClient *http.Client) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetHTTPClient", httpClient)
+}
+
+// SetHTTPClient indicates an expected call of SetHTTPClient.
+func (mr *MockTarConsumerMockRecorder) SetHTTPClient(httpClient interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetHTTPClient", reflect.TypeOf((*MockTarConsumer)(nil).SetHTTPClient), httpClient)
+}
+
+// SetURL mocks base method.
+func (m *MockTarConsumer) SetURL(utl string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetURL", utl)
+}
+
+// SetURL indicates an expected call of SetURL.
+func (mr *MockTarConsumerMockRecorder) SetURL(utl interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetURL", reflect.TypeOf((*MockTarConsumer)(nil).SetURL), utl)
 }

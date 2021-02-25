@@ -25,6 +25,7 @@ Options:
                               The secret should be called 'kraan-regcred'.
   '--kraan-image-reg'   provide image registry to use for Kraan, defaults to empty for docker hub
   '--kraan-image-repo'  provide image repository prefix to use for Kraan, defaults to 'kraan' for docker hub org.
+  '--kraan-image-name'  the name of the kraan image to use, defaults to kraan-controller.
   '--kraan-tag'         the tag of the kraan image to use.
   '--kraan-loglevel'    loglevel to use for kraan controller, 0 for info, 1 for debug, 2 for trace.
   '--kraan-dev'         select development mode, makes pod filesystem writable for debugging purposes.
@@ -105,6 +106,7 @@ function args() {
   deploy_kind=0
   gitops_reg=""
   kraan_repo=""
+  kraan_name=""
   kraan_reg=""
   kraan_regcred=""
   gitops_regcred=""
@@ -136,6 +138,7 @@ function args() {
           "--gitops-proxy") (( arg_index+=1 )); gitops_proxy="${arg_list[${arg_index}]}";;
           "--kraan-image-repo") (( arg_index+=1 )); kraan_repo="${arg_list[${arg_index}]}";;
           "--kraan-image-reg") (( arg_index+=1 )); kraan_reg="${arg_list[${arg_index}]}";;
+          "--kraan-image-name") (( arg_index+=1 )); kraan_name="${arg_list[${arg_index}]}";;
           "--gitops-image-reg") (( arg_index+=1 )); gitops_reg="${arg_list[${arg_index}]}";;
           "--values-files") (( arg_index+=1 )); values_files="${arg_list[${arg_index}]}";;
           "--git-url") (( arg_index+=1 )); GIT_URL="${arg_list[${arg_index}]}";;
@@ -383,6 +386,9 @@ if [ -n "${kraan_reg}" ] ; then
 fi
 if [ -n "${kraan_repo}" ] ; then
   helm_args="${helm_args} --set kraan.kraanController.image.repository=${kraan_reg}${kraan_repo}"
+fi
+if [ -n "${kraan_name}" ] ; then
+  helm_args="${helm_args} --set kraan.kraanController.image.name=${kraan_name}"
 fi
 if [ -n "${kraan_tag}" ] ; then
   helm_args="${helm_args} --set kraan.kraanController.image.tag=${kraan_tag}"

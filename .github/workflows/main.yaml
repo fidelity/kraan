@@ -10,58 +10,61 @@ on:
     paths-ignore: ["**.md"]
 
 jobs:
-  lint:
+  lint-and-test:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-      - name: Validate
+      - name: Setup Go environment
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.15
+      - name: Setup dependencies
+        run: make setup
+      - name: Lint tasks
         run: |
           make validate-versions
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: v1.37.1
+          skip-go-installation: true
+          args: --timeout=2m
+      - name: test
+        run: make test
+
   docker-build:
-    needs: lint
+    needs: lint-and-test
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
       - name: Determine Tag
         run: |
-          [ "${{ github.event_name }}" == "pull_request" ] && export VERSION=$(cat VERSION)-dev || export VERSION=$(cat VERSION)
+          export VERSION=$(cat VERSION)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "REPO=kraan" >> $GITHUB_ENV
-          echo "using $VERSION as the release version"
-      - name: Setup Go environment
-        uses: actions/setup-go@v2
-        with:
-          # The Go version to download (if necessary) and use. Supports semver spec and ranges.
-          go-version: 1.15
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
       - name: Login to GitHub Packages Docker Registry
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_TOKEN }}
-      - name: Setup dependencies
-        run: ./bin/setup.sh
-      # - uses: satackey/action-docker-layer-caching@v0
-      #   # Ignore the failure of a step and avoid terminating the job.
-      #   continue-on-error: true
-      - name: Prerelease - Lint, Test, Build, and Push
+      - name: Prerelease - Build and push
         if: github.event_name == 'pull_request'
-        run: |
-          make clean
-          make dev-build
-          make docker-push-prerelease
-      - name: Release - Lint, Test, Build, and Push
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          tags: kraan/kraan-controller-prerelease:${{ env.VERSION }}-dev
+          file: Dockerfile-dev
+      - name: Release - Build and push
         if: github.event_name == 'push'
-        run: |
-          if docker pull kraan/kraan-controller:$VERSION; then
-            echo "image already exists. Skipping..."
-            exit 0
-          fi
-          make clean
-          make build
-          make docker-push
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          tags: kraan/kraan-controller:${{ env.VERSION }}
+          file: Dockerfile
 
   integration-test:
     needs: docker-build
@@ -69,7 +72,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Setup dependencies
-        run: ./bin/setup.sh
+        run: make setup
       - uses: engineerd/setup-kind@v0.5.0
       - name: Integration Test
         run: |
@@ -100,7 +103,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Setup dependencies
-        run: ./bin/setup.sh
+        run: make setup
       - name: Publish Helm Chart
         run: |
           [ "${{ github.event_name }}" == "pull_request" ] && export VERSION=$(cat VERSION)-dev || export VERSION=$(cat VERSION)

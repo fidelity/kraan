@@ -43,7 +43,6 @@ run:
   #modules-download-mode: vendor
   modules-download-mode: readonly
 
-
 # output configuration options
 output:
   # colored-line-number|line-number|json|tab|checkstyle|code-climate, default is "colored-line-number"
@@ -54,7 +53,6 @@ output:
 
   # print linter name in the end of issue text, default is true
   print-linter-name: true
-
 
 # all available settings of specific linters
 linters-settings:
@@ -71,7 +69,6 @@ linters-settings:
     # the regex is used to ignore names within pkg. (default "fmt:.*").
     # see https://github.com/kisielk/errcheck#the-deprecated-method for details
     #ignore: fmt:.*,io/ioutil:^Read.*
-
     # path to a file containing a list of functions to exclude from checking
     # see https://github.com/kisielk/errcheck#excluding-functions for details
     #exclude: /path/to/file.txt
@@ -266,7 +263,6 @@ issues:
       linters:
         - godot
 
-
   # Independently from option `exclude` we use default exclude patterns,
   # it can be disabled by this option. To list all
   # excluded by default patterns execute `golangci-lint run --help`.
@@ -286,9 +282,7 @@ issues:
   # of integration: much better don't allow issues in new code.
   # Default is false.
   new: false
-
   # Show only new issues created after git revision `REV`
   #new-from-rev: REV
-
   # Show only new issues created in git patch with set file path.
   #new-from-patch: path/to/patch/file

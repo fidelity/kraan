@@ -41,9 +41,8 @@ const (
 )
 
 var (
-	ownerLabel              string                                            = "kraan/layer"
-	newKubectlFunc          func(logger logr.Logger) (kubectl.Kubectl, error) = kubectl.NewKubectl
-	errDuplicateHelmRelease                                                   = errors.New("a HelmRelease present in multiple layers")
+	ownerLabel     string                                            = "kraan/layer"
+	newKubectlFunc func(logger logr.Logger) (kubectl.Kubectl, error) = kubectl.NewKubectl
 )
 
 // LayerApplier defines methods for managing the Addons within an AddonLayer in a cluster.
@@ -253,7 +252,7 @@ func (a KubectlLayerApplier) addOwnerRefs(layer layers.Layer, objs []runtime.Obj
 			if len(labelValue(orphanedLabel, &obj)) > 0 {
 				return nil
 			}
-			return errors.Wrapf(errDuplicateHelmRelease, "%s - HelmRelease: %s, also included in layer: %s", logging.CallerStr(logging.Me), getObjLabel(robj), labelValue(ownerLabel, &obj))
+			return fmt.Errorf("%s - HelmRelease: %s, also included in layer: %s", logging.CallerStr(logging.Me), getObjLabel(robj), labelValue(ownerLabel, &obj))
 		}
 
 		a.logDebug("Adding owner ref to resource for AddonsLayer", layer, logging.GetObjKindNamespaceName(robj)...)

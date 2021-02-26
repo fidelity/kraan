@@ -1,0 +1,108 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "source.toolkit.fluxcd.io/v1beta1",
+            "kind": "HelmRepository",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"source.toolkit.fluxcd.io/v1beta1\",\"kind\":\"HelmRepository\",\"metadata\":{\"annotations\":{},\"name\":\"podinfo\",\"namespace\":\"gotk-system\"},\"spec\":{\"interval\":\"1m0s\",\"url\":\"https://stefanprodan.github.io/podinfo\"}}\n"
+                },
+                "creationTimestamp": "2021-02-15T11:10:20Z",
+                "finalizers": [
+                    "finalizers.fluxcd.io"
+                ],
+                "generation": 2,
+                "managedFields": [
+                    {
+                        "apiVersion": "source.toolkit.fluxcd.io/v1beta1",
+                        "fieldsType": "FieldsV1",
+                        "fieldsV1": {
+                            "f:metadata": {
+                                "f:annotations": {
+                                    ".": {},
+                                    "f:kubectl.kubernetes.io/last-applied-configuration": {}
+                                }
+                            },
+                            "f:spec": {
+                                ".": {},
+                                "f:interval": {},
+                                "f:url": {}
+                            }
+                        },
+                        "manager": "kubectl",
+                        "operation": "Update",
+                        "time": "2021-02-15T11:10:20Z"
+                    },
+                    {
+                        "apiVersion": "source.toolkit.fluxcd.io/v1beta1",
+                        "fieldsType": "FieldsV1",
+                        "fieldsV1": {
+                            "f:metadata": {
+                                "f:finalizers": {
+                                    ".": {},
+                                    "v:\"finalizers.fluxcd.io\"": {}
+                                }
+                            },
+                            "f:spec": {
+                                "f:timeout": {}
+                            },
+                            "f:status": {
+                                ".": {},
+                                "f:artifact": {
+                                    ".": {},
+                                    "f:checksum": {},
+                                    "f:lastUpdateTime": {},
+                                    "f:path": {},
+                                    "f:revision": {},
+                                    "f:url": {}
+                                },
+                                "f:conditions": {},
+                                "f:observedGeneration": {},
+                                "f:url": {}
+                            }
+                        },
+                        "manager": "source-controller",
+                        "operation": "Update",
+                        "time": "2021-02-24T13:52:52Z"
+                    }
+                ],
+                "name": "podinfo",
+                "namespace": "gotk-system",
+                "resourceVersion": "4216043",
+                "selfLink": "/apis/source.toolkit.fluxcd.io/v1beta1/namespaces/gotk-system/helmrepositories/podinfo",
+                "uid": "90e6e3b9-bc1e-40f2-b80b-d3c5034c06a7"
+            },
+            "spec": {
+                "interval": "1m0s",
+                "timeout": "1m0s",
+                "url": "https://stefanprodan.github.io/podinfo"
+            },
+            "status": {
+                "artifact": {
+                    "checksum": "94800d6ca6e9f1073727182c71547553faa4cfa6",
+                    "lastUpdateTime": "2021-02-24T13:52:52Z",
+                    "path": "helmrepository/gotk-system/podinfo/index-94800d6ca6e9f1073727182c71547553faa4cfa6.yaml",
+                    "revision": "94800d6ca6e9f1073727182c71547553faa4cfa6",
+                    "url": "http://source-controller.gotk-system.svc.cluster.local./helmrepository/gotk-system/podinfo/index-94800d6ca6e9f1073727182c71547553faa4cfa6.yaml"
+                },
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2021-02-24T13:52:52Z",
+                        "message": "Fetched revision: 94800d6ca6e9f1073727182c71547553faa4cfa6",
+                        "reason": "IndexationSucceed",
+                        "status": "True",
+                        "type": "Ready"
+                    }
+                ],
+                "observedGeneration": 2,
+                "url": "http://source-controller.gotk-system.svc.cluster.local./helmrepository/gotk-system/podinfo/index.yaml"
+            }
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": "",
+        "selfLink": ""
+    }
+}

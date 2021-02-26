@@ -34,8 +34,8 @@ func init() {
 }
 
 func fakeAddonsLayer(sourcePath, layerName string, layerUID types.UID) *kraanv1alpha1.AddonsLayer { //nolint
-	kind := "AddonsLayer"
-	version := "v1alpha1"
+	kind := kraanv1alpha1.AddonsLayerKind
+	version := kraanv1alpha1.GroupVersion.Version
 	typeMeta := metav1.TypeMeta{
 		Kind:       kind,
 		APIVersion: version,
@@ -62,20 +62,11 @@ func fakeAddonsLayer(sourcePath, layerName string, layerUID types.UID) *kraanv1a
 		Source:  sourceSpec,
 		PreReqs: layerPreReqs,
 		Hold:    false,
-		Version: "v1alpha1",
-		//Source SourceSpec `json:"source"`
-		//PreReqs PreReqs `json:"prereqs,omitempty"`
-		//Hold bool `json:"hold,omitempty"`
-		//Interval metav1.Duration `json:"interval"`
-		//Timeout *metav1.Duration `json:"timeout,omitempty"`
-		//Version string `json:"version"`
+		Version: "0.0.1",
 	}
 	layerStatus := kraanv1alpha1.AddonsLayerStatus{
 		State:   "Testing",
-		Version: "v1alpha1",
-		//Conditions []Condition `json:"conditions,omitempty"`
-		//State string `json:"state,omitempty"`
-		//Version string `json:"version,omitempty"`
+		Version: "0.0.1",
 	}
 	addonsLayer := &kraanv1alpha1.AddonsLayer{
 		TypeMeta:   typeMeta,

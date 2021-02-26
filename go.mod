@@ -10,8 +10,8 @@ require (
 	github.com/fluxcd/pkg/untar v0.0.5
 	github.com/fluxcd/source-controller/api v0.3.0
 	github.com/go-delve/delve v1.5.0 // indirect
-	github.com/go-logr/logr v0.2.1
-	github.com/go-logr/zapr v0.2.0 // indirect
+	github.com/go-logr/logr v0.4.0
+	github.com/go-logr/zapr v0.4.0 // indirect
 	github.com/golang/mock v1.4.4
 	github.com/google/go-cmp v0.5.2
 	github.com/google/go-dap v0.3.0 // indirect

@@ -1,7 +1,8 @@
 package apply_test
 
 import (
-	"context"
+	"encoding/json"
+	"io/ioutil"
 	"testing"
 	"time"
 
@@ -13,14 +14,18 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	types "k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/apply"
 	"github.com/fidelity/kraan/pkg/internal/kubectl"
 	kubectlmocks "github.com/fidelity/kraan/pkg/internal/mocks/kubectl"
-	mocks "github.com/fidelity/kraan/pkg/mocks/client"
-	layermocks "github.com/fidelity/kraan/pkg/mocks/layers"
+)
+
+const (
+	addonsFileName       = "addons.json"
+	helmrReleasesFileName = "helmreleases.json"
 )
 
 var (
@@ -31,6 +36,82 @@ func init() {
 	_ = corev1.AddToScheme(testScheme)        // nolint:errcheck // ok
 	_ = kraanv1alpha1.AddToScheme(testScheme) // nolint:errcheck // ok
 	_ = helmctlv2.AddToScheme(testScheme)     // nolint:errcheck // ok
+}
+
+func getAddonsFromFile(t *testing.T, fileName string) *kraanv1alpha1.AddonsLayerList {
+	buffer, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		t.Fatalf("failed to read AddonLayersList file: %s, %s", fileName, err)
+
+		return nil
+	}
+
+	addons := &kraanv1alpha1.AddonsLayerList{}
+
+	err = json.Unmarshal(buffer, addons)
+	if err != nil {
+		t.Fatalf("failed to unmarshall AddonLayersList file: %s, %s", fileName, err)
+
+		return nil
+	}
+	return addons
+}
+
+func getHelmReleasesFromFile(t *testing.T, fileName string) *helmctlv2.HelmReleaseList {
+	buffer, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		t.Fatalf("failed to read HelmReleaseList file: %s, %s", fileName, err)
+
+		return nil
+	}
+
+	helmReleases := &helmctlv2.HelmReleaseList{}
+
+	err = json.Unmarshal(buffer, helmReleases)
+	if err != nil {
+		t.Fatalf("failed to unmarshall HelmReleaseList file: %s, %s", fileName, err)
+
+		return nil
+	}
+	return helmReleases
+}
+
+func getApplierParams(t *testing.T, execpassName,
+	addonLayersFileName, helmReleasesFileName string,
+	client client.Client, scheme *runtime.Scheme) []interface{} {
+	addonsList := getAddonsFromFile(t, addonsFileName)
+
+	if t.Failed() {
+		return nil
+	}
+
+	helmReleasesList := getHelmReleasesFromFile(t, helmReleasesFileName)
+
+	if t.Failed() {
+		return nil
+	}
+
+	if client == nil {
+		client = fake.NewFakeClientWithScheme(scheme,
+			addonsList, helmReleasesList /*, gitReposList, helmReposList*/)
+	}
+
+	return []interface{}{
+		client,
+		logr.Discard(),
+		scheme,
+	}
+}
+
+func createApplier(t *testing.T, params []interface{}) apply.LayerApplier {
+	applier, err := apply.NewApplier(
+		params[0].(client.Client),
+		params[1].(logr.Logger),
+		params[2].(*runtime.Scheme))
+	if err != nil {
+		t.Fatalf("failed to create applier, %s", err)
+	}
+	return applier
 }
 
 func fakeAddonsLayer(sourcePath, layerName string, layerUID types.UID) *kraanv1alpha1.AddonsLayer { //nolint
@@ -55,8 +136,6 @@ func fakeAddonsLayer(sourcePath, layerName string, layerUID types.UID) *kraanv1a
 	}
 	layerPreReqs := kraanv1alpha1.PreReqs{
 		K8sVersion: "1.15.3",
-		//K8sVersion string `json:"k8sVersion"`
-		//DependsOn []string `json:"dependsOn,omitempty"`
 	}
 	layerSpec := kraanv1alpha1.AddonsLayerSpec{
 		Source:  sourceSpec,
@@ -104,53 +183,4 @@ func TestNewApplierWithMockKubectl(t *testing.T) {
 		t.Fatalf("The NewApplier constructor returned an error: %s", err)
 	}
 	t.Logf("NewApplier returned (%T) %#v", applier, applier)
-}
-
-func TODOTestBasicApply(t *testing.T) { //nolint
-	mockCtl := gomock.NewController(t)
-	defer mockCtl.Finish()
-
-	mockCommand := kubectlmocks.NewMockCommand(mockCtl)
-	mockKubectl := kubectlmocks.NewMockKubectl(mockCtl)
-	newKFunc := func(logger logr.Logger) (kubectl.Kubectl, error) {
-		return mockKubectl, nil
-	}
-	apply.SetNewKubectlFunc(newKFunc)
-
-	ctx := context.Background()
-	logger := testlogr.TestLogger{T: t}
-	client := mocks.NewMockClient(mockCtl)
-
-	applier, err := apply.NewApplier(client, logger, testScheme)
-	if err != nil {
-		t.Fatalf("The NewApplier constructor returned an error: %s", err)
-	}
-	t.Logf("NewApplier returned (%T) %#v", applier, applier)
-
-	// This integration test can be forced to pass or fail at different stages by altering the
-	// Values section of the microservice.yaml HelmRelease in the directory below.
-	sourcePath := "testdata/apply/single_release"
-	layerName := "test"
-	var layerUID types.UID = "01234567-89ab-cdef-0123-456789abcdef"
-	addonsLayer := fakeAddonsLayer(sourcePath, layerName, layerUID)
-
-	//fakeHr := &helmctlv2.HelmRelease{}
-	// TODO - serailize a fake HelmRelease
-	//sez := serializer.NewCodecFactory(testScheme).Co
-	fakeHrJSON := "fakeHrJson"
-
-	mockKubectl.EXPECT().Apply(sourcePath).Return(mockCommand).Times(1)
-	mockCommand.EXPECT().WithLogger(logger).Return(mockCommand).Times(1)
-	mockCommand.EXPECT().DryRun().Return(fakeHrJSON, nil).Times(1)
-
-	mockLayer := layermocks.NewMockLayer(mockCtl)
-	mockLayer.EXPECT().GetName().Return(layerName).AnyTimes()
-	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
-	mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()
-	mockLayer.EXPECT().GetAddonsLayer().Return(addonsLayer).Times(1)
-
-	err = applier.Apply(ctx, mockLayer)
-	if err != nil {
-		t.Fatalf("LayerApplier.Apply returned an error: %s", err)
-	}
 }

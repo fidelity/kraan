@@ -41,8 +41,9 @@ const (
 )
 
 var (
-	ownerLabel     string                                            = "kraan/layer"
-	newKubectlFunc func(logger logr.Logger) (kubectl.Kubectl, error) = kubectl.NewKubectl
+	ownerLabel              string                                            = "kraan/layer"
+	newKubectlFunc          func(logger logr.Logger) (kubectl.Kubectl, error) = kubectl.NewKubectl
+	errDuplicateHelmRelease                                                   = errors.New("a HelmRelease present in multiple layers")
 )
 
 // LayerApplier defines methods for managing the Addons within an AddonLayer in a cluster.
@@ -249,7 +250,10 @@ func (a KubectlLayerApplier) addOwnerRefs(layer layers.Layer, objs []runtime.Obj
 		owningLayer := layerOwner(obj)
 		if len(owningLayer) > 0 && owningLayer != layer.GetName() {
 			a.logDebug("resource already owned by another AddonsLayer", layer, logging.GetObjKindNamespaceName(robj)...)
-			return nil
+			if len(labelValue(orphanedLabel, &obj)) > 0 {
+				return nil
+			}
+			return errors.Wrapf(errDuplicateHelmRelease, "%s - HelmRelease: %s, also included in layer: %s", logging.CallerStr(logging.Me), getObjLabel(robj), labelValue(ownerLabel, &obj))
 		}
 
 		a.logDebug("Adding owner ref to resource for AddonsLayer", layer, logging.GetObjKindNamespaceName(robj)...)
@@ -598,6 +602,19 @@ func getTimestamp(dtg string) (*metav1.Time, error) {
 	mt := metav1.NewTime(t)
 
 	return &mt, nil
+}
+
+func labelValue(labelName string, obj *metav1.Object) string {
+	labels := (*obj).GetLabels()
+
+	if labels == nil {
+		return ""
+	}
+
+	if value, ok := labels[labelName]; ok {
+		return value
+	}
+	return ""
 }
 
 func (a KubectlLayerApplier) orphanLabel(ctx context.Context, hr *helmctlv2.HelmRelease) (*metav1.Time, error) {

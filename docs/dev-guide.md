@@ -71,7 +71,6 @@ Helm Charts are deployed to github pages so can be accessed via repo: kraan <htt
 
 To create a release set `VERSION` to the Kraan-Controller version, `REPO` to 'kraan' and `CHART_VERSION` to the chart version, then build and push the image:
 
-    export VERSION=v0.1.xx
     export REPO=kraan
     make clean-build
     make build

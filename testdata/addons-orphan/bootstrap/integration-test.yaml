@@ -1,0 +1,49 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: integration-test
+  namespace: bootstrap
+  annotations:
+    kraan.updateVersion: "true"
+spec:
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    remediation:
+      retries: -1
+  dependsOn:
+    - name: microservice-1
+      namespace: bootstrap
+    - name: microservice-2
+      namespace: bootstrap      
+  chart:
+    spec:
+      chart: podinfo
+      sourceRef:
+        kind: HelmRepository
+        name: podinfo
+        namespace: gotk-system
+      version: '>4.0.0'
+  test:
+    enable: true
+    ignoreFailures: true
+    timeout: "1m"
+  values:
+    preHookBackoffLimit: 1
+    preHookActiveDeadlineSeconds: 60
+    preHookRestartPolicy: Never
+    preHookDelaySeconds: 10
+    preHookSucceed: "true"
+    testHookBackoffLimit: 1
+    testHookActiveDeadlineSeconds: 60
+    testHookRestartPolicy: Never
+    testHookDelaySeconds: 10
+    testHookSucceed: "true"
+    podinfo:
+      service:
+        enabled: true
+        type: ClusterIP
+      replicaCount: 1
+      message: Integration Test
+  interval: 1m0s

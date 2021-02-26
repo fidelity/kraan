@@ -84,7 +84,19 @@ jobs:
 
           echo "waiting 5m for test to pass..."
           kubectl wait al --for=condition=Deployed --all --timeout=5m || (kubectl get po -A && false)
+      - name: Orphan Integration Test
+        run: |
+          echo "setting up test..."
+          kubectl apply -f ./testdata/addons-orphan/addons-source.yaml
+          kubectl patch gitrepository addons-config -n gotk-system -p "{\"spec\": {\"ref\": {\"branch\": \"$GITHUB_HEAD_REF\"}}}" --type=merge
+          kubectl apply -f ./testdata/addons-orphan/addons-repo.yaml
+          kubectl apply -f ./testdata/addons-orphan/addons.yaml
 
+          echo "waiting 5m for test to pass..."
+          kubectl wait al --for=condition=Deployed --all --timeout=5m || (kubectl get po -A && false)
+          kubectl get al
+          kubectl get helmreleases.helm.toolkit.fluxcd.io -A  -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.metadata.namespace}{"\t"}{.metadata.labels}{"\t"}{.metadata.ownerReferences[0].name}{"\t"}{"\n"}{end}'
+          kubectl get addonslayers.kraan.io -A  -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{range .status.resources[*]}{.name}{"\t"}{.namespace}{"\n"}{end}{"\n"}{end}'
   helm-publish:
     if: github.event_name == 'push'
     needs: integration-test

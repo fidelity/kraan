@@ -101,10 +101,6 @@ jobs:
 
           echo "waiting 5m for test to pass..."
           kubectl wait al --for=condition=Deployed --all --timeout=5m || (kubectl get po -A && false)
-          sleep 1
-          kubectl get al
-          kubectl get helmreleases.helm.toolkit.fluxcd.io -A  -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.metadata.namespace}{"\t"}{.metadata.labels}{"\t"}{.metadata.ownerReferences[0].name}{"\t"}{"\n"}{end}'
-          kubectl get addonslayers.kraan.io -A  -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{range .status.resources[*]}{.name}{"\t"}{.namespace}{"\n"}{end}{"\n"}{end}'
   helm-publish:
     needs: integration-test
     runs-on: ubuntu-20.04

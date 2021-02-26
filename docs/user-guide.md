@@ -104,7 +104,15 @@ Specify each parameter using the `--set key=value[,key=value]` argument to `helm
 
 ## Usage
 
-The Kraan-Controller is designed to deploy [HelmReleases](https://toolkit.fluxcd.io/guides/helmreleases/) to a Kubernetes cluster. Using `addonslayers.kraan.io` custom resources it retrieves the definitions of one or more HelmReleases from a git repository and applies them to the cluster then waits until they are all successfully deployed before marking the AddonsLayer as `Deployed`. My creating multiple AddonsLayers custom resources and setting the dependencies between them the user can sequence the deployment of multiple layers of addons.
+The Kraan-Controller is designed to deploy [HelmReleases](https://toolkit.fluxcd.io/guides/helmreleases/) to a Kubernetes cluster. Using `addonslayers.kraan.io` custom resources it retrieves the definitions of one or more HelmReleases from a git repository and applies them to the cluster then waits until they are all successfully deployed before marking the AddonsLayer as `Deployed`. By creating multiple AddonsLayers custom resources and setting the dependencies between them the user can sequence the deployment of multiple layers of addons.
+
+### Moving HelmReleases between AddonLayers
+
+If a HelmRelease is removed from one AddonLayer's git repository source path and added to another layer's git repositiory source path then Kraan will detect this and not allow the existing HelmRelease on the cluster to be 'adpoted' by the layer it is now defined in rather than being deleted and readded. However to achieve this behaviour both AddonLayers need to be updated at the same time.
+
+The 'prune' processing for the layer it has been removed from will mark the HelmReelease as 'orphaned' and wait for a period set by that layer's `interval` setting, which defauts to one minute, before uninstalling it. This allows an opportunity for another layer to identify that the HelmRelease in its git repository source path is present on the cluster but currently owned by another layer. In this case if the HelmRelease has been updated by the other layer with an 'orphaned' label this layer will change the owner and apply it to the cluster, which will cause the Helm Controller to upgrade it if any changes have been made or do nothing if the HelmRelease definition matches the current state on the cluster.
+
+If a HelmRelease is defined in multiple layers at the same time the first layer to process it will acquire ownership and the other layer(s) will fail to apply. This will be clearly reported in the AddonLayer status. It is possible that this error could occur briefly in the sceanrio where a HelmRelease is moved from one layer to another if the layer it is now defined in processes before the layer that it has been removed from, but this situation will be resolved when the layer it has been removed from processes and adds an 'orphaned' label.
 
 ### Git Repository Source
 

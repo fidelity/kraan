@@ -109,6 +109,14 @@ func getLayer(t *testing.T, layerName, dataFileName string) layers.Layer { // no
 	return layers.CreateLayer(context.Background(), fakeClient, fakeK8sClient, logr.Discard(), fakeRecorder, testScheme, data)
 }
 
+func getHelmReleasesAsRuntimeObjsList(helmReleaseList *helmctlv2.HelmReleaseList) []runtime.Object {
+	objs := make([]runtime.Object, len(helmReleaseList.Items))
+	for index, helmRelease := range helmReleaseList.Items {
+		objs[index] = helmRelease.DeepCopyObject()
+	}
+	return objs
+}
+
 func getHelmReleasesFromFiles(t *testing.T, fileNames ...string) *helmctlv2.HelmReleaseList {
 	helmReleasesList := &helmctlv2.HelmReleaseList{
 		TypeMeta: metav1.TypeMeta{
@@ -367,6 +375,92 @@ func TestGetOrphanedHelmReleases(t *testing.T) { // nolint: funlen //ok
 			testData.Inputs[0].(context.Context),
 			testData.Inputs[1].(layers.Layer))
 		testData.Results = []interface{}{hrs, err}
+
+		return u.CallCheckFunc()
+	}
+
+	for _, test := range tests {
+		if !testFunc(t, test) {
+			t.Fatalf("Test failed")
+
+			return
+		}
+	}
+}
+
+func CheckOwnerAndLabels(u testutils.TestUtil) bool {
+	t := u.Testing()
+	testData := u.TestData()
+	a := castToApplier(t, testData.Config)
+
+	c, ok := apply.GetField(t, a, "client").(client.Client)
+	if !ok {
+		t.Fatalf("failed to cast field client to client.Clent")
+	}
+	hr := testData.Inputs[1].([]runtime.Object)[0]
+	key, e := client.ObjectKeyFromObject(hr)
+	if e != nil {
+		t.Fatalf("failed to get an ObjectKey, %s", e)
+	}
+
+	e = c.Get(context.Background(), key, hr)
+	if e != nil {
+		t.Fatalf("failed to get an HelmRelease, %s", e)
+	}
+
+	obj, ok := hr.(metav1.Object)
+	if !ok {
+		t.Fatalf("failed to cast HelmRelase to metav1.Object")
+	}
+
+	labels := obj.GetLabels()
+	if labels == nil {
+		labels = map[string]string{}
+	}
+	_, orphaned := labels[apply.OrphanedLabel]
+	ownerLabel, ok := labels[apply.OwnerLabel]
+	if !ok {
+		ownerLabel = ""
+	}
+	owningLayer := apply.LayerOwner(obj)
+
+	testData.Results = append(testData.Results, orphaned, owningLayer)
+	return testData.Results[0] == nil &&
+		orphaned == testData.Expected[1].(bool) &&
+		owningLayer == ownerLabel &&
+		owningLayer == testData.Expected[2].(string)
+}
+
+func TestAddOwner(t *testing.T) {
+	tests := []*testutils.DefTest{
+		{
+			Number:      1,
+			Description: "orphaned helm release",
+			Config: createApplier(t, getApplierParams(t,
+				[]string{addonsFileName},
+				[]string{helmReleasesFileName, orphan1HelmReleasesFileName},
+				nil, testScheme)),
+			Inputs: []interface{}{
+				getLayer(t, appLayer, addonsFileName),
+				getHelmReleasesAsRuntimeObjsList(getHelmReleasesFromFiles(t, orphan1HelmReleasesFileName)),
+			},
+			Expected:  []interface{}{nil, true, bootstrapLayer},
+			CheckFunc: CheckOwnerAndLabels,
+		},
+	}
+
+	testFunc := func(t *testing.T, testData *testutils.DefTest) bool {
+		u := testutils.NewTestUtil(t, testData)
+
+		u.CallPrepFunc()
+
+		a := castToApplier(t, testData.Config)
+
+		err := apply.AddOwnerRefs(a,
+			testData.Inputs[0].(layers.Layer),
+			testData.Inputs[1].([]runtime.Object))
+
+		testData.Results = []interface{}{err}
 
 		return u.CallCheckFunc()
 	}

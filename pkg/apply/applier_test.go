@@ -2,6 +2,9 @@ package apply_test
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"testing"
 	"time"
 
@@ -9,22 +12,33 @@ import (
 	"github.com/go-logr/logr"
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"
+	"github.com/paulcarlton-ww/goutils/pkg/testutils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	types "k8s.io/apimachinery/pkg/types"
+	fakeK8s "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/apply"
 	"github.com/fidelity/kraan/pkg/internal/kubectl"
 	kubectlmocks "github.com/fidelity/kraan/pkg/internal/mocks/kubectl"
-	mocks "github.com/fidelity/kraan/pkg/mocks/client"
-	layermocks "github.com/fidelity/kraan/pkg/mocks/layers"
+	"github.com/fidelity/kraan/pkg/layers"
+)
+
+const (
+	addonsFileName       = "testdata/addons.json"
+	helmReleasesFileName = "testdata/helmreleases.json"
+	bootstrapOrphaned    = "bootstrap/orphaned"
+	appLayer             = "apps"
 )
 
 var (
 	testScheme = runtime.NewScheme()
+	fakeClient client.Client
 )
 
 func init() {
@@ -33,9 +47,129 @@ func init() {
 	_ = helmctlv2.AddToScheme(testScheme)     // nolint:errcheck // ok
 }
 
+func getAddonsFromFile(t *testing.T, fileName string) *kraanv1alpha1.AddonsLayerList {
+	buffer, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		t.Fatalf("failed to read AddonLayersList file: %s, %s", fileName, err)
+
+		return nil
+	}
+
+	addons := &kraanv1alpha1.AddonsLayerList{}
+
+	err = json.Unmarshal(buffer, addons)
+	if err != nil {
+		t.Fatalf("failed to unmarshall AddonLayersList file: %s, %s", fileName, err)
+
+		return nil
+	}
+	return addons
+}
+
+func getAddonFromList(t *testing.T, name string, addonList *kraanv1alpha1.AddonsLayerList) *kraanv1alpha1.AddonsLayer {
+	for _, item := range addonList.Items {
+		if item.ObjectMeta.Name == name {
+			return &item
+		}
+	}
+
+	t.Fatalf("failed to find AddonsLayer: %s in list", name)
+
+	return nil
+}
+
+func getLayer(t *testing.T, layerName, dataFileName string) layers.Layer {
+	fakeK8sClient := fakeK8s.NewSimpleClientset()
+	data := getAddonFromList(t, layerName, getAddonsFromFile(t, dataFileName))
+	if data == nil {
+		t.Fatalf("failed to read AddonsLayerList file: %s", dataFileName)
+		return nil
+	}
+	fakeRecorder := record.NewFakeRecorder(1000)
+	return layers.CreateLayer(context.Background(), fakeClient, fakeK8sClient, logr.Discard(), fakeRecorder, testScheme, data)
+}
+
+func getHelmReleasesFromFile(t *testing.T, fileName string) *helmctlv2.HelmReleaseList {
+	buffer, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		t.Fatalf("failed to read HelmReleaseList file: %s, %s", fileName, err)
+
+		return nil
+	}
+
+	helmReleases := &helmctlv2.HelmReleaseList{}
+
+	err = json.Unmarshal(buffer, helmReleases)
+	if err != nil {
+		t.Fatalf("failed to unmarshall HelmReleaseList file: %s, %s", fileName, err)
+
+		return nil
+	}
+	return helmReleases
+}
+
+func getHelmReleaseFromList(t *testing.T, nameSpaceSlashName string, helmReleaseList *helmctlv2.HelmReleaseList) *helmctlv2.HelmRelease {
+	for _, item := range helmReleaseList.Items {
+		if fmt.Sprintf("%s/%s", item.Namespace, item.Name) == nameSpaceSlashName {
+			return &item
+		}
+	}
+
+	t.Fatalf("failed to find HelmRelease: %s in list", nameSpaceSlashName)
+
+	return nil
+}
+
+func getApplierParams(t *testing.T, addonsFileName, helmReleasesFileName string,
+	client client.Client, scheme *runtime.Scheme) []interface{} {
+	addonsList := getAddonsFromFile(t, addonsFileName)
+
+	if t.Failed() {
+		return nil
+	}
+
+	helmReleasesList := getHelmReleasesFromFile(t, helmReleasesFileName)
+
+	if t.Failed() {
+		return nil
+	}
+
+	if client == nil {
+		client = fake.NewFakeClientWithScheme(scheme,
+			addonsList, helmReleasesList /*, gitReposList, helmReposList*/)
+	}
+
+	return []interface{}{
+		client,
+		logr.Discard(),
+		scheme,
+	}
+}
+
+func createApplier(t *testing.T, params []interface{}) apply.LayerApplier {
+	applier, err := apply.NewApplier(
+		params[0].(client.Client),
+		params[1].(logr.Logger),
+		params[2].(*runtime.Scheme))
+	if err != nil {
+		t.Fatalf("failed to create applier, %s", err)
+	}
+	return applier
+}
+
+func castToApplier(t *testing.T, i interface{}) apply.LayerApplier {
+	if ep, ok := i.(apply.LayerApplier); ok {
+		return ep
+	}
+
+	t.Fatalf("failed to cast interface to apply.LayerApplier")
+
+	return nil
+}
+
 func fakeAddonsLayer(sourcePath, layerName string, layerUID types.UID) *kraanv1alpha1.AddonsLayer { //nolint
-	kind := "AddonsLayer"
-	version := "v1alpha1"
+	kind := kraanv1alpha1.AddonsLayerKind
+	version := kraanv1alpha1.GroupVersion.Version
 	typeMeta := metav1.TypeMeta{
 		Kind:       kind,
 		APIVersion: version,
@@ -55,27 +189,16 @@ func fakeAddonsLayer(sourcePath, layerName string, layerUID types.UID) *kraanv1a
 	}
 	layerPreReqs := kraanv1alpha1.PreReqs{
 		K8sVersion: "1.15.3",
-		//K8sVersion string `json:"k8sVersion"`
-		//DependsOn []string `json:"dependsOn,omitempty"`
 	}
 	layerSpec := kraanv1alpha1.AddonsLayerSpec{
 		Source:  sourceSpec,
 		PreReqs: layerPreReqs,
 		Hold:    false,
-		Version: "v1alpha1",
-		//Source SourceSpec `json:"source"`
-		//PreReqs PreReqs `json:"prereqs,omitempty"`
-		//Hold bool `json:"hold,omitempty"`
-		//Interval metav1.Duration `json:"interval"`
-		//Timeout *metav1.Duration `json:"timeout,omitempty"`
-		//Version string `json:"version"`
+		Version: "0.0.1",
 	}
 	layerStatus := kraanv1alpha1.AddonsLayerStatus{
 		State:   "Testing",
-		Version: "v1alpha1",
-		//Conditions []Condition `json:"conditions,omitempty"`
-		//State string `json:"state,omitempty"`
-		//Version string `json:"version,omitempty"`
+		Version: "0.0.1",
 	}
 	addonsLayer := &kraanv1alpha1.AddonsLayer{
 		TypeMeta:   typeMeta,
@@ -115,51 +238,51 @@ func TestNewApplierWithMockKubectl(t *testing.T) {
 	t.Logf("NewApplier returned (%T) %#v", applier, applier)
 }
 
-func TODOTestBasicApply(t *testing.T) { //nolint
-	mockCtl := gomock.NewController(t)
-	defer mockCtl.Finish()
-
-	mockCommand := kubectlmocks.NewMockCommand(mockCtl)
-	mockKubectl := kubectlmocks.NewMockKubectl(mockCtl)
-	newKFunc := func(logger logr.Logger) (kubectl.Kubectl, error) {
-		return mockKubectl, nil
+func TestGetOrphanedHelmReleases(t *testing.T) {
+	tests := []*testutils.DefTest{
+		{
+			Number:      1,
+			Description: "one orphaned helm release, not this layer",
+			Config: createApplier(t, getApplierParams(t,
+				addonsFileName,
+				helmReleasesFileName,
+				nil, testScheme)),
+			Inputs: []interface{}{
+				context.Background(),
+				getLayer(t, appLayer, addonsFileName),
+			},
+			Expected: []interface{}{
+				map[string]*helmctlv2.HelmRelease{
+					bootstrapOrphaned: getHelmReleaseFromList(t, bootstrapOrphaned,
+						getHelmReleasesFromFile(t, helmReleasesFileName)),
+				},
+				nil,
+			},
+			ResultsCompareFunc: testutils.CompareJSON,
+			ResultsReportFunc:  testutils.ReportJSON,
+		},
 	}
-	apply.SetNewKubectlFunc(newKFunc)
 
-	ctx := context.Background()
-	logger := testlogr.TestLogger{T: t}
-	client := mocks.NewMockClient(mockCtl)
+	testFunc := func(t *testing.T, testData *testutils.DefTest) bool {
+		u := testutils.NewTestUtil(t, testData)
 
-	applier, err := apply.NewApplier(client, logger, testScheme)
-	if err != nil {
-		t.Fatalf("The NewApplier constructor returned an error: %s", err)
+		u.CallPrepFunc()
+
+		a := castToApplier(t, testData.Config)
+
+		hrs, err := a.GetOrphanedHelmReleases(
+			testData.Inputs[0].(context.Context),
+			testData.Inputs[1].(layers.Layer))
+		testData.Results = []interface{}{hrs, err}
+
+		return u.CallCheckFunc()
 	}
-	t.Logf("NewApplier returned (%T) %#v", applier, applier)
 
-	// This integration test can be forced to pass or fail at different stages by altering the
-	// Values section of the microservice.yaml HelmRelease in the directory below.
-	sourcePath := "testdata/apply/single_release"
-	layerName := "test"
-	var layerUID types.UID = "01234567-89ab-cdef-0123-456789abcdef"
-	addonsLayer := fakeAddonsLayer(sourcePath, layerName, layerUID)
+	for _, test := range tests {
+		if !testFunc(t, test) {
+			t.Fatalf("Test failed")
 
-	//fakeHr := &helmctlv2.HelmRelease{}
-	// TODO - serailize a fake HelmRelease
-	//sez := serializer.NewCodecFactory(testScheme).Co
-	fakeHrJSON := "fakeHrJson"
-
-	mockKubectl.EXPECT().Apply(sourcePath).Return(mockCommand).Times(1)
-	mockCommand.EXPECT().WithLogger(logger).Return(mockCommand).Times(1)
-	mockCommand.EXPECT().DryRun().Return(fakeHrJSON, nil).Times(1)
-
-	mockLayer := layermocks.NewMockLayer(mockCtl)
-	mockLayer.EXPECT().GetName().Return(layerName).AnyTimes()
-	mockLayer.EXPECT().GetSourcePath().Return(sourcePath).AnyTimes()
-	mockLayer.EXPECT().GetLogger().Return(logger).AnyTimes()
-	mockLayer.EXPECT().GetAddonsLayer().Return(addonsLayer).Times(1)
-
-	err = applier.Apply(ctx, mockLayer)
-	if err != nil {
-		t.Fatalf("LayerApplier.Apply returned an error: %s", err)
+			return
+		}
 	}
 }

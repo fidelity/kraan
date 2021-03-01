@@ -79,6 +79,7 @@ type Layer interface {
 
 // KraanLayer is the Schema for the addons API.
 type KraanLayer struct {
+	Name        string `json:"layer-name"`
 	updated     bool
 	requeue     bool
 	delayed     bool
@@ -98,6 +99,7 @@ type KraanLayer struct {
 func CreateLayer(ctx context.Context, client client.Client, k8client kubernetes.Interface, log logr.Logger,
 	recorder record.EventRecorder, scheme *runtime.Scheme, addonsLayer *kraanv1alpha1.AddonsLayer) Layer {
 	l := &KraanLayer{
+		Name:        addonsLayer.Name,
 		requeue:     false,
 		delayed:     false,
 		updated:     false,

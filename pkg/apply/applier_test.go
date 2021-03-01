@@ -30,17 +30,19 @@ import (
 )
 
 const (
-	addonsFileName              = "testdata/addons.json"
-	helmReleasesFileName        = "testdata/helmreleases.json"
-	orphan1HelmReleasesFileName = "testdata/orphaned1-helmreleases.json"
-	orphan2HelmReleasesFileName = "testdata/orphaned2-helmreleases.json"
-	orphan3HelmReleasesFileName = "testdata/orphaned3-helmreleases.json"
-	bootstrapOrphaned           = "bootstrap/orphaned1"
-	baseOrphaned                = "base/orphaned2"
-	mgmtOrphaned                = "mgmt/orphaned3"
-	appLayer                    = "apps"
-	bootstrapLayer              = "bootstrap"
-	k8sList                     = "List"
+	addonsFileName                    = "testdata/addons.json"
+	helmReleasesFileName              = "testdata/helmreleases.json"
+	orphan1HelmReleasesFileName       = "testdata/orphaned1-helmreleases.json"
+	orphan2HelmReleasesFileName       = "testdata/orphaned2-helmreleases.json"
+	orphan3HelmReleasesFileName       = "testdata/orphaned3-helmreleases.json"
+	notOrphaned1HelmReleasesFileName  = "testdata/notorphaned1-helmreleases.json"
+	noLayerOwner1HelmReleasesFileName = "testdata/nolayerowner1-helmreleases.json"
+	bootstrapOrphaned                 = "bootstrap/orphaned1"
+	baseOrphaned                      = "base/orphaned2"
+	mgmtOrphaned                      = "mgmt/orphaned3"
+	appsLayer                         = "apps"
+	bootstrapLayer                    = "bootstrap"
+	k8sList                           = "List"
 )
 
 var (
@@ -288,7 +290,7 @@ func TestGetOrphanedHelmReleases(t *testing.T) { // nolint: funlen //ok
 				nil, testScheme)),
 			Inputs: []interface{}{
 				context.Background(),
-				getLayer(t, appLayer, addonsFileName),
+				getLayer(t, appsLayer, addonsFileName),
 			},
 			Expected: []interface{}{
 				map[string]*helmctlv2.HelmRelease{
@@ -327,7 +329,7 @@ func TestGetOrphanedHelmReleases(t *testing.T) { // nolint: funlen //ok
 				nil, testScheme)),
 			Inputs: []interface{}{
 				context.Background(),
-				getLayer(t, appLayer, addonsFileName),
+				getLayer(t, appsLayer, addonsFileName),
 			},
 			Expected: []interface{}{
 				map[string]*helmctlv2.HelmRelease{},
@@ -431,7 +433,7 @@ func CheckOwnerAndLabels(u testutils.TestUtil, name string, results, exepcted in
 		owningLayer == testData.Expected[3].(string)
 }
 
-func TestAddOwner(t *testing.T) {
+func TestAddOwner(t *testing.T) { // nolint: funlen // ok
 	tests := []*testutils.DefTest{
 		{
 			Number:      1,
@@ -441,12 +443,40 @@ func TestAddOwner(t *testing.T) {
 				[]string{helmReleasesFileName, orphan1HelmReleasesFileName},
 				nil, testScheme)),
 			Inputs: []interface{}{
-				getLayer(t, appLayer, addonsFileName),
+				getLayer(t, appsLayer, addonsFileName),
 				getHelmReleasesAsRuntimeObjsList(getHelmReleasesFromFiles(t, orphan1HelmReleasesFileName)),
 			},
 			Expected:           []interface{}{nil, true, bootstrapLayer, bootstrapLayer},
 			ResultsCompareFunc: CheckOwnerAndLabels,
 			ResultsReportFunc:  testutils.ReportJSON,
+		},
+		{
+			Number:      2,
+			Description: "not orphaned helm release",
+			Config: createApplier(t, getApplierParams(t,
+				[]string{addonsFileName},
+				[]string{helmReleasesFileName, notOrphaned1HelmReleasesFileName},
+				nil, testScheme)),
+			Inputs: []interface{}{
+				getLayer(t, appsLayer, addonsFileName),
+				getHelmReleasesAsRuntimeObjsList(getHelmReleasesFromFiles(t, notOrphaned1HelmReleasesFileName)),
+			},
+			Expected:  []interface{}{[]string{"HelmRelease: bootstrap/orphaned1, also included in layer: bootstrap"}},
+			CheckFunc: testutils.CheckError,
+		},
+		{
+			Number:      3,
+			Description: "not orphaned helm release, owned by another controller",
+			Config: createApplier(t, getApplierParams(t,
+				[]string{addonsFileName},
+				[]string{helmReleasesFileName, noLayerOwner1HelmReleasesFileName},
+				nil, testScheme)),
+			Inputs: []interface{}{
+				getLayer(t, appsLayer, addonsFileName),
+				getHelmReleasesAsRuntimeObjsList(getHelmReleasesFromFiles(t, noLayerOwner1HelmReleasesFileName)),
+			},
+			Expected:  []interface{}{[]string{"HelmRelease: bootstrap/orphaned1, also included in layer: bootstrap"}},
+			CheckFunc: testutils.CheckError,
 		},
 	}
 

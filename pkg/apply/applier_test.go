@@ -30,10 +30,17 @@ import (
 )
 
 const (
-	addonsFileName       = "testdata/addons.json"
-	helmReleasesFileName = "testdata/helmreleases.json"
-	bootstrapOrphaned    = "bootstrap/orphaned"
-	appLayer             = "apps"
+	addonsFileName              = "testdata/addons.json"
+	helmReleasesFileName        = "testdata/helmreleases.json"
+	orphan1HelmReleasesFileName = "testdata/orphaned1-helmreleases.json"
+	orphan2HelmReleasesFileName = "testdata/orphaned2-helmreleases.json"
+	orphan3HelmReleasesFileName = "testdata/orphaned3-helmreleases.json"
+	bootstrapOrphaned           = "bootstrap/orphaned1"
+	baseOrphaned                = "base/orphaned2"
+	mgmtOrphaned                = "mgmt/orphaned3"
+	appLayer                    = "apps"
+	bootstrapLayer              = "bootstrap"
+	k8sList                     = "List"
 )
 
 var (
@@ -47,23 +54,36 @@ func init() {
 	_ = helmctlv2.AddToScheme(testScheme)     // nolint:errcheck // ok
 }
 
-func getAddonsFromFile(t *testing.T, fileName string) *kraanv1alpha1.AddonsLayerList {
-	buffer, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		t.Fatalf("failed to read AddonLayersList file: %s, %s", fileName, err)
-
-		return nil
+func getAddonsFromFiles(t *testing.T, fileNames ...string) *kraanv1alpha1.AddonsLayerList {
+	addonsLayersList := &kraanv1alpha1.AddonsLayerList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       k8sList,
+			APIVersion: fmt.Sprintf("%s/%s", kraanv1alpha1.GroupVersion.Version, kraanv1alpha1.GroupVersion.Version),
+		},
+		Items: make([]kraanv1alpha1.AddonsLayer, 0, 10),
 	}
 
-	addons := &kraanv1alpha1.AddonsLayerList{}
+	for _, fileName := range fileNames {
+		buffer, err := ioutil.ReadFile(fileName)
+		if err != nil {
+			t.Fatalf("failed to read AddonLayersList file: %s, %s", fileName, err)
 
-	err = json.Unmarshal(buffer, addons)
-	if err != nil {
-		t.Fatalf("failed to unmarshall AddonLayersList file: %s, %s", fileName, err)
+			return nil
+		}
 
-		return nil
+		addons := &kraanv1alpha1.AddonsLayerList{}
+
+		err = json.Unmarshal(buffer, addons)
+		if err != nil {
+			t.Fatalf("failed to unmarshall AddonLayersList file: %s, %s", fileName, err)
+
+			return nil
+		}
+
+		addonsLayersList.Items = append(addonsLayersList.Items, addons.Items...)
 	}
-	return addons
+
+	return addonsLayersList
 }
 
 func getAddonFromList(t *testing.T, name string, addonList *kraanv1alpha1.AddonsLayerList) *kraanv1alpha1.AddonsLayer {
@@ -78,9 +98,9 @@ func getAddonFromList(t *testing.T, name string, addonList *kraanv1alpha1.Addons
 	return nil
 }
 
-func getLayer(t *testing.T, layerName, dataFileName string) layers.Layer {
+func getLayer(t *testing.T, layerName, dataFileName string) layers.Layer { // nolint: unparam // ok
 	fakeK8sClient := fakeK8s.NewSimpleClientset()
-	data := getAddonFromList(t, layerName, getAddonsFromFile(t, dataFileName))
+	data := getAddonFromList(t, layerName, getAddonsFromFiles(t, dataFileName))
 	if data == nil {
 		t.Fatalf("failed to read AddonsLayerList file: %s", dataFileName)
 		return nil
@@ -89,23 +109,34 @@ func getLayer(t *testing.T, layerName, dataFileName string) layers.Layer {
 	return layers.CreateLayer(context.Background(), fakeClient, fakeK8sClient, logr.Discard(), fakeRecorder, testScheme, data)
 }
 
-func getHelmReleasesFromFile(t *testing.T, fileName string) *helmctlv2.HelmReleaseList {
-	buffer, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		t.Fatalf("failed to read HelmReleaseList file: %s, %s", fileName, err)
-
-		return nil
+func getHelmReleasesFromFiles(t *testing.T, fileNames ...string) *helmctlv2.HelmReleaseList {
+	helmReleasesList := &helmctlv2.HelmReleaseList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "List",
+			APIVersion: fmt.Sprintf("%s/%s", helmctlv2.GroupVersion.Version, helmctlv2.GroupVersion.Version),
+		},
+		Items: make([]helmctlv2.HelmRelease, 0, 10),
 	}
 
-	helmReleases := &helmctlv2.HelmReleaseList{}
+	for _, fileName := range fileNames {
+		buffer, err := ioutil.ReadFile(fileName)
+		if err != nil {
+			t.Fatalf("failed to read HelmReleaseList file: %s, %s", fileName, err)
 
-	err = json.Unmarshal(buffer, helmReleases)
-	if err != nil {
-		t.Fatalf("failed to unmarshall HelmReleaseList file: %s, %s", fileName, err)
+			return nil
+		}
+		helmReleases := &helmctlv2.HelmReleaseList{}
 
-		return nil
+		err = json.Unmarshal(buffer, helmReleases)
+		if err != nil {
+			t.Fatalf("failed to unmarshall HelmReleaseList file: %s, %s", fileName, err)
+
+			return nil
+		}
+
+		helmReleasesList.Items = append(helmReleasesList.Items, helmReleases.Items...)
 	}
-	return helmReleases
+	return helmReleasesList
 }
 
 func getHelmReleaseFromList(t *testing.T, nameSpaceSlashName string, helmReleaseList *helmctlv2.HelmReleaseList) *helmctlv2.HelmRelease {
@@ -120,15 +151,15 @@ func getHelmReleaseFromList(t *testing.T, nameSpaceSlashName string, helmRelease
 	return nil
 }
 
-func getApplierParams(t *testing.T, addonsFileName, helmReleasesFileName string,
-	client client.Client, scheme *runtime.Scheme) []interface{} {
-	addonsList := getAddonsFromFile(t, addonsFileName)
+func getApplierParams(t *testing.T, addonsFileNames, helmReleasesFileNames []string,
+	client client.Client, scheme *runtime.Scheme) []interface{} { // nolint: unparam //ok
+	addonsList := getAddonsFromFiles(t, addonsFileNames...)
 
 	if t.Failed() {
 		return nil
 	}
 
-	helmReleasesList := getHelmReleasesFromFile(t, helmReleasesFileName)
+	helmReleasesList := getHelmReleasesFromFiles(t, helmReleasesFileNames...)
 
 	if t.Failed() {
 		return nil
@@ -238,14 +269,14 @@ func TestNewApplierWithMockKubectl(t *testing.T) {
 	t.Logf("NewApplier returned (%T) %#v", applier, applier)
 }
 
-func TestGetOrphanedHelmReleases(t *testing.T) {
+func TestGetOrphanedHelmReleases(t *testing.T) { // nolint: funlen //ok
 	tests := []*testutils.DefTest{
 		{
 			Number:      1,
 			Description: "one orphaned helm release, not this layer",
 			Config: createApplier(t, getApplierParams(t,
-				addonsFileName,
-				helmReleasesFileName,
+				[]string{addonsFileName},
+				[]string{helmReleasesFileName, orphan1HelmReleasesFileName},
 				nil, testScheme)),
 			Inputs: []interface{}{
 				context.Background(),
@@ -254,7 +285,69 @@ func TestGetOrphanedHelmReleases(t *testing.T) {
 			Expected: []interface{}{
 				map[string]*helmctlv2.HelmRelease{
 					bootstrapOrphaned: getHelmReleaseFromList(t, bootstrapOrphaned,
-						getHelmReleasesFromFile(t, helmReleasesFileName)),
+						getHelmReleasesFromFiles(t, orphan1HelmReleasesFileName)),
+				},
+				nil,
+			},
+			ResultsCompareFunc: testutils.CompareJSON,
+			ResultsReportFunc:  testutils.ReportJSON,
+		},
+		{
+			Number:      2,
+			Description: "one orphaned helm release, but this layer",
+			Config: createApplier(t, getApplierParams(t,
+				[]string{addonsFileName},
+				[]string{helmReleasesFileName, orphan1HelmReleasesFileName},
+				nil, testScheme)),
+			Inputs: []interface{}{
+				context.Background(),
+				getLayer(t, bootstrapLayer, addonsFileName),
+			},
+			Expected: []interface{}{
+				map[string]*helmctlv2.HelmRelease{},
+				nil,
+			},
+			ResultsCompareFunc: testutils.CompareJSON,
+			ResultsReportFunc:  testutils.ReportJSON,
+		},
+		{
+			Number:      3,
+			Description: "no orphaned helm releases",
+			Config: createApplier(t, getApplierParams(t,
+				[]string{addonsFileName},
+				[]string{helmReleasesFileName},
+				nil, testScheme)),
+			Inputs: []interface{}{
+				context.Background(),
+				getLayer(t, appLayer, addonsFileName),
+			},
+			Expected: []interface{}{
+				map[string]*helmctlv2.HelmRelease{},
+				nil,
+			},
+			ResultsCompareFunc: testutils.CompareJSON,
+			ResultsReportFunc:  testutils.ReportJSON,
+		},
+		{
+			Number:      4,
+			Description: "multiple orphaned helm release, two not this layer",
+			Config: createApplier(t, getApplierParams(t,
+				[]string{addonsFileName},
+				[]string{helmReleasesFileName,
+					orphan1HelmReleasesFileName,
+					orphan2HelmReleasesFileName,
+					orphan3HelmReleasesFileName},
+				nil, testScheme)),
+			Inputs: []interface{}{
+				context.Background(),
+				getLayer(t, bootstrapLayer, addonsFileName),
+			},
+			Expected: []interface{}{
+				map[string]*helmctlv2.HelmRelease{
+					baseOrphaned: getHelmReleaseFromList(t, baseOrphaned,
+						getHelmReleasesFromFiles(t, orphan2HelmReleasesFileName)),
+					mgmtOrphaned: getHelmReleaseFromList(t, mgmtOrphaned,
+						getHelmReleasesFromFiles(t, orphan3HelmReleasesFileName)),
 				},
 				nil,
 			},

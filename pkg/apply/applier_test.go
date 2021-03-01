@@ -388,7 +388,7 @@ func TestGetOrphanedHelmReleases(t *testing.T) { // nolint: funlen //ok
 	}
 }
 
-func CheckOwnerAndLabels(u testutils.TestUtil) bool {
+func CheckOwnerAndLabels(u testutils.TestUtil, name string, results, exepcted interface{}) bool {
 	t := u.Testing()
 	testData := u.TestData()
 	a := castToApplier(t, testData.Config)
@@ -424,11 +424,11 @@ func CheckOwnerAndLabels(u testutils.TestUtil) bool {
 	}
 	owningLayer := apply.LayerOwner(obj)
 
-	testData.Results = append(testData.Results, orphaned, owningLayer)
+	testData.Results = append(testData.Results, orphaned, ownerLabel, owningLayer)
 	return testData.Results[0] == nil &&
 		orphaned == testData.Expected[1].(bool) &&
-		owningLayer == ownerLabel &&
-		owningLayer == testData.Expected[2].(string)
+		ownerLabel == testData.Expected[2].(string) &&
+		owningLayer == testData.Expected[3].(string)
 }
 
 func TestAddOwner(t *testing.T) {
@@ -444,8 +444,9 @@ func TestAddOwner(t *testing.T) {
 				getLayer(t, appLayer, addonsFileName),
 				getHelmReleasesAsRuntimeObjsList(getHelmReleasesFromFiles(t, orphan1HelmReleasesFileName)),
 			},
-			Expected:  []interface{}{nil, true, bootstrapLayer},
-			CheckFunc: CheckOwnerAndLabels,
+			Expected:           []interface{}{nil, true, bootstrapLayer, bootstrapLayer},
+			ResultsCompareFunc: CheckOwnerAndLabels,
+			ResultsReportFunc:  testutils.ReportJSON,
 		},
 	}
 

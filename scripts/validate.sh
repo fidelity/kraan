@@ -20,7 +20,7 @@ if ! git diff "$BASE_REF" -- chart/Chart.yaml | grep '+version:'; then
 fi
 
 if ! git diff "$BASE_REF" -- VERSION | grep '+'; then
-  if git diff --name-status "$BASE_REF" | grep -E '\.go$|go\.mod|go\.sum|Dockerfile'; then
+  if git diff --name-status "$BASE_REF" | grep -v "_test.go" | grep -E '\.go$|go\.mod|go\.sum|Dockerfile'; then
     echo "❌ VERSION was not changed even though relevant code changes occured"
     false
   fi

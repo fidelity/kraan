@@ -384,6 +384,11 @@ github.com/paulcarlton-ww/goutils/pkg/logging v0.0.3 h1:eoIhfT05z3QB3dReY72Tb7re
 github.com/paulcarlton-ww/goutils/pkg/logging v0.0.3/go.mod h1:J13SyiyTEq4RhpE+q58LISe5wGY70ovd9JRObu+3F8c=
 github.com/paulcarlton-ww/goutils/pkg/testutils v0.0.41 h1:dGmQNH7yAfgYVUOmZdlp900DsdrhknJXDiAMprA4ahU=
 github.com/paulcarlton-ww/goutils/pkg/testutils v0.0.41/go.mod h1:P9qEnPLVuPpdzh/abnxqZ+0odd6UX67b3/nLFGRrVUs=
+github.com/paulcarlton-ww/goutils/pkg/testutils v0.0.42/go.mod h1:P9qEnPLVuPpdzh/abnxqZ+0odd6UX67b3/nLFGRrVUs=
+github.com/paulcarlton-ww/goutils/pkg/testutils v0.1.37 h1:i4UxmDoAO/PDkw2+/8qJixNvJswaLIK/uaJFpQ1P14w=
+github.com/paulcarlton-ww/goutils/pkg/testutils v0.1.37/go.mod h1:P9qEnPLVuPpdzh/abnxqZ+0odd6UX67b3/nLFGRrVUs=
+github.com/paulcarlton-ww/goutils/pkg/testutils v0.1.42 h1:c+inMb/+iLQx1c7Eblecnq2vbpKU29N56KzyW346Ua8=
+github.com/paulcarlton-ww/goutils/pkg/testutils v0.1.42/go.mod h1:P9qEnPLVuPpdzh/abnxqZ+0odd6UX67b3/nLFGRrVUs=
 github.com/pborman/uuid v1.2.0/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
 github.com/peterbourgon/diskv v2.0.1+incompatible h1:UBdAOUP5p4RWqPBg048CAvpKN+vxiaj6gdUUzhl4XmI=

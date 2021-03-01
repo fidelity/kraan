@@ -11,7 +11,7 @@ require (
 	github.com/go-logr/zapr v0.4.0 // indirect
 	github.com/golang/mock v1.4.4
 	github.com/google/go-cmp v0.5.2
-	github.com/paulcarlton-ww/goutils/pkg/testutils v0.0.41
+	github.com/paulcarlton-ww/goutils/pkg/testutils v0.1.42
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.7.1
 	go.uber.org/zap v1.16.0

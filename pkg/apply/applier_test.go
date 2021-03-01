@@ -259,6 +259,7 @@ func TestGetOrphanedHelmReleases(t *testing.T) {
 				nil,
 			},
 			ResultsCompareFunc: testutils.CompareJSON,
+			ResultsReportFunc:  testutils.ReportJSON,
 		},
 	}
 

@@ -57,6 +57,8 @@ type LayerApplier interface {
 	Orphan(ctx context.Context, layer layers.Layer, hr *helmctlv2.HelmRelease) (bool, error)
 	GetOrphanedHelmReleases(ctx context.Context, layer layers.Layer) (foundHrs map[string]*helmctlv2.HelmRelease, err error)
 	Adopt(ctx context.Context, layer layers.Layer, hr *helmctlv2.HelmRelease) error
+	addOwnerRefs(layer layers.Layer, objs []runtime.Object) error
+	orphanLabel(ctx context.Context, hr *helmctlv2.HelmRelease) (*metav1.Time, error)
 }
 
 // KubectlLayerApplier applies an AddonsLayer to a Kubernetes cluster using the kubectl command.
@@ -689,7 +691,7 @@ func (a KubectlLayerApplier) Orphan(ctx context.Context, layer layers.Layer, hr 
 	}
 
 	if layer.GetName() != layerOwner(theHr) {
-		a.logDebug("Layer  no longer owns HelmRelease", layer, logging.GetObjKindNamespaceName(hr)...)
+		a.logDebug("Layer no longer owns HelmRelease", layer, logging.GetObjKindNamespaceName(hr)...)
 		return false, nil
 	}
 

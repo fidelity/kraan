@@ -1160,7 +1160,7 @@ func setOrphanLabelTS(u testutils.TestUtil) {
 	}
 }
 
-func TestOrphan(t *testing.T) {
+func TestOrphan(t *testing.T) { // nolint: funlen // ok
 	tests := []*testutils.DefTest{
 		{
 			Number:      1,
@@ -1207,8 +1207,21 @@ func TestOrphan(t *testing.T) {
 				getLayer(t, bootstrapLayer, addonsFileName),
 				getHelmReleaseFromList(t, bootstrapOrphaned, getHelmReleasesFromFiles(t, orphan1HelmReleasesFileName)),
 			},
-			Expected:           []interface{}{false, []string{"HelmRelease not found"}},
-			CheckFunc: testutils.CheckError,
+			Expected: []interface{}{false, nil},
+		},
+		{
+			Number:      4,
+			Description: "orphaned helm release, not not owned by layer",
+			Config: createApplier(t, getApplierParams(t,
+				[]string{addonsFileName},
+				[]string{helmReleasesFileName},
+				nil, testScheme)),
+			Inputs: []interface{}{
+				context.Background(),
+				getLayer(t, appsLayer, addonsFileName),
+				getHelmReleaseFromList(t, bootstrapOrphaned, getHelmReleasesFromFiles(t, orphan1HelmReleasesFileName)),
+			},
+			Expected: []interface{}{false, nil},
 		},
 	}
 

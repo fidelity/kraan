@@ -691,7 +691,7 @@ func (a KubectlLayerApplier) Orphan(ctx context.Context, layer layers.Layer, hr 
 	}
 
 	if layer.GetName() != layerOwner(theHr) {
-		a.logDebug("Layer  no longer owns HelmRelease", layer, logging.GetObjKindNamespaceName(hr)...)
+		a.logDebug("Layer no longer owns HelmRelease", layer, logging.GetObjKindNamespaceName(hr)...)
 		return false, nil
 	}
 

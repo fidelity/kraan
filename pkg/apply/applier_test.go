@@ -403,7 +403,7 @@ func TestGetOrphanedHelmReleases(t *testing.T) { // nolint: funlen //ok
 	}
 }
 
-func CheckOwnerAndLabels(u testutils.TestUtil, name string, results, exepcted interface{}) bool {
+func checkOwnerAndLabels(u testutils.TestUtil, name string, results, exepcted interface{}) bool {
 	t := u.Testing()
 	testData := u.TestData()
 	a := castToApplier(t, testData.Config)
@@ -411,21 +411,29 @@ func CheckOwnerAndLabels(u testutils.TestUtil, name string, results, exepcted in
 	c, ok := apply.GetField(t, a, "client").(client.Client)
 	if !ok {
 		t.Fatalf("failed to cast field client to client.Clent")
+
+		return false
 	}
 	hr := testData.Inputs[1].([]runtime.Object)[0]
 	key, e := client.ObjectKeyFromObject(hr)
 	if e != nil {
 		t.Fatalf("failed to get an ObjectKey, %s", e)
+
+		return false
 	}
 
 	e = c.Get(context.Background(), key, hr)
 	if e != nil {
 		t.Fatalf("failed to get an HelmRelease, %s", e)
+
+		return false
 	}
 
 	obj, ok := hr.(metav1.Object)
 	if !ok {
 		t.Fatalf("failed to cast HelmRelase to metav1.Object")
+
+		return false
 	}
 
 	labels := obj.GetLabels()
@@ -460,7 +468,7 @@ func TestAddOwner(t *testing.T) { // nolint: funlen // ok
 				getHelmReleasesAsRuntimeObjsList(getHelmReleasesFromFiles(t, orphan1HelmReleasesFileName)),
 			},
 			Expected:           []interface{}{nil, true, bootstrapLayer, bootstrapLayer},
-			ResultsCompareFunc: CheckOwnerAndLabels,
+			ResultsCompareFunc: checkOwnerAndLabels,
 			ResultsReportFunc:  testutils.ReportJSON,
 		},
 		{
@@ -504,7 +512,7 @@ func TestAddOwner(t *testing.T) { // nolint: funlen // ok
 				getHelmReleasesAsRuntimeObjsList(getHelmReleasesFromFiles(t, helmReleasesFileName), appsMicroService1),
 			},
 			Expected:           []interface{}{nil, false, appsLayer, appsLayer},
-			ResultsCompareFunc: CheckOwnerAndLabels,
+			ResultsCompareFunc: checkOwnerAndLabels,
 			ResultsReportFunc:  testutils.ReportJSON,
 		},
 		{
@@ -519,7 +527,7 @@ func TestAddOwner(t *testing.T) { // nolint: funlen // ok
 				getHelmReleasesAsRuntimeObjsList(getHelmReleasesFromFiles(t, noOwner1HelmReleasesFileName)),
 			},
 			Expected:           []interface{}{nil, false, appsLayer, appsLayer},
-			ResultsCompareFunc: CheckOwnerAndLabels,
+			ResultsCompareFunc: checkOwnerAndLabels,
 			ResultsReportFunc:  testutils.ReportJSON,
 		},
 	}
@@ -910,6 +918,84 @@ func TestOrphanLabel(t *testing.T) { // nolint: funlen //ok
 			testData.Inputs[1].(*helmctlv2.HelmRelease))
 
 		testData.Results = []interface{}{ts, err}
+
+		return u.CallCheckFunc()
+	}
+
+	for _, test := range tests {
+		if !testFunc(t, test) {
+			t.Fatalf("Test failed")
+
+			return
+		}
+	}
+}
+
+func TestAdopt(t *testing.T) { // nolint: funlen // ok
+	tests := []*testutils.DefTest{
+		{
+			Number:      1,
+			Description: "orphaned helm release",
+			Config: createApplier(t, getApplierParams(t,
+				[]string{addonsFileName},
+				[]string{helmReleasesFileName, orphan1HelmReleasesFileName},
+				nil, testScheme)),
+			Inputs: []interface{}{
+				context.Background(),
+				getLayer(t, appsLayer, addonsFileName),
+				getHelmReleaseFromList(t, bootstrapOrphaned, getHelmReleasesFromFiles(t, orphan1HelmReleasesFileName)),
+			},
+			Expected:           []interface{}{nil, false, appsLayer, appsLayer},
+			ResultsCompareFunc: checkOwnerAndLabels,
+			ResultsReportFunc:  testutils.ReportJSON,
+		},
+		{
+			Number:      2,
+			Description: "not orphaned helm release",
+			Config: createApplier(t, getApplierParams(t,
+				[]string{addonsFileName},
+				[]string{helmReleasesFileName, noLayerOwner1HelmReleasesFileName},
+				nil, testScheme)),
+			Inputs: []interface{}{
+				context.Background(),
+				getLayer(t, appsLayer, addonsFileName),
+				getHelmReleaseFromList(t, bootstrapOrphaned , getHelmReleasesFromFiles(t, notOrphaned1HelmReleasesFileName)),
+			},
+			Expected:           []interface{}{nil, false, appsLayer, appsLayer},
+			ResultsCompareFunc: checkOwnerAndLabels,
+			ResultsReportFunc:  testutils.ReportJSON,
+		},
+		{
+			Number:      3,
+			Description: "helm release, no labels",
+			Config: createApplier(t, getApplierParams(t,
+				[]string{addonsFileName},
+				[]string{helmReleasesFileName, notOrphaned1HelmReleasesFileName},
+				nil, testScheme)),
+			Inputs: []interface{}{
+				context.Background(),
+				getLayer(t, appsLayer, addonsFileName),
+				getHelmReleaseFromList(t, noLayerOwner1HelmRelease , getHelmReleasesFromFiles(t, noLayerOwner1HelmReleasesFileName)),
+			},
+			Expected:           []interface{}{nil, false, appsLayer, appsLayer},
+			ResultsCompareFunc: checkOwnerAndLabels,
+			ResultsReportFunc:  testutils.ReportJSON,
+		},
+	}
+
+	testFunc := func(t *testing.T, testData *testutils.DefTest) bool {
+		u := testutils.NewTestUtil(t, testData)
+
+		u.CallPrepFunc()
+
+		a := castToApplier(t, testData.Config)
+
+		err := a.Adopt(
+			testData.Inputs[0].(context.Context),
+			testData.Inputs[1].(layers.Layer),
+			testData.Inputs[2].(*helmctlv2.HelmRelease))
+
+		testData.Results = []interface{}{err}
 
 		return u.CallCheckFunc()
 	}

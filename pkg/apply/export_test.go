@@ -16,9 +16,13 @@ func SetNewKubectlFunc(kubectlFunc func(logger logr.Logger) (kubectl.Kubectl, er
 
 var (
 	AddOwnerRefs  = LayerApplier.addOwnerRefs
+	OrphanLabel   = LayerApplier.orphanLabel
 	OrphanedLabel = orphanedLabel
 	OwnerLabel    = ownerLabel
 	LayerOwner    = layerOwner
+	ChangeOwner   = changeOwner
+	GetTimestamp  = getTimestamp
+	LabelValue    = labelValue
 	GetObjLabel   = getObjLabel
 )
 

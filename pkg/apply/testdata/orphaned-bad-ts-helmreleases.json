@@ -10,18 +10,18 @@
                 ],
                 "generation": 1,
                 "labels": {
-                    "kraan/layer": "mgmt",
-                    "orphaned": "2021-03-01T00:00.00-05.00"
+                    "kraan/layer": "bootstrap",
+                    "orphaned": "not-a-ts"
                 },
-                "name": "orphaned3",
-                "namespace": "mgmt",
+                "name": "orphaned1",
+                "namespace": "bootstrap",
                 "ownerReferences": [
                     {
                         "apiVersion": "kraan.io/v1alpha1",
                         "blockOwnerDeletion": true,
                         "controller": true,
                         "kind": "AddonsLayer",
-                        "name": "mgmt"
+                        "name": "bootstrap"
                     }
                 ]
             },
@@ -91,7 +91,7 @@
                         "type": "Released"
                     }
                 ],
-                "helmChart": "gotk-system/mgmt-orphan-test",
+                "helmChart": "gotk-system/bootstrap-orphan-test",
                 "lastAppliedRevision": "5.1.4",
                 "lastAttemptedRevision": "5.1.4",
                 "lastAttemptedValuesChecksum": "xyz987",

@@ -9,9 +9,6 @@
                     "finalizers.fluxcd.io"
                 ],
                 "generation": 1,
-                "labels": {
-                    "kraan/layer": "bootstrap"
-                },
                 "name": "no-layer-owner",
                 "namespace": "bootstrap",
                 "ownerReferences": [

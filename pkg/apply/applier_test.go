@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"testing"
 	"time"
 
@@ -33,6 +34,7 @@ import (
 const (
 	addonsFileName                    = "testdata/addons.json"
 	helmReleasesFileName              = "testdata/helmreleases.json"
+	orphanBadTSHelmReleasesFileName   = "testdata/orphaned-bad-ts-helmreleases.json"
 	orphan1HelmReleasesFileName       = "testdata/orphaned1-helmreleases.json"
 	orphan2HelmReleasesFileName       = "testdata/orphaned2-helmreleases.json"
 	orphan3HelmReleasesFileName       = "testdata/orphaned3-helmreleases.json"
@@ -43,14 +45,19 @@ const (
 	baseOrphaned                      = "base/orphaned2"
 	mgmtOrphaned                      = "mgmt/orphaned3"
 	appsMicroService1                 = "apps/microservice-1"
+	bootstrapMicroService1            = "bootstrap/microservice-1"
 	appsLayer                         = "apps"
 	bootstrapLayer                    = "bootstrap"
 	k8sList                           = "List"
+	noLayerOwner1HelmRelease          = "bootstrap/no-layer-owner"
+	noOwner1HelmRelease               = "apps/no-owner"
+	testUID                           = "4707bef2-388a-4765-b5bf-2ce6715a2cb1"
 )
 
 var (
 	testScheme = runtime.NewScheme()
 	fakeClient client.Client
+	nilTS      *metav1.Time = nil
 )
 
 func init() {
@@ -529,6 +536,380 @@ func TestAddOwner(t *testing.T) { // nolint: funlen // ok
 			testData.Inputs[1].([]runtime.Object))
 
 		testData.Results = []interface{}{err}
+
+		return u.CallCheckFunc()
+	}
+
+	for _, test := range tests {
+		if !testFunc(t, test) {
+			t.Fatalf("Test failed")
+
+			return
+		}
+	}
+}
+
+func TestLayerOwner(t *testing.T) {
+	tests := []*testutils.DefTest{
+		{
+			Number:      1,
+			Description: "owned by layer",
+			Inputs: []interface{}{
+				getHelmReleaseFromList(t, appsMicroService1, getHelmReleasesFromFiles(t, helmReleasesFileName)),
+			},
+			Expected: []interface{}{appsLayer},
+		},
+		{
+			Number:      2,
+			Description: "no owners",
+			Inputs: []interface{}{
+				getHelmReleaseFromList(t, noOwner1HelmRelease, getHelmReleasesFromFiles(t, noOwner1HelmReleasesFileName)),
+			},
+			Expected: []interface{}{""},
+		},
+		{
+			Number:      3,
+			Description: "no layer owner",
+			Inputs: []interface{}{
+				getHelmReleaseFromList(t, noLayerOwner1HelmRelease, getHelmReleasesFromFiles(t, noLayerOwner1HelmReleasesFileName)),
+			},
+			Expected: []interface{}{""},
+		},
+	}
+
+	testFunc := func(t *testing.T, testData *testutils.DefTest) bool {
+		u := testutils.NewTestUtil(t, testData)
+
+		u.CallPrepFunc()
+
+		owner := apply.LayerOwner(
+			testData.Inputs[0].(metav1.Object))
+
+		testData.Results = []interface{}{owner}
+
+		return u.CallCheckFunc()
+	}
+
+	for _, test := range tests {
+		if !testFunc(t, test) {
+			t.Fatalf("Test failed")
+
+			return
+		}
+	}
+}
+
+func getUID(text types.UID) types.UID {
+	var uid types.UID = text
+	return uid
+}
+
+func TestChangeOwner(t *testing.T) { // nolint: funlen //ok
+	tests := []*testutils.DefTest{
+		{
+			Number:      1,
+			Description: "helm release owned by another layer",
+			Inputs: []interface{}{
+				getLayer(t, appsLayer, addonsFileName),
+				getHelmReleaseFromList(t, bootstrapMicroService1, getHelmReleasesFromFiles(t, helmReleasesFileName)),
+			},
+			Expected: []interface{}{appsLayer, getUID(testUID)},
+		},
+		{
+			Number:      2,
+			Description: "helm release already owner by layer",
+			Inputs: []interface{}{
+				getLayer(t, appsLayer, addonsFileName),
+				getHelmReleaseFromList(t, appsMicroService1, getHelmReleasesFromFiles(t, helmReleasesFileName)),
+			},
+			Expected: []interface{}{appsLayer, getUID("")},
+		},
+		{
+			Number:      3,
+			Description: "helm release owner other controller",
+			Inputs: []interface{}{
+				getLayer(t, appsLayer, addonsFileName),
+				getHelmReleaseFromList(t, noLayerOwner1HelmRelease, getHelmReleasesFromFiles(t, noLayerOwner1HelmReleasesFileName)),
+			},
+			Expected: []interface{}{"something", getUID("")},
+		},
+		{
+			Number:      4,
+			Description: "helm release has no owners",
+			Inputs: []interface{}{
+				getLayer(t, appsLayer, addonsFileName),
+				getHelmReleaseFromList(t, noOwner1HelmRelease, getHelmReleasesFromFiles(t, noOwner1HelmReleasesFileName)),
+			},
+			Expected: []interface{}{"", getUID("")},
+		},
+	}
+
+	testFunc := func(t *testing.T, testData *testutils.DefTest) bool {
+		u := testutils.NewTestUtil(t, testData)
+
+		u.CallPrepFunc()
+
+		apply.ChangeOwner(
+			testData.Inputs[0].(layers.Layer),
+			testData.Inputs[1].(*helmctlv2.HelmRelease))
+
+		if len(testData.Inputs[1].(*helmctlv2.HelmRelease).GetOwnerReferences()) > 0 {
+			testData.Results = []interface{}{
+				testData.Inputs[1].(*helmctlv2.HelmRelease).GetOwnerReferences()[0].Name,
+				testData.Inputs[1].(*helmctlv2.HelmRelease).GetOwnerReferences()[0].UID,
+			}
+		} else {
+			testData.Results = []interface{}{"", getUID("")}
+		}
+		return u.CallCheckFunc()
+	}
+
+	for _, test := range tests {
+		if !testFunc(t, test) {
+			t.Fatalf("Test failed")
+
+			return
+		}
+	}
+}
+
+func generateTimeText(ts metav1.Time) string {
+	return ts.Format(time.RFC3339)
+}
+
+func TestGetTimeStamp(t *testing.T) {
+	now := metav1.Now()
+
+	tests := []*testutils.DefTest{
+		{
+			Number:             1,
+			Description:        "properly formatted timestamp",
+			Inputs:             []interface{}{generateTimeText(now)},
+			Expected:           []interface{}{&now, nil},
+			ResultsCompareFunc: testutils.CompareJSON,
+			ResultsReportFunc:  testutils.ReportJSON,
+		},
+		{
+			Number:      2,
+			Description: "invalid timestamp",
+			Inputs:      []interface{}{"not at timestamp"},
+			Expected:    []interface{}{nilTS, []string{"failed to parse timestamp"}},
+			CheckFunc:   testutils.CheckError,
+		},
+	}
+
+	testFunc := func(t *testing.T, testData *testutils.DefTest) bool {
+		u := testutils.NewTestUtil(t, testData)
+
+		u.CallPrepFunc()
+
+		err, ts := apply.GetTimestamp(testData.Inputs[0].(string))
+
+		testData.Results = []interface{}{err, ts}
+
+		return u.CallCheckFunc()
+	}
+
+	for _, test := range tests {
+		if !testFunc(t, test) {
+			t.Fatalf("Test failed")
+
+			return
+		}
+	}
+}
+
+func TestLabelValue(t *testing.T) {
+	tests := []*testutils.DefTest{
+		{
+			Number:      1,
+			Description: "no labels",
+			Inputs: []interface{}{
+				"a-label",
+				getHelmReleasesAsRuntimeObjsList(getHelmReleasesFromFiles(t, noLayerOwner1HelmReleasesFileName), noLayerOwner1HelmRelease)[0]},
+			Expected: []interface{}{""},
+		},
+		{
+			Number:      2,
+			Description: "labels but not found",
+			Inputs: []interface{}{
+				"a-label",
+				getHelmReleasesAsRuntimeObjsList(getHelmReleasesFromFiles(t, orphan1HelmReleasesFileName), bootstrapOrphaned)[0]},
+			Expected: []interface{}{""},
+		},
+		{
+			Number:      3,
+			Description: "label found",
+			Inputs: []interface{}{
+				apply.OwnerLabel,
+				getHelmReleasesAsRuntimeObjsList(getHelmReleasesFromFiles(t, orphan1HelmReleasesFileName), bootstrapOrphaned)[0]},
+			Expected: []interface{}{bootstrapLayer},
+		},
+	}
+
+	testFunc := func(t *testing.T, testData *testutils.DefTest) bool {
+		u := testutils.NewTestUtil(t, testData)
+
+		u.CallPrepFunc()
+
+		obj, ok := testData.Inputs[1].(metav1.Object)
+		if !ok {
+			t.Fatalf("failed to cast to metav1.Object")
+
+			return false
+		}
+
+		value := apply.LabelValue(testData.Inputs[0].(string), &obj)
+
+		testData.Results = []interface{}{value}
+
+		return u.CallCheckFunc()
+	}
+
+	for _, test := range tests {
+		if !testFunc(t, test) {
+			t.Fatalf("Test failed")
+
+			return
+		}
+	}
+}
+
+func checkOrphanLabel(u testutils.TestUtil, name string, actual, expected interface{}) bool { // nolint: funlen,gocyclo // ok
+	t := u.Testing()
+	testData := u.TestData()
+	a := castToApplier(t, testData.Config)
+
+	c, ok := apply.GetField(t, a, "client").(client.Client)
+	if !ok {
+		t.Fatalf("failed to cast field client to client.Clent")
+
+		return false
+	}
+
+	hr, ok := testData.Inputs[1].(*helmctlv2.HelmRelease)
+	if !ok {
+		t.Fatalf("failed to cast input to *helmctlv2.HelmRelease")
+
+		return false
+	}
+
+	key, e := client.ObjectKeyFromObject(hr)
+	if e != nil {
+		t.Fatalf("failed to get an ObjectKey, %s", e)
+
+		return false
+	}
+
+	e = c.Get(context.Background(), key, hr)
+	if e != nil {
+		t.Fatalf("failed to get an HelmRelease, %s", e)
+
+		return false
+	}
+
+	obj, ok := hr.DeepCopyObject().(metav1.Object)
+	if !ok {
+		t.Fatalf("failed to cast HelmRelase to metav1.Object")
+
+		return false
+	}
+
+	labels := obj.GetLabels()
+	if labels == nil {
+		labels = map[string]string{}
+	}
+	orphaned, ok := labels[apply.OrphanedLabel]
+	if !ok {
+		t.Fatalf("failed to get orphaned label")
+
+		return false
+	}
+
+	actualTS, err := apply.GetTimestamp(strings.ReplaceAll(orphaned, ".", ":"))
+	if err != nil {
+		t.Fatalf("failed parse orphaned label as timestamp")
+
+		return false
+	}
+
+	expectedTS, ok := expected.([]interface{})[0].(*metav1.Time)
+	if !ok {
+		t.Fatalf("failed to cast expected value to *metav1.Time")
+
+		return false
+	}
+
+	return actualTS.Add(time.Second).After(expectedTS.Time) && actual.([]interface{})[1] == nil
+}
+
+func TestOrphanLabel(t *testing.T) { // nolint: funlen //ok
+	orphanedTS, err := apply.GetTimestamp("2021-03-01T00:00:00-05:00")
+	if err != nil {
+		t.Fatalf("failed to create timestamp, %s", err)
+	}
+
+	now := metav1.Now()
+
+	tests := []*testutils.DefTest{
+		{
+			Number: 1,
+			Config: createApplier(t, getApplierParams(t,
+				[]string{addonsFileName},
+				[]string{helmReleasesFileName},
+				nil, testScheme)),
+			Description: "no orphan label",
+			Inputs: []interface{}{
+				context.Background(),
+				getHelmReleaseFromList(t, bootstrapMicroService1, getHelmReleasesFromFiles(t, helmReleasesFileName)),
+			},
+			Expected:           []interface{}{&now, nil},
+			ResultsCompareFunc: checkOrphanLabel,
+			ResultsReportFunc:  testutils.ReportJSON,
+		},
+		{
+			Number: 2,
+			Config: createApplier(t, getApplierParams(t,
+				[]string{addonsFileName},
+				[]string{helmReleasesFileName},
+				nil, testScheme)),
+			Description: "existing orphan label",
+			Inputs: []interface{}{
+				context.Background(),
+				getHelmReleaseFromList(t, bootstrapOrphaned, getHelmReleasesFromFiles(t, orphan1HelmReleasesFileName)),
+			},
+			Expected:           []interface{}{&orphanedTS, nil},
+			ResultsCompareFunc: testutils.CompareJSON,
+			ResultsReportFunc:  testutils.ReportJSON,
+		},
+		{
+			Number: 3,
+			Config: createApplier(t, getApplierParams(t,
+				[]string{addonsFileName},
+				[]string{orphanBadTSHelmReleasesFileName},
+				nil, testScheme)),
+			Description: "existing orphan label, invalid timestamp",
+			Inputs: []interface{}{
+				context.Background(),
+				getHelmReleaseFromList(t, bootstrapOrphaned, getHelmReleasesFromFiles(t, orphanBadTSHelmReleasesFileName)),
+			},
+			Expected:  []interface{}{nilTS, []string{"failed to parse orphaned label value as timestamp"}},
+			CheckFunc: testutils.CheckError,
+		},
+	}
+
+	testFunc := func(t *testing.T, testData *testutils.DefTest) bool {
+		u := testutils.NewTestUtil(t, testData)
+
+		u.CallPrepFunc()
+
+		a := castToApplier(t, testData.Config)
+
+		ts, err := apply.OrphanLabel(a,
+			testData.Inputs[0].(context.Context),
+			testData.Inputs[1].(*helmctlv2.HelmRelease))
+
+		testData.Results = []interface{}{ts, err}
 
 		return u.CallCheckFunc()
 	}

@@ -9,7 +9,8 @@
                     "finalizers.kraan.io"
                 ],
                 "name": "apps",
-                "generation": 1
+                "generation": 1,
+                "uid": "4707bef2-388a-4765-b5bf-2ce6715a2cb1"
             },
             "spec": {
                 "interval": "1m",

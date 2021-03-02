@@ -1195,6 +1195,21 @@ func TestOrphan(t *testing.T) {
 			ResultsCompareFunc: checkOrphaning,
 			ResultsReportFunc:  testutils.ReportJSON,
 		},
+		{
+			Number:      3,
+			Description: "orphaned helm release, not found",
+			Config: createApplier(t, getApplierParams(t,
+				[]string{addonsFileName},
+				[]string{helmReleasesFileName},
+				nil, testScheme)),
+			Inputs: []interface{}{
+				context.Background(),
+				getLayer(t, bootstrapLayer, addonsFileName),
+				getHelmReleaseFromList(t, bootstrapOrphaned, getHelmReleasesFromFiles(t, orphan1HelmReleasesFileName)),
+			},
+			Expected:           []interface{}{false, []string{"HelmRelease not found"}},
+			CheckFunc: testutils.CheckError,
+		},
 	}
 
 	testFunc := func(t *testing.T, testData *testutils.DefTest) bool {

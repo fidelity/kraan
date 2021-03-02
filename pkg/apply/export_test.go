@@ -19,6 +19,7 @@ var (
 	OrphanedLabel = orphanedLabel
 	OwnerLabel    = ownerLabel
 	LayerOwner    = layerOwner
+	GetObjLabel   = getObjLabel
 )
 
 func GetField(t *testing.T, obj interface{}, fieldName string) interface{} {

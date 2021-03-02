@@ -24,6 +24,7 @@ import (
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/apply"
+	"github.com/fidelity/kraan/pkg/common"
 	"github.com/fidelity/kraan/pkg/internal/kubectl"
 	kubectlmocks "github.com/fidelity/kraan/pkg/internal/mocks/kubectl"
 	"github.com/fidelity/kraan/pkg/layers"
@@ -37,9 +38,11 @@ const (
 	orphan3HelmReleasesFileName       = "testdata/orphaned3-helmreleases.json"
 	notOrphaned1HelmReleasesFileName  = "testdata/notorphaned1-helmreleases.json"
 	noLayerOwner1HelmReleasesFileName = "testdata/nolayerowner1-helmreleases.json"
+	noOwner1HelmReleasesFileName      = "testdata/noowner1-helmreleases.json"
 	bootstrapOrphaned                 = "bootstrap/orphaned1"
 	baseOrphaned                      = "base/orphaned2"
 	mgmtOrphaned                      = "mgmt/orphaned3"
+	appsMicroService1                 = "apps/microservice-1"
 	appsLayer                         = "apps"
 	bootstrapLayer                    = "bootstrap"
 	k8sList                           = "List"
@@ -111,10 +114,13 @@ func getLayer(t *testing.T, layerName, dataFileName string) layers.Layer { // no
 	return layers.CreateLayer(context.Background(), fakeClient, fakeK8sClient, logr.Discard(), fakeRecorder, testScheme, data)
 }
 
-func getHelmReleasesAsRuntimeObjsList(helmReleaseList *helmctlv2.HelmReleaseList) []runtime.Object {
-	objs := make([]runtime.Object, len(helmReleaseList.Items))
-	for index, helmRelease := range helmReleaseList.Items {
-		objs[index] = helmRelease.DeepCopyObject()
+func getHelmReleasesAsRuntimeObjsList(helmReleaseList *helmctlv2.HelmReleaseList, selection ...string) []runtime.Object {
+	objs := []runtime.Object{}
+	for _, helmRelease := range helmReleaseList.Items {
+		if len(selection) > 0 && !common.ContainsString(selection, apply.GetObjLabel(helmRelease.DeepCopyObject())) {
+			continue
+		}
+		objs = append(objs, helmRelease.DeepCopyObject())
 	}
 	return objs
 }
@@ -475,8 +481,39 @@ func TestAddOwner(t *testing.T) { // nolint: funlen // ok
 				getLayer(t, appsLayer, addonsFileName),
 				getHelmReleasesAsRuntimeObjsList(getHelmReleasesFromFiles(t, noLayerOwner1HelmReleasesFileName)),
 			},
-			Expected:  []interface{}{[]string{"HelmRelease: bootstrap/orphaned1, also included in layer: bootstrap"}},
+			Expected: []interface{}{[]string{
+				"failed to apply owner reference to: bootstrap/no-layer-owner: Object bootstrap/no-layer-owner is already owned by another WhatEver controller something"}},
 			CheckFunc: testutils.CheckError,
+		},
+		{
+			Number:      4,
+			Description: "not orphaned helm release, owned by this layer",
+			Config: createApplier(t, getApplierParams(t,
+				[]string{addonsFileName},
+				[]string{helmReleasesFileName},
+				nil, testScheme)),
+			Inputs: []interface{}{
+				getLayer(t, appsLayer, addonsFileName),
+				getHelmReleasesAsRuntimeObjsList(getHelmReleasesFromFiles(t, helmReleasesFileName), appsMicroService1),
+			},
+			Expected:           []interface{}{nil, false, appsLayer, appsLayer},
+			ResultsCompareFunc: CheckOwnerAndLabels,
+			ResultsReportFunc:  testutils.ReportJSON,
+		},
+		{
+			Number:      5,
+			Description: "not orphaned helm release, no owner",
+			Config: createApplier(t, getApplierParams(t,
+				[]string{addonsFileName},
+				[]string{noOwner1HelmReleasesFileName},
+				nil, testScheme)),
+			Inputs: []interface{}{
+				getLayer(t, appsLayer, addonsFileName),
+				getHelmReleasesAsRuntimeObjsList(getHelmReleasesFromFiles(t, noOwner1HelmReleasesFileName)),
+			},
+			Expected:           []interface{}{nil, false, appsLayer, appsLayer},
+			ResultsCompareFunc: CheckOwnerAndLabels,
+			ResultsReportFunc:  testutils.ReportJSON,
 		},
 	}
 

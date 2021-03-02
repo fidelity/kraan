@@ -12,6 +12,7 @@ import (
 	layers "github.com/fidelity/kraan/pkg/layers"
 	v2beta1 "github.com/fluxcd/helm-controller/api/v2beta1"
 	gomock "github.com/golang/mock/gomock"
+	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
 // MockLayerApplier is a mock of LayerApplier interface.
@@ -185,4 +186,18 @@ func (m *MockLayerApplier) PruneIsRequired(ctx context.Context, layer layers.Lay
 func (mr *MockLayerApplierMockRecorder) PruneIsRequired(ctx, layer interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PruneIsRequired", reflect.TypeOf((*MockLayerApplier)(nil).PruneIsRequired), ctx, layer)
+}
+
+// addOwnerRefs mocks base method.
+func (m *MockLayerApplier) addOwnerRefs(layer layers.Layer, objs []runtime.Object) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "addOwnerRefs", layer, objs)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// addOwnerRefs indicates an expected call of addOwnerRefs.
+func (mr *MockLayerApplierMockRecorder) addOwnerRefs(layer, objs interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "addOwnerRefs", reflect.TypeOf((*MockLayerApplier)(nil).addOwnerRefs), layer, objs)
 }

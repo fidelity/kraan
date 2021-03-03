@@ -66,7 +66,14 @@ var _ = Describe("AddonsLayer controller", func() {
 		return createdAddonsLayer
 	}
 
-	verifyAddonsLayer := func(ctx context.Context, log logr.Logger, AddonsLayer, createdAddonsLayer *kraanv1alpha1.AddonsLayer, status string) {
+	createAddonsLayers := func(ctx context.Context, log logr.Logger, AddonsLayersFileNames... string) []*kraanv1alpha1.AddonsLayer {
+		addonsLayers := []*kraanv1alpha1.AddonsLayer{}
+
+		return addonsLayers
+	}
+
+	verifyAddonsLayer := func(ctx context.Context, log logr.Logger, addonsLayer *kraanv1alpha1.AddonsLayer, status string) {
+		createdAddonsLayer := &kraanv1alpha1.AddonsLayer{}
 		AddonsLayerLookupKey := types.NamespacedName{Name: AddonsLayerName}
 		log.Info("waiting for AddonsLayer status to be expected value", "expected", status)
 		Eventually(func() bool {
@@ -80,7 +87,7 @@ var _ = Describe("AddonsLayer controller", func() {
 		}, timeout, interval).Should(BeTrue())
 		log.Info("AddonsLayer status achieved expected value", "expected", status)
 
-		Expect(createdAddonsLayer.Spec.Hold).Should(Equal(AddonsLayer.Spec.Hold))
+		Expect(createdAddonsLayer.Spec.Hold).Should(Equal(addonsLayer.Spec.Hold))
 
 		Expect(len(createdAddonsLayer.Status.Conditions)).Should(Equal(1))
 
@@ -97,26 +104,22 @@ var _ = Describe("AddonsLayer controller", func() {
 		}}))
 
 	}
+	
+	verifyAddonsLayers := func(ctx context.Context, log logr.Logger, addonsLayers []*kraanv1alpha1.AddonsLayer) {
+		for _, addonsLayer := range addonsLayers {
+			verifyAddonsLayer(ctx, log, addonsLayer, "Deployed")
+		}
+	}
 
-	Context("When creating AddonsLayer, wait for it to expire and then deleting it", func() {
-		It("Should set AddonsLayer Status to Active, Create RoleBinding then set it to Expited and delete RoleBinding", func() {
+	Context("When creating AddonsLayers, wait for them to be deployed state", func() {
+		It("Should set AddonsLayers Status to Deployed and deploy the HelmReleases defined by each AddonsLayer", func() {
 			ctx := context.Background()
 			logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter)))
 			log := logf.Log.WithName("test-one")
 
-			By("By creating a new AddonsLayer")
-			AddonsLayer := &kraanv1alpha1.AddonsLayer{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: fmt.Sprintf("%s/%s", kraanv1alpha1.GroupVersion.Group, kraanv1alpha1.GroupVersion.Version),
-					Kind:       kraanv1alpha1.AddonsLayerKind,
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name: AddonsLayerName,
-				},
-				Spec: kraanv1alpha1.AddonsLayerSpec{},
-			}
-			createdAddonsLayer := createAddonsLayer(ctx, log, AddonsLayer)
-			verifyAddonsLayer(ctx, log, AddonsLayer, createdAddonsLayer, kraanv1alpha1.DeployedCondition)
+			By("By creating a new AddonsLayers")
+			createdAddonsLayers := createAddonsLayers(ctx, log, AddonsLayersFileName)
+			verifyAddonsLayers(ctx, log, createdAddonsLayers)
 
 		})
 	})

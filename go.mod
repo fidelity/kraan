@@ -7,6 +7,7 @@ require (
 	github.com/fluxcd/pkg/apis/meta v0.4.0
 	github.com/fluxcd/pkg/untar v0.0.5
 	github.com/fluxcd/source-controller/api v0.3.0
+	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.4.0
 	github.com/go-logr/zapr v0.4.0 // indirect
 	github.com/golang/mock v1.4.4

@@ -17,13 +17,20 @@ limitations under the License.
 package controllers_test
 
 import (
+	"context"
+	"errors"
 	"flag"
-	"log"
+	"fmt"
+	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
+
+	"github.com/ghodss/yaml"
 
 	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta1"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	uzap "go.uber.org/zap"
@@ -31,7 +38,11 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli"
+	coreV1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubectl/pkg/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -53,9 +64,11 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 var (
-	cfg       *rest.Config         // nolint:gochecknoglobals // until we understand this code better
-	k8sClient client.Client        // nolint:gochecknoglobals // until we understand this code better
-	testEnv   *envtest.Environment // nolint:gochecknoglobals // until we understand this code better
+	cfg                *rest.Config                      // nolint:gochecknoglobals // until we understand this code better
+	k8sClient          client.Client                     // nolint:gochecknoglobals // until we understand this code better
+	testEnv            *envtest.Environment              // nolint:gochecknoglobals // until we understand this code better
+	log                logr.Logger                       // nolint:gochecknoglobals // needed for debugLog
+	errNotYetSupported = errors.New("not yet supported") // nolint:gochecknoglobals // ok
 )
 
 const (
@@ -70,7 +83,7 @@ func TestAPIs(t *testing.T) {
 		[]Reporter{printer.NewlineReporter{}})
 }
 
-func startKindCluster() {
+func startKindCluster(logf logr.Logger) {
 	err := os.Setenv("KIND_CLUSTER_NAME", kindClusterName)
 	Expect(err).ToNot(HaveOccurred())
 	p := cluster.NewProvider()
@@ -81,27 +94,14 @@ func startKindCluster() {
 		args := []string{"create", "cluster"}
 		err = kind.Run(cmd.NewLogger(), cmd.StandardIOStreams(), args)
 		Expect(err).NotTo(HaveOccurred())
+	} else {
+		logf.Info("using existing kind cluster", "cluster", kindClusterName)
 	}
 }
 
-func installHelmChart() {
-	chartPath := "../chart"
-	namespace := "default"
-	releaseName := "kraan"
-
-	settings := cli.New()
-
-	actionConfig := new(action.Configuration)
-	// You can pass an empty string instead of settings.Namespace() to list
-	// all namespaces
-	if err := actionConfig.Init(settings.RESTClientGetter(), namespace,
-		os.Getenv("HELM_DRIVER"), log.Printf); err != nil {
-		log.Printf("%+v", err)
-		os.Exit(1)
-	}
-
-	// define values
-	vals := map[string]interface{}{
+func setValues(namespace string) map[string]interface{} {
+	// disable kraan controller deployment
+	values := map[string]interface{}{
 		"kraan": map[string]interface{}{
 			"kraanController": map[string]interface{}{
 				"enabled": false,
@@ -109,39 +109,124 @@ func installHelmChart() {
 		},
 	}
 
-	vals["global"] = map[string]interface{}{
+	gitopsProxy := os.Getenv("GITOPS_USE_PROXY")
+
+	if len(gitopsProxy) > 0 {
+		httpsProxy := gitopsProxy
+		if strings.ToLower(gitopsProxy) == "auto" {
+			var present bool
+			httpsProxy, present = os.LookupEnv("HTTPS_PROXY")
+			if !present {
+				httpsProxy, present = os.LookupEnv("https_proxy")
+				if !present {
+					httpsProxy, present = os.LookupEnv("HTTP_PROXY")
+				}
+			}
+		}
+		values["global"] = map[string]interface{}{
 			"env": map[string]interface{}{
-				"httpsProxy": "BigMaster",
+				"httpsProxy": httpsProxy,
 			},
 		}
+	}
+
+	imagePullSecretName := os.Getenv("IMAGE_PULL_SECRET_NAME")
+
+	if len(imagePullSecretName) > 0 {
+		values["gitops"] = map[string]interface{}{
+			"soureController": map[string]interface{}{
+				"imagePullSecret": map[string]interface{}{
+					"name": imagePullSecretName,
+				},
+			},
+
+			"helmController": map[string]interface{}{
+				"imagePullSecret": map[string]interface{}{
+					"name": imagePullSecretName,
+				},
+			},
+		}
+		createImagePullSecret(namespace, imagePullSecretName, os.Getenv("IMAGE_PULL_SECRET_SOURCE"))
+	}
+
+	return values
+}
+
+func createImagePullSecret(namespace, name, source string) {
+	var secretData []byte
+	var err error
+	if strings.ToLower(source) != "auto" {
+		secretData, err = ioutil.ReadFile(source)
+		Expect(err).ToNot(HaveOccurred())
+	} else {
+		log.Error(errNotYetSupported, "auto generation of image pull secret not yet supported")
+	}
+	Expect(secretData).ToNot(BeNil())
+
+	var secretSpec coreV1.Secret
+	err = yaml.Unmarshal(secretData, &secretSpec)
+	Expect(err).ToNot(HaveOccurred())
+
+	secretsClient := getK8sClient().CoreV1().Secrets(namespace)
+	options := v1.CreateOptions{}
+	_, err = secretsClient.Create(context.Background(), &secretSpec, options)
+	Expect(err).ToNot(HaveOccurred())
+
+}
+
+func getK8sClient() kubernetes.Interface {
+	// creates the clientset
+	kubeConfig, present := os.LookupEnv("KUBECONFIG")
+	if !present {
+		kubeConfig = os.Getenv("HOME") + "/.kube/config"
+	}
+
+	config, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
+	Expect(err).ToNot(HaveOccurred())
+
+	clientset, err := kubernetes.NewForConfig(config)
+	Expect(err).ToNot(HaveOccurred())
+
+	return clientset
+}
+func debugLog(format string, values ...interface{}) {
+	log.Info("helm debugging", "message", fmt.Sprintf(format, values...))
+}
+
+func installHelmChart(logf logr.Logger) {
+	chartPath := "../chart"
+	namespace := "gotk-system"
+	releaseName := "kraan"
+
+	settings := cli.New()
+
+	actionConfig := new(action.Configuration)
+	// You can pass an empty string instead of settings.Namespace() to list
+	// all namespaces
+	err := actionConfig.Init(settings.RESTClientGetter(), namespace,
+		os.Getenv("HELM_DRIVER"), debugLog)
+	Expect(err).ToNot(HaveOccurred())
 
 	// load chart from the path
 	chart, err := loader.Load(chartPath)
-	if err != nil {
-		panic(err)
-	}
+	Expect(err).ToNot(HaveOccurred())
 
 	client := action.NewInstall(actionConfig)
 	client.Namespace = namespace
 	client.ReleaseName = releaseName
-	// client.DryRun = true - very handy!
 
 	// install the chart here
-	rel, err := client.Run(chart, vals)
-	if err != nil {
-		panic(err)
-	}
+	rel, err := client.Run(chart, setValues(namespace))
+	Expect(err).ToNot(HaveOccurred())
 
-	log.Printf("Installed Chart from path: %s in namespace: %s\n", rel.Name, rel.Namespace)
+	logf.Info("Installed Chart", "path", rel.Name, "namespace", rel.Namespace)
 	// this will confirm the values set during installation
-	log.Println(rel.Config)
+	logf.Info("Chart values overridden", "values", rel.Config)
 }
 
 var _ = BeforeSuite(func() {
 	err := os.Setenv("USE_EXISTING_CLUSTER", "true")
 	Expect(err).ToNot(HaveOccurred())
-	startKindCluster()
-	installHelmChart()
 
 	logOpts := &zap.Options{}
 	f := flag.NewFlagSet("-zap-log-level=4", flag.ExitOnError)
@@ -149,8 +234,11 @@ var _ = BeforeSuite(func() {
 	encCfg := uzap.NewProductionEncoderConfig()
 	encCfg.EncodeTime = zapcore.ISO8601TimeEncoder
 	encoder := zap.Encoder(zapcore.NewJSONEncoder(encCfg))
-	logf.SetLogger(zap.New(zap.UseFlagOptions(logOpts), encoder, zap.WriteTo(GinkgoWriter)))
+	log = zap.New(zap.UseFlagOptions(logOpts), encoder, zap.WriteTo(GinkgoWriter))
+	logf.SetLogger(log)
 
+	startKindCluster(log)
+	installHelmChart(log)
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{}
 

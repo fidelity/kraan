@@ -26,9 +26,11 @@ package controllers_test
 
 import (
 	"context"
-	"fmt"
 	"time"
-
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -36,16 +38,96 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta1"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 )
 
 const (
 	AddonsLayerName = "apps"
-
+	k8sList                           = "List"
 	timeout  = time.Second * 20
 	interval = time.Millisecond * 250
 )
+
+func getAddonsFromFiles(fileNames ...string) *kraanv1alpha1.AddonsLayerList {
+	addonsLayersList := &kraanv1alpha1.AddonsLayerList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       k8sList,
+			APIVersion: fmt.Sprintf("%s/%s", kraanv1alpha1.GroupVersion.Version, kraanv1alpha1.GroupVersion.Version),
+		},
+		Items: make([]kraanv1alpha1.AddonsLayer, 0, 10),
+	}
+
+	for _, fileName := range fileNames {
+		buffer, err := ioutil.ReadFile(fileName)
+		if err != nil {
+			
+			return nil
+		}
+
+		addons := &kraanv1alpha1.AddonsLayerList{}
+
+		err = json.Unmarshal(buffer, addons)
+		if err != nil {
+			
+			return nil
+		}
+
+		addonsLayersList.Items = append(addonsLayersList.Items, addons.Items...)
+	}
+
+	return addonsLayersList
+}
+
+func getAddonFromList(name string, addonList *kraanv1alpha1.AddonsLayerList) *kraanv1alpha1.AddonsLayer {
+	for _, item := range addonList.Items {
+		if item.ObjectMeta.Name == name {
+			return &item
+		}
+	}
+
+	return nil
+}
+
+func getHelmReleasesFromFiles(fileNames ...string) *helmctlv2.HelmReleaseList {
+	helmReleasesList := &helmctlv2.HelmReleaseList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "List",
+			APIVersion: fmt.Sprintf("%s/%s", helmctlv2.GroupVersion.Version, helmctlv2.GroupVersion.Version),
+		},
+		Items: make([]helmctlv2.HelmRelease, 0, 10),
+	}
+
+	for _, fileName := range fileNames {
+		buffer, err := ioutil.ReadFile(fileName)
+		if err != nil {
+		
+			return nil
+		}
+		helmReleases := &helmctlv2.HelmReleaseList{}
+
+		err = json.Unmarshal(buffer, helmReleases)
+		if err != nil {
+			
+			return nil
+		}
+
+		helmReleasesList.Items = append(helmReleasesList.Items, helmReleases.Items...)
+	}
+	return helmReleasesList
+}
+
+func getHelmReleaseFromList(nameSpaceSlashName string, helmReleaseList *helmctlv2.HelmReleaseList) *helmctlv2.HelmRelease {
+	for _, item := range helmReleaseList.Items {
+		if fmt.Sprintf("%s/%s", item.Namespace, item.Name) == nameSpaceSlashName {
+			return &item
+		}
+	}
+
+	return nil
+}
+
 
 // +kubebuilder:docs-gen:collapse=Imports
 
@@ -66,8 +148,9 @@ var _ = Describe("AddonsLayer controller", func() {
 		return createdAddonsLayer
 	}
 
-	createAddonsLayers := func(ctx context.Context, log logr.Logger, AddonsLayersFileNames... string) []*kraanv1alpha1.AddonsLayer {
+	createAddonsLayers := func(ctx context.Context, log logr.Logger, AddonsLayersFileNames ...string) []*kraanv1alpha1.AddonsLayer {
 		addonsLayers := []*kraanv1alpha1.AddonsLayer{}
+		
 
 		return addonsLayers
 	}
@@ -104,7 +187,7 @@ var _ = Describe("AddonsLayer controller", func() {
 		}}))
 
 	}
-	
+
 	verifyAddonsLayers := func(ctx context.Context, log logr.Logger, addonsLayers []*kraanv1alpha1.AddonsLayer) {
 		for _, addonsLayer := range addonsLayers {
 			verifyAddonsLayer(ctx, log, addonsLayer, "Deployed")

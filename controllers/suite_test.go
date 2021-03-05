@@ -18,7 +18,6 @@ package controllers_test
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -26,13 +25,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ghodss/yaml"
-
 	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta1"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
+	"github.com/ghodss/yaml"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/paulcarlton-ww/goutils/pkg/kubectl"
+	"github.com/paulcarlton-ww/goutils/pkg/logging"
+	"github.com/pkg/errors"
 	uzap "go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"helm.sh/helm/v3/pkg/action"
@@ -50,9 +51,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	kind "sigs.k8s.io/kind/cmd/kind/app"
 	"sigs.k8s.io/kind/pkg/cluster"
-	"sigs.k8s.io/kind/pkg/cmd"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 	"github.com/fidelity/kraan/controllers"
@@ -91,8 +90,9 @@ func startKindCluster(logf logr.Logger) {
 	clusters, err := p.List()
 	Expect(err).NotTo(HaveOccurred())
 	if !common.ContainsString(clusters, kindClusterName) {
-		args := []string{"create", "cluster"}
-		err = kind.Run(cmd.NewLogger(), cmd.StandardIOStreams(), args)
+		//args := []string{"create", "cluster"}
+		//err = kind.Run(cmd.NewLogger(), cmd.StandardIOStreams(), args)
+		err = p.Create(kindClusterName)
 		Expect(err).NotTo(HaveOccurred())
 	} else {
 		logf.Info("using existing kind cluster", "cluster", kindClusterName)
@@ -224,6 +224,16 @@ func installHelmChart(logf logr.Logger) {
 	logf.Info("Chart values overridden", "values", rel.Config)
 }
 
+func applySetupYAML(log logr.Logger) {
+	kubeCtl, err := kubectl.NewKubectl(log)
+	Expect(err).ToNot(HaveOccurred())
+	cmd := kubeCtl.Apply("./testdata/setup")
+	output, e := cmd.Run()
+	Expect(e).ToNot(HaveOccurred())
+
+	log.Info("applied", "apply response", logging.LogJSON(output))
+}
+
 var _ = BeforeSuite(func() {
 	err := os.Setenv("USE_EXISTING_CLUSTER", "true")
 	Expect(err).ToNot(HaveOccurred())
@@ -238,6 +248,7 @@ var _ = BeforeSuite(func() {
 	logf.SetLogger(log)
 
 	startKindCluster(log)
+	applySetupYAML(log)
 	installHelmChart(log)
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{}

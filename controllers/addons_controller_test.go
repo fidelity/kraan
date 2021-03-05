@@ -26,11 +26,11 @@ package controllers_test
 
 import (
 	"context"
-	"time"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	
+	"time"
+
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -38,16 +38,16 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta1"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 )
 
 const (
-	AddonsLayerName = "apps"
-	k8sList                           = "List"
-	timeout  = time.Second * 20
-	interval = time.Millisecond * 250
+	AddonsLayerName      = "apps"
+	k8sList              = "List"
+	timeout              = time.Second * 20
+	interval             = time.Millisecond * 250
+	addonsLayersFileName = "testdata/addons.json"
 )
 
 func getAddonsFromFiles(fileNames ...string) *kraanv1alpha1.AddonsLayerList {
@@ -62,7 +62,7 @@ func getAddonsFromFiles(fileNames ...string) *kraanv1alpha1.AddonsLayerList {
 	for _, fileName := range fileNames {
 		buffer, err := ioutil.ReadFile(fileName)
 		if err != nil {
-			
+
 			return nil
 		}
 
@@ -70,7 +70,7 @@ func getAddonsFromFiles(fileNames ...string) *kraanv1alpha1.AddonsLayerList {
 
 		err = json.Unmarshal(buffer, addons)
 		if err != nil {
-			
+
 			return nil
 		}
 
@@ -89,45 +89,6 @@ func getAddonFromList(name string, addonList *kraanv1alpha1.AddonsLayerList) *kr
 
 	return nil
 }
-
-func getHelmReleasesFromFiles(fileNames ...string) *helmctlv2.HelmReleaseList {
-	helmReleasesList := &helmctlv2.HelmReleaseList{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "List",
-			APIVersion: fmt.Sprintf("%s/%s", helmctlv2.GroupVersion.Version, helmctlv2.GroupVersion.Version),
-		},
-		Items: make([]helmctlv2.HelmRelease, 0, 10),
-	}
-
-	for _, fileName := range fileNames {
-		buffer, err := ioutil.ReadFile(fileName)
-		if err != nil {
-		
-			return nil
-		}
-		helmReleases := &helmctlv2.HelmReleaseList{}
-
-		err = json.Unmarshal(buffer, helmReleases)
-		if err != nil {
-			
-			return nil
-		}
-
-		helmReleasesList.Items = append(helmReleasesList.Items, helmReleases.Items...)
-	}
-	return helmReleasesList
-}
-
-func getHelmReleaseFromList(nameSpaceSlashName string, helmReleaseList *helmctlv2.HelmReleaseList) *helmctlv2.HelmRelease {
-	for _, item := range helmReleaseList.Items {
-		if fmt.Sprintf("%s/%s", item.Namespace, item.Name) == nameSpaceSlashName {
-			return &item
-		}
-	}
-
-	return nil
-}
-
 
 // +kubebuilder:docs-gen:collapse=Imports
 
@@ -148,9 +109,13 @@ var _ = Describe("AddonsLayer controller", func() {
 		return createdAddonsLayer
 	}
 
-	createAddonsLayers := func(ctx context.Context, log logr.Logger, AddonsLayersFileNames ...string) []*kraanv1alpha1.AddonsLayer {
-		addonsLayers := []*kraanv1alpha1.AddonsLayer{}
-		
+	createAddonsLayers := func(ctx context.Context, log logr.Logger, dataFileNames ...string) []*kraanv1alpha1.AddonsLayer {
+		addonsLayersItems := getAddonsFromFiles(dataFileNames...).Items
+		addonsLayers := make([]*kraanv1alpha1.AddonsLayer, len(addonsLayersItems))
+
+		for index, addonsLayer := range addonsLayersItems {
+			addonsLayers[index] = createAddonsLayer(ctx, log, &addonsLayer)
+		}
 
 		return addonsLayers
 	}
@@ -201,7 +166,7 @@ var _ = Describe("AddonsLayer controller", func() {
 			log := logf.Log.WithName("test-one")
 
 			By("By creating a new AddonsLayers")
-			createdAddonsLayers := createAddonsLayers(ctx, log, AddonsLayersFileName)
+			createdAddonsLayers := createAddonsLayers(ctx, log, addonsLayersFileName)
 			verifyAddonsLayers(ctx, log, createdAddonsLayers)
 
 		})

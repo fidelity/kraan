@@ -390,6 +390,8 @@ github.com/golang/mock v1.4.0/go.mod h1:UOMv5ysSaYNkG+OFQykRIcU/QvvxJf3p21QfJ2Bt
 github.com/golang/mock v1.4.1/go.mod h1:UOMv5ysSaYNkG+OFQykRIcU/QvvxJf3p21QfJ2Bt3cw=
 github.com/golang/mock v1.4.4 h1:l75CXGRSwbaYNpl/Z2X1XIIAMSCquvXgpVZDhwEIJsc=
 github.com/golang/mock v1.4.4/go.mod h1:l3mdAwkq5BuhzHwde/uurv3sEJeZMXNpwsxVWU71h+4=
+github.com/golang/mock v1.5.0 h1:jlYHihg//f7RRwuPfptm04yp4s7O6Kw8EZiVYIGcH0g=
+github.com/golang/mock v1.5.0/go.mod h1:CWnOUgYIOo4TcNZ0wHX3YZCqsaM1I1Jvs6v3mP3KVu8=
 github.com/golang/protobuf v0.0.0-20161109072736-4bd1920723d7/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golang/protobuf v1.2.0/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golang/protobuf v1.3.1/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
@@ -683,8 +685,13 @@ github.com/openzipkin/zipkin-go v0.2.1/go.mod h1:NaW6tEwdmWMaCDZzg8sh+IBNOxHMPnh
 github.com/openzipkin/zipkin-go v0.2.2/go.mod h1:NaW6tEwdmWMaCDZzg8sh+IBNOxHMPnhQw8ySjnjRyN4=
 github.com/pact-foundation/pact-go v1.0.4/go.mod h1:uExwJY4kCzNPcHRj+hCR/HBbOOIwwtUjcrb0b5/5kLM=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
+github.com/paulcarlton-ww/goutils/pkg/kubectl v0.0.3/go.mod h1:ZWunr2x2+NoqAqdeYTIZ/IF35S1hK+1jMVs/UeKubH8=
+github.com/paulcarlton-ww/goutils/pkg/kubectl v0.0.4 h1:niuTSpz3eu4Ig0YQQr3B59Vyi058mQSB9C6TXtnS8Q0=
+github.com/paulcarlton-ww/goutils/pkg/kubectl v0.0.4/go.mod h1:rj2aNJN+J25BmtAPnSnXGAeunMgaYrktJkBAMbb4aRg=
 github.com/paulcarlton-ww/goutils/pkg/logging v0.0.3 h1:eoIhfT05z3QB3dReY72Tb7reoZonceOwAzKQb5ySDW4=
 github.com/paulcarlton-ww/goutils/pkg/logging v0.0.3/go.mod h1:J13SyiyTEq4RhpE+q58LISe5wGY70ovd9JRObu+3F8c=
+github.com/paulcarlton-ww/goutils/pkg/mocks/kubectl v0.0.3/go.mod h1:d+/ZcC70MUpyIViEYNhF+RbS+tZ2qQTC+ggJ9zBZz1g=
+github.com/paulcarlton-ww/goutils/pkg/mocks/logr v0.0.3/go.mod h1:DLFNjK4aIwqrC9k/bhrfpcbGif7pJd4d9jq2Y8VXYro=
 github.com/paulcarlton-ww/goutils/pkg/testutils v0.1.42 h1:c+inMb/+iLQx1c7Eblecnq2vbpKU29N56KzyW346Ua8=
 github.com/paulcarlton-ww/goutils/pkg/testutils v0.1.42/go.mod h1:P9qEnPLVuPpdzh/abnxqZ+0odd6UX67b3/nLFGRrVUs=
 github.com/pborman/uuid v1.2.0/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=

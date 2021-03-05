@@ -90,8 +90,6 @@ func startKindCluster(logf logr.Logger) {
 	clusters, err := p.List()
 	Expect(err).NotTo(HaveOccurred())
 	if !common.ContainsString(clusters, kindClusterName) {
-		//args := []string{"create", "cluster"}
-		//err = kind.Run(cmd.NewLogger(), cmd.StandardIOStreams(), args)
 		err = p.Create(kindClusterName)
 		Expect(err).NotTo(HaveOccurred())
 	} else {
@@ -111,7 +109,7 @@ func setValues(namespace string) map[string]interface{} {
 
 	gitopsProxy := os.Getenv("GITOPS_USE_PROXY")
 
-	if len(gitopsProxy) > 0 {
+	if len(gitopsProxy) > 0 { // nolint: nestif // ok
 		httpsProxy := gitopsProxy
 		if strings.ToLower(gitopsProxy) == "auto" {
 			var present bool
@@ -119,7 +117,7 @@ func setValues(namespace string) map[string]interface{} {
 			if !present {
 				httpsProxy, present = os.LookupEnv("https_proxy")
 				if !present {
-					httpsProxy, present = os.LookupEnv("HTTP_PROXY")
+					httpsProxy, _ = os.LookupEnv("HTTP_PROXY")
 				}
 			}
 		}
@@ -171,7 +169,6 @@ func createImagePullSecret(namespace, name, source string) {
 	options := v1.CreateOptions{}
 	_, err = secretsClient.Create(context.Background(), &secretSpec, options)
 	Expect(err).ToNot(HaveOccurred())
-
 }
 
 func getK8sClient() kubernetes.Interface {
@@ -189,7 +186,7 @@ func getK8sClient() kubernetes.Interface {
 
 	return clientset
 }
-func debugLog(format string, values ...interface{}) {
+func debugLogf(format string, values ...interface{}) {
 	log.Info("helm debugging", "message", fmt.Sprintf(format, values...))
 }
 
@@ -204,7 +201,7 @@ func installHelmChart(logf logr.Logger) {
 	// You can pass an empty string instead of settings.Namespace() to list
 	// all namespaces
 	err := actionConfig.Init(settings.RESTClientGetter(), namespace,
-		os.Getenv("HELM_DRIVER"), debugLog)
+		os.Getenv("HELM_DRIVER"), debugLogf)
 	Expect(err).ToNot(HaveOccurred())
 
 	// load chart from the path

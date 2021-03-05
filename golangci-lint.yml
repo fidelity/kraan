@@ -194,10 +194,8 @@ linters:
     - gomodguard
     - goprintffuncname
     - govet
-    - ineffassign
-    - interfacer
+    - ineffassign 
     - lll
-    - maligned
     - misspell
     - nakedret
     - nestif

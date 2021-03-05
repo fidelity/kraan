@@ -12,6 +12,7 @@ import (
 	layers "github.com/fidelity/kraan/pkg/layers"
 	v2beta1 "github.com/fluxcd/helm-controller/api/v2beta1"
 	gomock "github.com/golang/mock/gomock"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -200,4 +201,19 @@ func (m *MockLayerApplier) addOwnerRefs(layer layers.Layer, objs []runtime.Objec
 func (mr *MockLayerApplierMockRecorder) addOwnerRefs(layer, objs interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "addOwnerRefs", reflect.TypeOf((*MockLayerApplier)(nil).addOwnerRefs), layer, objs)
+}
+
+// orphanLabel mocks base method.
+func (m *MockLayerApplier) orphanLabel(ctx context.Context, hr *v2beta1.HelmRelease) (*v1.Time, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "orphanLabel", ctx, hr)
+	ret0, _ := ret[0].(*v1.Time)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// orphanLabel indicates an expected call of orphanLabel.
+func (mr *MockLayerApplierMockRecorder) orphanLabel(ctx, hr interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "orphanLabel", reflect.TypeOf((*MockLayerApplier)(nil).orphanLabel), ctx, hr)
 }

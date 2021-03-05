@@ -62,7 +62,6 @@ func getAddonsFromFiles(fileNames ...string) *kraanv1alpha1.AddonsLayerList {
 	for _, fileName := range fileNames {
 		buffer, err := ioutil.ReadFile(fileName)
 		if err != nil {
-
 			return nil
 		}
 
@@ -70,7 +69,6 @@ func getAddonsFromFiles(fileNames ...string) *kraanv1alpha1.AddonsLayerList {
 
 		err = json.Unmarshal(buffer, addons)
 		if err != nil {
-
 			return nil
 		}
 
@@ -78,16 +76,6 @@ func getAddonsFromFiles(fileNames ...string) *kraanv1alpha1.AddonsLayerList {
 	}
 
 	return addonsLayersList
-}
-
-func getAddonFromList(name string, addonList *kraanv1alpha1.AddonsLayerList) *kraanv1alpha1.AddonsLayer {
-	for _, item := range addonList.Items {
-		if item.ObjectMeta.Name == name {
-			return &item
-		}
-	}
-
-	return nil
 }
 
 // +kubebuilder:docs-gen:collapse=Imports
@@ -114,7 +102,7 @@ var _ = Describe("AddonsLayer controller", func() {
 		addonsLayers := make([]*kraanv1alpha1.AddonsLayer, len(addonsLayersItems))
 
 		for index, addonsLayer := range addonsLayersItems {
-			addonsLayers[index] = createAddonsLayer(ctx, log, &addonsLayer)
+			addonsLayers[index] = createAddonsLayer(ctx, log, &addonsLayer) // nolint: scopelint // ok
 		}
 
 		return addonsLayers

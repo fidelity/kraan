@@ -1,5 +1,3 @@
-// +build integration
-
 package tarconsumer_test
 
 import (

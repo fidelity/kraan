@@ -144,13 +144,13 @@ func setValues(namespace string) map[string]interface{} {
 				},
 			},
 		}
-		createImagePullSecret(namespace, imagePullSecretName, os.Getenv("IMAGE_PULL_SECRET_SOURCE"))
+		createImagePullSecret(log, namespace, imagePullSecretName, os.Getenv("IMAGE_PULL_SECRET_SOURCE"))
 	}
 
 	return values
 }
 
-func createImagePullSecret(namespace, name, source string) {
+func createImagePullSecret(log logr.Logger, namespace, name, source string) {
 	var secretData []byte
 	var err error
 	if strings.ToLower(source) != "auto" {
@@ -166,6 +166,14 @@ func createImagePullSecret(namespace, name, source string) {
 	Expect(err).ToNot(HaveOccurred())
 
 	secretsClient := getK8sClient().CoreV1().Secrets(namespace)
+	getOptions := v1.GetOptions{}
+	secret, e := secretsClient.Get(context.Background(), "gotk-regcred", getOptions)
+	if err != nil {
+		log.Error(e, "get secret error")
+	} else {
+		log.Info("got secret", "name", secret.Name, "namespace", secret.Namespace)
+	}
+	Expect(err).ToNot(HaveOccurred())
 	options := v1.CreateOptions{}
 	_, err = secretsClient.Create(context.Background(), &secretSpec, options)
 	Expect(err).ToNot(HaveOccurred())

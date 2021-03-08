@@ -79,9 +79,8 @@ var (
 )
 
 const (
-	kindClusterName  = "integration-testing-cluster"
-	gotkSystem       = "gotk-system"
-	sourceCtlService = "source-controller"
+	kindClusterName = "integration-testing-cluster"
+	gotkSystem      = "gotk-system"
 )
 
 func TestAPIs(t *testing.T) {
@@ -298,15 +297,15 @@ func applySetupYAML(log logr.Logger) {
 	log.Info("applied", "apply response", string(output))
 }
 
-type portForwardServiceRequest struct {
+type portForwardPodRequest struct {
 	// RestConfig is the kubernetes config
 	RestConfig *rest.Config
-	// Serviceis the selected pod for this port forwarding
-	Service coreV1.Service
+	// Pod is the selected pod for this port forwarding
+	Pod coreV1.Pod
 	// LocalPort is the local port that will be selected to expose the PodPort
 	LocalPort int
-	// ServicePort is the target port for the pod
-	ServicePort int
+	// PodPort is the target port for the pod
+	PodPort int
 	// Steams configures where to write or read input from
 	Streams genericclioptions.IOStreams
 	// StopCh is the channel used to manage the port forward lifecycle
@@ -315,22 +314,28 @@ type portForwardServiceRequest struct {
 	ReadyCh chan struct{}
 }
 
-func portForwardService(req portForwardServiceRequest) error {
-	path := fmt.Sprintf("/api/v1/namespaces/%s/services/%s/portforward",
-		req.Service.Namespace, req.Service.Name)
-	hostIP := strings.TrimLeft(req.RestConfig.Host, "https://") // nolint: staticcheck // ok
+func portForwardPod(req portForwardPodRequest) error {
+	path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward",
+		req.Pod.Namespace, req.Pod.Name)
+	hostIP := strings.TrimLeft(req.RestConfig.Host, "htps:/")
 
 	transport, upgrader, err := spdy.RoundTripperFor(req.RestConfig)
 	Expect(err).ToNot(HaveOccurred())
 
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, http.MethodPost, &url.URL{Scheme: "https", Path: path, Host: hostIP})
-	fw, err := portforward.New(dialer, []string{fmt.Sprintf("%d:%d", req.LocalPort, req.ServicePort)}, req.StopCh, req.ReadyCh, req.Streams.Out, req.Streams.ErrOut)
+	fw, err := portforward.New(dialer, []string{fmt.Sprintf("%d:%d", req.LocalPort, req.PodPort)}, req.StopCh, req.ReadyCh, req.Streams.Out, req.Streams.ErrOut)
 	Expect(err).ToNot(HaveOccurred())
 
 	return fw.ForwardPorts()
 }
 
-func portForward(name, namespace string) {
+func getSouceControllerPodName(namespace string) string {
+	listOptions := &client.ListOptions{}
+	pods, err := client.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
+	k8sClient.List(context.Background(), pod, listOptions)
+}
+
+func portForward(namespace string) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
@@ -362,19 +367,19 @@ func portForward(name, namespace string) {
 	go func() {
 		// PortForward the pod specified from its port 9090 to the local port
 		// 8080
-		err := portForwardService(portForwardServiceRequest{
+		err := portForwardPod(portForwardPodRequest{
 			RestConfig: getRestClient(),
-			Service: coreV1.Service{
+			Pod: coreV1.Pod{
 				ObjectMeta: v1.ObjectMeta{
-					Name:      name,
+					Name:      getSouceControllerPodName(),
 					Namespace: namespace,
 				},
 			},
-			LocalPort:   8090,
-			ServicePort: 80,
-			Streams:     stream,
-			StopCh:      stopCh,
-			ReadyCh:     readyCh,
+			LocalPort: 8090,
+			PodPort:   9090,
+			Streams:   stream,
+			StopCh:    stopCh,
+			ReadyCh:   readyCh,
 		})
 		if err != nil {
 			panic(err)
@@ -414,7 +419,7 @@ var _ = BeforeSuite(func() {
 	deployHelmChart(log, namespace)
 	applySetupYAML(log)
 
-	portForward(sourceCtlService, namespace)
+	portForward(namespace)
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{}

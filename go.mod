@@ -15,7 +15,6 @@ require (
 	github.com/onsi/ginkgo v1.12.1
 	github.com/onsi/gomega v1.10.1
 	github.com/paulcarlton-ww/goutils/pkg/kubectl v0.0.4
-	github.com/paulcarlton-ww/goutils/pkg/logging v0.0.3
 	github.com/paulcarlton-ww/goutils/pkg/testutils v0.1.42
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.7.1
@@ -26,6 +25,7 @@ require (
 	k8s.io/api v0.20.2
 	k8s.io/apiextensions-apiserver v0.20.2
 	k8s.io/apimachinery v0.20.2
+	k8s.io/cli-runtime v0.20.2
 	k8s.io/client-go v0.20.2
 	k8s.io/kubectl v0.20.1
 	sigs.k8s.io/controller-runtime v0.6.3

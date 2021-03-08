@@ -1,6 +1,4 @@
 /*
-
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -21,9 +19,18 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os"
+	"os/signal"
 	"strings"
+	"sync"
+	"syscall"
 	"testing"
+
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/tools/portforward"
+	"k8s.io/client-go/transport/spdy"
 
 	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta1"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
@@ -72,8 +79,9 @@ var (
 )
 
 const (
-	kindClusterName = "integration-testing-cluster"
-	gotkSystem      = "gotk-system"
+	kindClusterName  = "integration-testing-cluster"
+	gotkSystem       = "gotk-system"
+	sourceCtlService = "source-controller"
 )
 
 func TestAPIs(t *testing.T) {
@@ -147,13 +155,19 @@ func setValues(namespace string) map[string]interface{} {
 				},
 			},
 		}
-		createImagePullSecret(log, namespace, imagePullSecretName, os.Getenv("IMAGE_PULL_SECRET_SOURCE"))
 	}
 
 	return values
 }
 
-func createImagePullSecret(log logr.Logger, namespace, name, source string) {
+func createImagePullSecret(log logr.Logger, namespace string) {
+	imagePullSecretName := os.Getenv("IMAGE_PULL_SECRET_NAME")
+
+	if len(imagePullSecretName) == 0 {
+		return
+	}
+
+	source := os.Getenv("IMAGE_PULL_SECRET_SOURCE")
 	var secretData []byte
 	var err error
 	if strings.ToLower(source) != "auto" {
@@ -184,7 +198,7 @@ func createImagePullSecret(log logr.Logger, namespace, name, source string) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func getK8sClient() kubernetes.Interface {
+func getRestClient() *rest.Config {
 	// creates the clientset
 	kubeConfig, present := os.LookupEnv("KUBECONFIG")
 	if !present {
@@ -194,7 +208,11 @@ func getK8sClient() kubernetes.Interface {
 	config, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
 	Expect(err).ToNot(HaveOccurred())
 
-	clientset, err := kubernetes.NewForConfig(config)
+	return config
+}
+
+func getK8sClient() kubernetes.Interface {
+	clientset, err := kubernetes.NewForConfig(getRestClient())
 	Expect(err).ToNot(HaveOccurred())
 
 	return clientset
@@ -214,12 +232,6 @@ func isReleasePresent(chartName, namespace string, actionConfig *action.Configur
 		if release.Name == chartName && release.Namespace == namespace {
 			return true
 		}
-	}
-	getClient := action.NewGet(actionConfig)
-	release, err := getClient.Run(chartName)
-	Expect(err).ToNot(HaveOccurred())
-	if release.Name == chartName && release.Namespace == namespace {
-		return true
 	}
 	return false
 }
@@ -273,6 +285,7 @@ func deployHelmChart(logf logr.Logger, namespace string) {
 	} else {
 		installHelmChart(log, releaseName, namespace, actionConfig, chart)
 	}
+	createImagePullSecret(log, namespace)
 }
 
 func applySetupYAML(log logr.Logger) {
@@ -283,6 +296,96 @@ func applySetupYAML(log logr.Logger) {
 	Expect(e).ToNot(HaveOccurred())
 
 	log.Info("applied", "apply response", string(output))
+}
+
+type portForwardServiceRequest struct {
+	// RestConfig is the kubernetes config
+	RestConfig *rest.Config
+	// Serviceis the selected pod for this port forwarding
+	Service coreV1.Service
+	// LocalPort is the local port that will be selected to expose the PodPort
+	LocalPort int
+	// ServicePort is the target port for the pod
+	ServicePort int
+	// Steams configures where to write or read input from
+	Streams genericclioptions.IOStreams
+	// StopCh is the channel used to manage the port forward lifecycle
+	StopCh <-chan struct{}
+	// ReadyCh communicates when the tunnel is ready to receive traffic
+	ReadyCh chan struct{}
+}
+
+func portForwardService(req portForwardServiceRequest) error {
+	path := fmt.Sprintf("/api/v1/namespaces/%s/services/%s/portforward",
+		req.Service.Namespace, req.Service.Name)
+	hostIP := strings.TrimLeft(req.RestConfig.Host, "https://") // nolint: staticcheck // ok
+
+	transport, upgrader, err := spdy.RoundTripperFor(req.RestConfig)
+	Expect(err).ToNot(HaveOccurred())
+
+	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, http.MethodPost, &url.URL{Scheme: "https", Path: path, Host: hostIP})
+	fw, err := portforward.New(dialer, []string{fmt.Sprintf("%d:%d", req.LocalPort, req.ServicePort)}, req.StopCh, req.ReadyCh, req.Streams.Out, req.Streams.ErrOut)
+	Expect(err).ToNot(HaveOccurred())
+
+	return fw.ForwardPorts()
+}
+
+func portForward(name, namespace string) {
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	// stopCh control the port forwarding lifecycle. When it gets closed the
+	// port forward will terminate
+	stopCh := make(chan struct{}, 1)
+	// readyCh communicate when the port forward is ready to get traffic
+	readyCh := make(chan struct{})
+	// stream is used to tell the port forwarder where to place its output or
+	// where to expect input if needed. For the port forwarding we just need
+	// the output eventually
+	stream := genericclioptions.IOStreams{
+		In:     os.Stdin,
+		Out:    os.Stdout,
+		ErrOut: os.Stderr,
+	}
+
+	// managing termination signal from the terminal. As you can see the stopCh
+	// gets closed to gracefully handle its termination.
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigs
+		fmt.Println("Bye...")
+		close(stopCh)
+		wg.Done()
+	}()
+
+	go func() {
+		// PortForward the pod specified from its port 9090 to the local port
+		// 8080
+		err := portForwardService(portForwardServiceRequest{
+			RestConfig: getRestClient(),
+			Service: coreV1.Service{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      name,
+					Namespace: namespace,
+				},
+			},
+			LocalPort:   8090,
+			ServicePort: 80,
+			Streams:     stream,
+			StopCh:      stopCh,
+			ReadyCh:     readyCh,
+		})
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	select {
+	case <-readyCh:
+		break
+	}
+	println("Port forwarding to source controller is ready")
 }
 
 var _ = BeforeSuite(func() {
@@ -310,6 +413,9 @@ var _ = BeforeSuite(func() {
 
 	deployHelmChart(log, namespace)
 	applySetupYAML(log)
+
+	portForward(sourceCtlService, namespace)
+
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{}
 

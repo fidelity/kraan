@@ -5,35 +5,63 @@
 package mocks
 
 import (
-	reflect "reflect"
-
 	gomock "github.com/golang/mock/gomock"
+	reflect "reflect"
 )
 
-// MockExecProvider is a mock of ExecProvider interface.
+// MockExecProvider is a mock of ExecProvider interface
 type MockExecProvider struct {
 	ctrl     *gomock.Controller
 	recorder *MockExecProviderMockRecorder
 }
 
-// MockExecProviderMockRecorder is the mock recorder for MockExecProvider.
+// MockExecProviderMockRecorder is the mock recorder for MockExecProvider
 type MockExecProviderMockRecorder struct {
 	mock *MockExecProvider
 }
 
-// NewMockExecProvider creates a new mock instance.
+// NewMockExecProvider creates a new mock instance
 func NewMockExecProvider(ctrl *gomock.Controller) *MockExecProvider {
 	mock := &MockExecProvider{ctrl: ctrl}
 	mock.recorder = &MockExecProviderMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use.
+// EXPECT returns an object that allows the caller to indicate expected use
 func (m *MockExecProvider) EXPECT() *MockExecProviderMockRecorder {
 	return m.recorder
 }
 
-// ExecCmd mocks base method.
+// FileExists mocks base method
+func (m *MockExecProvider) FileExists(filePath string) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FileExists", filePath)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// FileExists indicates an expected call of FileExists
+func (mr *MockExecProviderMockRecorder) FileExists(filePath interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FileExists", reflect.TypeOf((*MockExecProvider)(nil).FileExists), filePath)
+}
+
+// FindOnPath mocks base method
+func (m *MockExecProvider) FindOnPath(file string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindOnPath", file)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindOnPath indicates an expected call of FindOnPath
+func (mr *MockExecProviderMockRecorder) FindOnPath(file interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindOnPath", reflect.TypeOf((*MockExecProvider)(nil).FindOnPath), file)
+}
+
+// ExecCmd mocks base method
 func (m *MockExecProvider) ExecCmd(name string, arg ...string) ([]byte, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{name}
@@ -46,38 +74,9 @@ func (m *MockExecProvider) ExecCmd(name string, arg ...string) ([]byte, error) {
 	return ret0, ret1
 }
 
-// ExecCmd indicates an expected call of ExecCmd.
+// ExecCmd indicates an expected call of ExecCmd
 func (mr *MockExecProviderMockRecorder) ExecCmd(name interface{}, arg ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{name}, arg...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecCmd", reflect.TypeOf((*MockExecProvider)(nil).ExecCmd), varargs...)
-}
-
-// FileExists mocks base method.
-func (m *MockExecProvider) FileExists(filePath string) bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FileExists", filePath)
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// FileExists indicates an expected call of FileExists.
-func (mr *MockExecProviderMockRecorder) FileExists(filePath interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FileExists", reflect.TypeOf((*MockExecProvider)(nil).FileExists), filePath)
-}
-
-// FindOnPath mocks base method.
-func (m *MockExecProvider) FindOnPath(file string) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindOnPath", file)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FindOnPath indicates an expected call of FindOnPath.
-func (mr *MockExecProviderMockRecorder) FindOnPath(file interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindOnPath", reflect.TypeOf((*MockExecProvider)(nil).FindOnPath), file)
 }

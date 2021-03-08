@@ -28,6 +28,16 @@ export REPO ?=docker.pkg.github.com/${GITHUB_ORG}/${GITHUB_REPO}
 IMG ?= ${REPO}/${PROJECT}:${VERSION}
 export CHART_VERSION?=$(shell grep version: chart/Chart.yaml | awk '{print $$2}')
 export CHART_APP_VERSION?=$(shell grep appVersion: chart/Chart.yaml | awk '{print $$2}')
+# Controller Integration test setup
+export USE_EXISTING_CLUSTER?=true
+export IMAGE_PULL_SECRET_SOURCE?=${HOME}/gotk-regcred.yaml 
+export IMAGE_PULL_SECRET_NAME?=gotk-regcred
+export GITOPS_USE_PROXY?=auto
+export KRAAN_NAMESPACE?=gotk-system
+export KUBECONFIG?=${HOME}/.kube/config
+export DATA_PATH?=$(shell mktemp -d -t kraan-XXXXXXXXXX)
+export SC_HOST?=localhost:8090
+
 ALL_GO_PACKAGES:=$(shell find ${CURDIR}/main/ ${CURDIR}/controllers/ ${CURDIR}/api/ ${CURDIR}/pkg/ \
 	-type f -name *.go -exec dirname {} \; | sort --uniq)
 GO_CHECK_PACKAGES:=$(shell echo $(subst $() $(),\\n,$(ALL_GO_PACKAGES)) | \
@@ -49,8 +59,8 @@ NC:=\033[0m
 
 # Targets that do not represent filenames need to be registered as phony or
 # Make won't always rebuild them.
-.PHONY: all clean ci-check ci-gate clean-godocs go-generate \
-	godocs clean-gomod gomod gomod-update release \
+.PHONY: all clean ci-check ci-gate go-generate \
+	clean-gomod gomod gomod-update release \
 	clean-${PROJECT}-check ${PROJECT}-check clean-${PROJECT}-build \
 	${PROJECT}-build ${GO_CHECK_PACKAGES} clean-check check \
 	clean-build build generate manifests deploy docker-push controller-gen \
@@ -65,7 +75,7 @@ all: ${PROJECT}-check ${PROJECT}-build go-generate
 build: gomod ${PROJECT}-check ${PROJECT}-build
 dev-build: gomod ${PROJECT}-check ${PROJECT}-build
 integration: gomod ${PROJECT}-integration
-clean: clean-gomod clean-godocs clean-${PROJECT}-check \
+clean: clean-gomod clean-${PROJECT}-check \
 	clean-${PROJECT}-build clean-check clean-build \
 	clean-dev-build clean-builddir-${BUILD_DIR} mkdir-${BUILD_DIR}
 
@@ -81,14 +91,6 @@ clean-builddir-${BUILD_DIR}:
 
 mkdir-${BUILD_DIR}:
 	mkdir -p ${BUILD_DIR}
-
-clean-godocs:
-	rm -f ${GO_DOCS_ARTIFACTS}
-
-godocs: ${GO_DOCS_ARTIFACTS}
-%.md: $$(wildcard $$(dir $$@)*.go | grep -v suite_test)
-	echo "${YELLOW}Running godocdown: $@${NC}" && \
-	godocdown -output $@ $(shell dirname $@)
 
 validate-versions:
 	./scripts/validate.sh
@@ -108,6 +110,7 @@ release:
 	git branch -D build-release-${CHART_VERSION}
 
 clean-gomod:
+clean-gomod:
 	rm -rf ${GOMOD_ARTIFACT}
 
 go.mod:
@@ -120,7 +123,13 @@ go.sum:  ${GOMOD_ARTIFACT}
 
 ${GOMOD_ARTIFACT}: gomod-update
 gomod-update: go.mod ${PROJECT_SOURCES}
-	go build ./...
+	go build ./... && \
+	echo "${YELLOW}go mod tidy${NC}" && \
+	go mod tidy && \
+	echo "${YELLOW}go mod download${NC}" && \
+	go mod download && \
+	echo "${YELLOW}go mod vendor${NC}" && \
+	go mod vendor
 
 clean-${PROJECT}-check:
 	$(foreach target,${GO_CHECK_PACKAGES}, \

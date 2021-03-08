@@ -71,7 +71,7 @@
                 },
                 "timeout": "30s",
                 "version": "0.1.01"
-            },
+            }
         },
         {
             "apiVersion": "kraan.io/v1alpha1",

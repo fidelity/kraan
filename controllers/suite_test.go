@@ -32,14 +32,15 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/paulcarlton-ww/goutils/pkg/kubectl"
-	"github.com/paulcarlton-ww/goutils/pkg/logging"
 	"github.com/pkg/errors"
 	uzap "go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli"
 	coreV1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -72,6 +73,7 @@ var (
 
 const (
 	kindClusterName = "integration-testing-cluster"
+	gotkSystem      = "gotk-system"
 )
 
 func TestAPIs(t *testing.T) {
@@ -92,6 +94,7 @@ func startKindCluster(logf logr.Logger) {
 	if !common.ContainsString(clusters, kindClusterName) {
 		err = p.Create(kindClusterName)
 		Expect(err).NotTo(HaveOccurred())
+		logf.Info("kind cluster crested", "cluster", kindClusterName)
 	} else {
 		logf.Info("using existing kind cluster", "cluster", kindClusterName)
 	}
@@ -168,12 +171,14 @@ func createImagePullSecret(log logr.Logger, namespace, name, source string) {
 	secretsClient := getK8sClient().CoreV1().Secrets(namespace)
 	getOptions := v1.GetOptions{}
 	secret, e := secretsClient.Get(context.Background(), "gotk-regcred", getOptions)
-	if err != nil {
-		log.Error(e, "get secret error")
+	if e != nil {
+		if !k8serrors.IsNotFound(e) {
+			Expect(err).ToNot(HaveOccurred())
+		}
 	} else {
 		log.Info("got secret", "name", secret.Name, "namespace", secret.Namespace)
+		return
 	}
-	Expect(err).ToNot(HaveOccurred())
 	options := v1.CreateOptions{}
 	_, err = secretsClient.Create(context.Background(), &secretSpec, options)
 	Expect(err).ToNot(HaveOccurred())
@@ -194,14 +199,59 @@ func getK8sClient() kubernetes.Interface {
 
 	return clientset
 }
+
 func debugLogf(format string, values ...interface{}) {
 	log.Info("helm debugging", "message", fmt.Sprintf(format, values...))
 }
 
-func installHelmChart(logf logr.Logger) {
+func isReleasePresent(chartName, namespace string, actionConfig *action.Configuration) bool {
+	listClient := action.NewList(actionConfig)
+	listClient.All = true
+	listClient.AllNamespaces = true
+	releases, err := listClient.Run()
+	Expect(err).ToNot(HaveOccurred())
+	for _, release := range releases {
+		if release.Name == chartName && release.Namespace == namespace {
+			return true
+		}
+	}
+	getClient := action.NewGet(actionConfig)
+	release, err := getClient.Run(chartName)
+	Expect(err).ToNot(HaveOccurred())
+	if release.Name == chartName && release.Namespace == namespace {
+		return true
+	}
+	return false
+}
+
+func installHelmChart(logf logr.Logger, releaseName, namespace string, actionConfig *action.Configuration, chart *chart.Chart) {
+	client := action.NewInstall(actionConfig)
+	client.CreateNamespace = true
+	client.Namespace = namespace
+	client.ReleaseName = releaseName
+
+	// install the chart here
+	rel, err := client.Run(chart, setValues(namespace))
+	Expect(err).ToNot(HaveOccurred())
+
+	logf.Info("Installed Chart", "path", rel.Name, "namespace", rel.Namespace)
+	logf.Info("Chart values overridden", "values", rel.Config)
+}
+
+func upgradeHelmChart(logf logr.Logger, releaseName, namespace string, actionConfig *action.Configuration, chart *chart.Chart) {
+	client := action.NewUpgrade(actionConfig)
+	client.Namespace = namespace
+
+	// install the chart here
+	rel, err := client.Run(releaseName, chart, setValues(namespace))
+	Expect(err).ToNot(HaveOccurred())
+
+	logf.Info("Upgraded Chart", "path", rel.Name, "namespace", rel.Namespace)
+	logf.Info("Chart values overridden", "values", rel.Config)
+}
+
+func deployHelmChart(logf logr.Logger, namespace string) {
 	chartPath := "../chart"
-	namespace := "gotk-system"
-	releaseName := "kraan"
 
 	settings := cli.New()
 
@@ -216,17 +266,13 @@ func installHelmChart(logf logr.Logger) {
 	chart, err := loader.Load(chartPath)
 	Expect(err).ToNot(HaveOccurred())
 
-	client := action.NewInstall(actionConfig)
-	client.Namespace = namespace
-	client.ReleaseName = releaseName
+	releaseName := chart.Name()
 
-	// install the chart here
-	rel, err := client.Run(chart, setValues(namespace))
-	Expect(err).ToNot(HaveOccurred())
-
-	logf.Info("Installed Chart", "path", rel.Name, "namespace", rel.Namespace)
-	// this will confirm the values set during installation
-	logf.Info("Chart values overridden", "values", rel.Config)
+	if isReleasePresent(releaseName, namespace, actionConfig) {
+		upgradeHelmChart(log, releaseName, namespace, actionConfig, chart)
+	} else {
+		installHelmChart(log, releaseName, namespace, actionConfig, chart)
+	}
 }
 
 func applySetupYAML(log logr.Logger) {
@@ -236,7 +282,7 @@ func applySetupYAML(log logr.Logger) {
 	output, e := cmd.Run()
 	Expect(e).ToNot(HaveOccurred())
 
-	log.Info("applied", "apply response", logging.LogJSON(output))
+	log.Info("applied", "apply response", string(output))
 }
 
 var _ = BeforeSuite(func() {
@@ -253,8 +299,17 @@ var _ = BeforeSuite(func() {
 	logf.SetLogger(log)
 
 	startKindCluster(log)
+
+	namespace, present := os.LookupEnv("KRAAN_NAMESPACE")
+	if !present {
+		namespace = gotkSystem
+	} else {
+		log.Error(errNotYetSupported, "kraan namespace selection not yet supported")
+	}
+	Expect(namespace).To(MatchRegexp(gotkSystem))
+
+	deployHelmChart(log, namespace)
 	applySetupYAML(log)
-	installHelmChart(log)
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{}
 

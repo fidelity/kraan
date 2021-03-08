@@ -36,6 +36,7 @@ import (
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -61,16 +62,12 @@ func getAddonsFromFiles(fileNames ...string) *kraanv1alpha1.AddonsLayerList {
 
 	for _, fileName := range fileNames {
 		buffer, err := ioutil.ReadFile(fileName)
-		if err != nil {
-			return nil
-		}
+		Expect(err).NotTo(HaveOccurred())
 
 		addons := &kraanv1alpha1.AddonsLayerList{}
 
 		err = json.Unmarshal(buffer, addons)
-		if err != nil {
-			return nil
-		}
+		Expect(err).NotTo(HaveOccurred())
 
 		addonsLayersList.Items = append(addonsLayersList.Items, addons.Items...)
 	}
@@ -82,7 +79,8 @@ func getAddonsFromFiles(fileNames ...string) *kraanv1alpha1.AddonsLayerList {
 
 var _ = Describe("AddonsLayer controller", func() {
 	createAddonsLayer := func(ctx context.Context, log logr.Logger, AddonsLayer *kraanv1alpha1.AddonsLayer) *kraanv1alpha1.AddonsLayer {
-		Expect(k8sClient.Create(ctx, AddonsLayer)).Should(Succeed())
+		createOptions := &client.CreateOptions{}
+		Expect(k8sClient.Create(ctx, AddonsLayer, createOptions)).Should(Succeed())
 		AddonsLayerLookupKey := types.NamespacedName{Name: AddonsLayerName}
 		createdAddonsLayer := &kraanv1alpha1.AddonsLayer{}
 

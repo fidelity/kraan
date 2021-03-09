@@ -65,10 +65,12 @@ const (
 	reasonRegex = "^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$" // Regex for k8s 1.19 conditions reason field
 )
 
+// AddonsLayerReconcilerOptions are the reconciller options
 type AddonsLayerReconcilerOptions struct {
 	MaxConcurrentReconciles int
 }
 
+// SetupWithManagerAndOptions setup manager with supplied options
 func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opts AddonsLayerReconcilerOptions) error { // nolint: funlen,gocyclo,gocognit // ok
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)

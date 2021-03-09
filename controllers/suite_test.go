@@ -27,6 +27,7 @@ import (
 	"sync"
 	"syscall"
 	"testing"
+	"time"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/tools/portforward"
@@ -92,6 +93,7 @@ func TestAPIs(t *testing.T) {
 }
 
 func startKindCluster(logf logr.Logger) {
+	logf.Info("environmental variables", "env", os.Environ())
 	err := os.Setenv("KIND_CLUSTER_NAME", kindClusterName)
 	Expect(err).ToNot(HaveOccurred())
 	p := cluster.NewProvider()
@@ -107,7 +109,7 @@ func startKindCluster(logf logr.Logger) {
 	}
 }
 
-func setValues(namespace string) map[string]interface{} {
+func setValues(logf logr.Logger, namespace string) map[string]interface{} {
 	// disable kraan controller deployment
 	values := map[string]interface{}{
 		"kraan": map[string]interface{}{
@@ -155,7 +157,7 @@ func setValues(namespace string) map[string]interface{} {
 			},
 		}
 	}
-
+	logf.Info("overridden values", "values", values)
 	return values
 }
 
@@ -242,7 +244,7 @@ func installHelmChart(logf logr.Logger, releaseName, namespace string, actionCon
 	client.ReleaseName = releaseName
 
 	// install the chart here
-	rel, err := client.Run(chart, setValues(namespace))
+	rel, err := client.Run(chart, setValues(logf, namespace))
 	Expect(err).ToNot(HaveOccurred())
 
 	logf.Info("Installed Chart", "path", rel.Name, "namespace", rel.Namespace)
@@ -254,7 +256,7 @@ func upgradeHelmChart(logf logr.Logger, releaseName, namespace string, actionCon
 	client.Namespace = namespace
 
 	// install the chart here
-	rel, err := client.Run(releaseName, chart, setValues(namespace))
+	rel, err := client.Run(releaseName, chart, setValues(logf, namespace))
 	Expect(err).ToNot(HaveOccurred())
 
 	logf.Info("Upgraded Chart", "path", rel.Name, "namespace", rel.Namespace)
@@ -330,9 +332,14 @@ func portForwardPod(req portForwardPodRequest) error {
 }
 
 func getSouceControllerPodName(namespace string) string {
-	listOptions := &client.ListOptions{}
-	pods, err := client.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
-	k8sClient.List(context.Background(), pod, listOptions)
+	listOptions := v1.ListOptions{}
+	listOptions.LabelSelector = "app=source-controller"
+	pods, err := getK8sClient().CoreV1().Pods(namespace).List(context.TODO(), listOptions)
+	Expect(err).ToNot(HaveOccurred())
+	if len(pods.Items) == 0 {
+		return ""
+	}
+	return pods.Items[0].Name
 }
 
 func portForward(namespace string) {
@@ -371,7 +378,7 @@ func portForward(namespace string) {
 			RestConfig: getRestClient(),
 			Pod: coreV1.Pod{
 				ObjectMeta: v1.ObjectMeta{
-					Name:      getSouceControllerPodName(),
+					Name:      getSouceControllerPodName(namespace),
 					Namespace: namespace,
 				},
 			},
@@ -398,12 +405,12 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	logOpts := &zap.Options{}
-	f := flag.NewFlagSet("-zap-log-level=4", flag.ExitOnError)
+	f := flag.NewFlagSet("--zap-log-level=4", flag.ExitOnError)
 	logOpts.BindFlags(f)
 	encCfg := uzap.NewProductionEncoderConfig()
 	encCfg.EncodeTime = zapcore.ISO8601TimeEncoder
 	encoder := zap.Encoder(zapcore.NewJSONEncoder(encCfg))
-	log = zap.New(zap.UseFlagOptions(logOpts), encoder, zap.WriteTo(GinkgoWriter))
+	log = zap.New(zap.UseFlagOptions(logOpts), encoder)
 	logf.SetLogger(log)
 
 	startKindCluster(log)
@@ -446,16 +453,19 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
 
+	var syncPeriod time.Duration = time.Second * 10
+
 	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
-		Scheme:    scheme.Scheme,
-		Namespace: "",
+		Scheme:     scheme.Scheme,
+		Namespace:  "",
+		SyncPeriod: &syncPeriod,
 	})
 	Expect(err).ToNot(HaveOccurred())
 
 	r, err := controllers.NewReconciler(
 		k8sManager.GetConfig(),
 		k8sManager.GetClient(),
-		logf.Log.WithName("controller"),
+		log,
 		k8sManager.GetScheme())
 	Expect(err).ToNot(HaveOccurred())
 
@@ -472,6 +482,7 @@ var _ = BeforeSuite(func() {
 
 	k8sClient = k8sManager.GetClient()
 	Expect(k8sClient).ToNot(BeNil())
+	time.Sleep(time.Second)
 }, 60)
 
 var _ = AfterSuite(func() {

@@ -28,15 +28,6 @@ export REPO ?=docker.pkg.github.com/${GITHUB_ORG}/${GITHUB_REPO}
 IMG ?= ${REPO}/${PROJECT}:${VERSION}
 export CHART_VERSION?=$(shell grep version: chart/Chart.yaml | awk '{print $$2}')
 export CHART_APP_VERSION?=$(shell grep appVersion: chart/Chart.yaml | awk '{print $$2}')
-# Controller Integration test setup
-export USE_EXISTING_CLUSTER?=true
-export IMAGE_PULL_SECRET_SOURCE?=${HOME}/gotk-regcred.yaml 
-export IMAGE_PULL_SECRET_NAME?=gotk-regcred
-export GITOPS_USE_PROXY?=auto
-export KRAAN_NAMESPACE?=gotk-system
-export KUBECONFIG?=${HOME}/.kube/config
-export DATA_PATH?=$(shell mktemp -d -t kraan-XXXXXXXXXX)
-export SC_HOST?=localhost:8090
 
 ALL_GO_PACKAGES:=$(shell find ${CURDIR}/main/ ${CURDIR}/controllers/ ${CURDIR}/api/ ${CURDIR}/pkg/ \
 	-type f -name *.go -exec dirname {} \; | sort --uniq)

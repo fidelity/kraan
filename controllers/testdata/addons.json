@@ -8,7 +8,7 @@
                 "name": "apps"
             },
             "spec": {
-                "interval": "1m",
+                "interval": "15s",
                 "prereqs": {
                     "dependsOn": [
                         "base@0.1.01",
@@ -34,7 +34,7 @@
 
             },
             "spec": {
-                "interval": "1m",
+                "interval": "15s",
                 "prereqs": {
                     "dependsOn": [
                         "bootstrap@0.1.01"
@@ -59,7 +59,7 @@
             },
             "spec": {
                 "hold": false,
-                "interval": "1m",
+                "interval": "15s",
                 "prereqs": {
                     "k8sVersion": "v1.16"
                 },
@@ -80,7 +80,7 @@
                 "name": "mgmt"
             },
             "spec": {
-                "interval": "1m",
+                "interval": "15s",
                 "prereqs": {
                     "dependsOn": [
                         "base@0.1.01"

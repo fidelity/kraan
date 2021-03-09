@@ -424,12 +424,12 @@ func (a KubectlLayerApplier) checkSourcePath(layer layers.Layer) (sourceDir stri
 	info, err := os.Stat(sourceDir)
 	if os.IsNotExist(err) {
 		a.logDebug("source directory not found", layer)
-		return sourceDir, fmt.Errorf("source directory (%s) not found for AddonsLayer %s",
+		return sourceDir, errors.Wrapf(err, "source directory (%s) not found for AddonsLayer %s",
 			sourceDir, layer.GetName())
 	}
 	if os.IsPermission(err) {
 		a.logDebug("source directory read permission denied", layer)
-		return sourceDir, fmt.Errorf("read permission denied to source directory (%s) for AddonsLayer %s",
+		return sourceDir, errors.Wrapf(err, "read permission denied to source directory (%s) for AddonsLayer %s",
 			sourceDir, layer.GetName())
 	}
 	if err != nil {
@@ -441,7 +441,7 @@ func (a KubectlLayerApplier) checkSourcePath(layer layers.Layer) (sourceDir stri
 		sourceDir = sourceDir + string(os.PathSeparator)
 	} else {
 		// I'm not sure if this is an error, but I thought I should detect and log it
-		return sourceDir, fmt.Errorf("source path: %s, is not a directory", sourceDir)
+		return sourceDir, errors.Wrapf(err, "source path: %s, is not a directory", sourceDir)
 	}
 	return sourceDir, nil
 }
@@ -465,7 +465,7 @@ func (a KubectlLayerApplier) getSourceResources(layer layers.Layer) (objs []runt
 	defer logging.TraceExit(a.getLog(layer))
 	sourceDir, err := a.checkSourcePath(layer)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithMessagef(err, "failed to check source path")
 	}
 
 	output, err := a.doApply(layer, sourceDir)

@@ -46,7 +46,7 @@ import (
 const (
 	AddonsLayerName      = "apps"
 	k8sList              = "List"
-	timeout              = time.Second * 30
+	timeout              = time.Second * 120
 	interval             = time.Millisecond * 250
 	addonsLayersFileName = "testdata/addons.json"
 )

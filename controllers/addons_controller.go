@@ -776,6 +776,7 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 		if common.ContainsString(addonsLayer.ObjectMeta.Finalizers, kraanv1alpha1.AddonsFinalizer) {
 			_, clusterHrs, e := r.Applier.GetSourceAndClusterHelmReleases(ctx, l)
 			if e != nil {
+				r.Log.Error(err, "failed to get helm resources", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
 				return ctrl.Result{}, errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
 			}
 
@@ -792,6 +793,7 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 			}
 
 			if orphans { // Outstanding orphans waiting to be adopted
+				r.Log.Info("addonsLayer waiting for adoption", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
 				l.SetDelayedRequeue()     // Schedule requeue
 				return r.updateRequeue(l) // don't proceed with delete
 			}
@@ -799,6 +801,7 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 			addonsLayer.ObjectMeta.Finalizers = common.RemoveString(l.GetAddonsLayer().ObjectMeta.Finalizers, kraanv1alpha1.AddonsFinalizer)
 			r.recordReadiness(addonsLayer, true)
 			l.SetDeleted()
+			r.Log.Info("addonsLayer deleted", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
 			if err = r.Update(ctx, l.GetAddonsLayer()); err != nil {
 				r.Log.Error(err, "unable to remove finalizer", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
 				return ctrl.Result{}, err

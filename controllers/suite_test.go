@@ -58,25 +58,31 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/kind/pkg/cluster"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 	"github.com/fidelity/kraan/controllers"
 	"github.com/fidelity/kraan/pkg/common"
+	"github.com/fidelity/kraan/pkg/repos"
 	// +kubebuilder:scaffold:imports
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
+func init() {
+	log.SetLogger(zap.New())
+}
+
 var (
-	cfg                *rest.Config                      // nolint:gochecknoglobals // until we understand this code better
-	k8sClient          client.Client                     // nolint:gochecknoglobals // until we understand this code better
-	testEnv            *envtest.Environment              // nolint:gochecknoglobals // until we understand this code better
-	log                logr.Logger                       // nolint:gochecknoglobals // needed for debugLog
-	errNotYetSupported = errors.New("not yet supported") // nolint:gochecknoglobals // ok
+	cfg       *rest.Config         // nolint:gochecknoglobals // until we understand this code better
+	k8sClient client.Client        // nolint:gochecknoglobals // until we understand this code better
+	testEnv   *envtest.Environment // nolint:gochecknoglobals // until we understand this code better
+	//log                logr.Logger                       // nolint:gochecknoglobals // needed for debugLog
+	setupLog           = log.Log.WithName("initialization") // nolint:gochecknoglobals // needed for debugLog
+	errNotYetSupported = errors.New("not yet supported")    // nolint:gochecknoglobals // ok
 )
 
 const (
@@ -93,7 +99,6 @@ func TestAPIs(t *testing.T) {
 }
 
 func startKindCluster(logf logr.Logger) {
-	logf.Info("environmental variables", "env", os.Environ())
 	err := os.Setenv("KIND_CLUSTER_NAME", kindClusterName)
 	Expect(err).ToNot(HaveOccurred())
 	p := cluster.NewProvider()
@@ -220,7 +225,7 @@ func getK8sClient() kubernetes.Interface {
 }
 
 func debugLogf(format string, values ...interface{}) {
-	log.Info("helm debugging", "message", fmt.Sprintf(format, values...))
+	setupLog.Info("helm debugging", "message", fmt.Sprintf(format, values...))
 }
 
 func isReleasePresent(chartName, namespace string, actionConfig *action.Configuration) bool {
@@ -282,21 +287,19 @@ func deployHelmChart(logf logr.Logger, namespace string) {
 	releaseName := chart.Name()
 
 	if isReleasePresent(releaseName, namespace, actionConfig) {
-		upgradeHelmChart(log, releaseName, namespace, actionConfig, chart)
+		upgradeHelmChart(logf, releaseName, namespace, actionConfig, chart)
 	} else {
-		installHelmChart(log, releaseName, namespace, actionConfig, chart)
+		installHelmChart(logf, releaseName, namespace, actionConfig, chart)
 	}
-	createImagePullSecret(log, namespace)
+	createImagePullSecret(logf, namespace)
 }
 
-func applySetupYAML(log logr.Logger) {
-	kubeCtl, err := kubectl.NewKubectl(log)
+func applySetupYAML(logf logr.Logger) {
+	kubeCtl, err := kubectl.NewKubectl(logf)
 	Expect(err).ToNot(HaveOccurred())
 	cmd := kubeCtl.Apply("./testdata/setup")
-	output, e := cmd.Run()
+	_, e := cmd.Run()
 	Expect(e).ToNot(HaveOccurred())
-
-	log.Info("applied", "apply response", string(output))
 }
 
 type portForwardPodRequest struct {
@@ -400,31 +403,100 @@ func portForward(namespace string) {
 	println("Port forwarding to source controller is ready")
 }
 
-var _ = BeforeSuite(func() {
-	err := os.Setenv("USE_EXISTING_CLUSTER", "true")
-	Expect(err).ToNot(HaveOccurred())
+type LogLevels struct {
+	Info    bool
+	Debug   bool
+	Trace   bool
+	Highest int
+}
 
-	logOpts := &zap.Options{}
-	f := flag.NewFlagSet("--zap-log-level=4", flag.ExitOnError)
-	logOpts.BindFlags(f)
+func CheckLogLevels(log logr.Logger) LogLevels {
+	lvl := LogLevels{
+		Info:  log.V(0).Enabled(),
+		Debug: log.V(1).Enabled(),
+		Trace: log.V(2).Enabled(),
+	}
+	for i := 0; i < 100; i++ {
+		if !log.V(i).Enabled() {
+			log.V(i).Info("log-level enabled", "level", i)
+			lvl.Highest = i - 1
+			break
+		}
+	}
+	return lvl
+}
+
+// NewLogger returns a logger configured the timestamps format is ISO8601
+func NewLogger(logOpts *zap.Options) logr.Logger {
 	encCfg := uzap.NewProductionEncoderConfig()
 	encCfg.EncodeTime = zapcore.ISO8601TimeEncoder
 	encoder := zap.Encoder(zapcore.NewJSONEncoder(encCfg))
-	log = zap.New(zap.UseFlagOptions(logOpts), encoder)
-	logf.SetLogger(log)
 
-	startKindCluster(log)
+	return zap.New(zap.UseFlagOptions(logOpts), encoder).WithName("kraan")
+}
+
+var _ = BeforeSuite(func() {
+	err := os.Setenv("USE_EXISTING_CLUSTER", "true")
+	Expect(err).ToNot(HaveOccurred())
+	/*
+		logOpts := &zap.Options{}
+		f := flag.NewFlagSet("zap-log-level=4", flag.ExitOnError)
+		logOpts.BindFlags(f)
+		encCfg := uzap.NewProductionEncoderConfig()
+		encCfg.EncodeTime = zapcore.ISO8601TimeEncoder
+		encoder := zap.Encoder(zapcore.NewJSONEncoder(encCfg))
+		log = zap.New(zap.UseFlagOptions(logOpts), encoder)
+		logf.SetLogger(log)
+	*/
+	var (
+		logLevel   string
+		syncPeriod time.Duration
+	)
+
+	flag.StringVar(&logLevel, "log-level", "info", "Set logging level. Can be debug, info or error.")
+
+	flag.DurationVar(
+		&syncPeriod,
+		"sync-period",
+		time.Second*10,
+		"period between reprocessing of all AddonsLayers.",
+	)
+
+	logOpts := zap.Options{}
+	os.Args = []string{"test", "--zap-log-level=4"}
+	logOpts.BindFlags(flag.CommandLine)
+
+	flag.Parse()
+
+	logger := NewLogger(&logOpts)
+
+	loggerType := fmt.Sprintf("%T", logger)
+	lvl := CheckLogLevels(logger)
+	setupLog.Info("logger configured", "loggerType", loggerType, "logLevels", lvl)
+
+	if path, set := os.LookupEnv("DATA_PATH"); set {
+		repos.DefaultRootPath = path
+	}
+	if host, set := os.LookupEnv("SC_HOST"); set {
+		repos.DefaultHostName = host
+	}
+	if timeout, set := os.LookupEnv("SC_TIMEOUT"); set {
+		timeOut, e := time.ParseDuration(timeout)
+		Expect(e).NotTo(HaveOccurred())
+		repos.DefaultTimeOut = timeOut
+	}
+	startKindCluster(setupLog)
 
 	namespace, present := os.LookupEnv("KRAAN_NAMESPACE")
 	if !present {
 		namespace = gotkSystem
 	} else {
-		log.Error(errNotYetSupported, "kraan namespace selection not yet supported")
+		setupLog.Error(errNotYetSupported, "kraan namespace selection not yet supported")
 	}
 	Expect(namespace).To(MatchRegexp(gotkSystem))
 
-	deployHelmChart(log, namespace)
-	applySetupYAML(log)
+	deployHelmChart(setupLog, namespace)
+	applySetupYAML(setupLog)
 
 	portForward(namespace)
 
@@ -453,10 +525,9 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
 
-	var syncPeriod time.Duration = time.Second * 10
-
 	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:     scheme.Scheme,
+		Logger:     logger.WithName("manager"),
 		Namespace:  "",
 		SyncPeriod: &syncPeriod,
 	})
@@ -465,7 +536,7 @@ var _ = BeforeSuite(func() {
 	r, err := controllers.NewReconciler(
 		k8sManager.GetConfig(),
 		k8sManager.GetClient(),
-		log,
+		logger.WithName("controller"),
 		k8sManager.GetScheme())
 	Expect(err).ToNot(HaveOccurred())
 

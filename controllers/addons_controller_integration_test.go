@@ -1,27 +1,5 @@
-/*
-Ideally, we should have one `<kind>_conroller_test.go` for each controller scaffolded and called in the `test_suite.go`.
-So, let's write our example test for the AddonsLayer controller (`AddonsLayer_controller_test.go.`)
-*/
+// +build integration
 
-/*
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-// +kubebuilder:docs-gen:collapse=Apache License
-
-/*
-As usual, we start with the necessary imports. We also define some utility variables.
-*/
 package controllers_test
 
 import (
@@ -85,8 +63,8 @@ func listAddonsLayers(ctx context.Context, log logr.Logger) []kraanv1alpha1.Addo
 }
 
 func deleteAddonsLayers(ctx context.Context, log logr.Logger, addonsLayersItems []kraanv1alpha1.AddonsLayer) {
-	var deletionPolicy metav1.DeletionPropagation = metav1.DeletePropagationOrphan //DeletePropagationForeground
-	deleteOptions := &client.DeleteOptions{PropagationPolicy: &deletionPolicy}
+	//var deletionPolicy metav1.DeletionPropagation = metav1.DeletePropagationOrphan
+	deleteOptions := &client.DeleteOptions{} // PropagationPolicy: &deletionPolicy
 	for _, addonsLayer := range addonsLayersItems {
 		Expect(k8sClient.Delete(ctx, &addonsLayer, deleteOptions)).Should(Succeed()) // nolint: scopelint // ok
 		log.Info("AddonsLayer deleted", "name", addonsLayer.Name)
@@ -146,7 +124,7 @@ func verifyAddonsLayer(ctx context.Context, log logr.Logger, addonsLayer *kraanv
 
 	Expect(len(createdAddonsLayer.Status.Conditions)).Should(Equal(1))
 
-	message := kraanv1alpha1.AddonsLayerDeployedMsg
+	message := "AddonsLayer version 0.1.01 is Deployed, All HelmReleases deployed"
 	if status == kraanv1alpha1.HoldCondition {
 		message = kraanv1alpha1.AddonsLayerHoldMsg
 	}

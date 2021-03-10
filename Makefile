@@ -131,9 +131,7 @@ gomod-update: go.mod ${PROJECT_SOURCES}
 	echo "${YELLOW}go mod tidy${NC}" && \
 	go mod tidy && \
 	echo "${YELLOW}go mod download${NC}" && \
-	go mod download && \
-	echo "${YELLOW}go mod vendor${NC}" && \
-	go mod vendor
+	go mod download
 
 clean-${PROJECT}-check:
 	$(foreach target,${GO_CHECK_PACKAGES}, \

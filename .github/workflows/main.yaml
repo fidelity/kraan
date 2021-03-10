@@ -42,7 +42,10 @@ jobs:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_TOKEN }}
       - name: Setup dependencies
-        run: ./bin/setup.sh
+        run: |
+          go env
+          export GOPATH=$HOME/go
+          ./bin/setup.sh
       # - uses: satackey/action-docker-layer-caching@v0
       #   # Ignore the failure of a step and avoid terminating the job.
       #   continue-on-error: true

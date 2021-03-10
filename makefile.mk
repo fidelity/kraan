@@ -28,9 +28,6 @@ export KRAAN_NAMESPACE?=gotk-system
 export KUBECONFIG?=${HOME}/.kube/config
 export DATA_PATH?=$(shell mktemp -d -t kraan-XXXXXXXXXX)
 export SC_HOST?=localhost:8090
-export HTTPS_PROXY?=""
-export NO_PROXY?=""
-export no_proxy?=""
 
 .PHONY: all clean goimports gofmt clean-lint lint clean-test test \
 	clean-coverage coverage

@@ -38,9 +38,6 @@ export KRAAN_NAMESPACE?=gotk-system
 export KUBECONFIG?=${HOME}/.kube/config
 export DATA_PATH?=$(shell mktemp -d -t kraan-XXXXXXXXXX)
 export SC_HOST?=localhost:8090
-export HTTPS_PROXY?=""
-export NO_PROXY?=""
-export no_proxy?=""
 
 ALL_GO_PACKAGES:=$(shell find ${CURDIR}/main/ ${CURDIR}/controllers/ ${CURDIR}/api/ ${CURDIR}/pkg/ \
 	-type f -name *.go -exec dirname {} \; | sort --uniq)

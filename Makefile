@@ -31,6 +31,7 @@ export CHART_APP_VERSION?=$(shell grep appVersion: chart/Chart.yaml | awk '{prin
 
 # Controller Integration test setup
 export USE_EXISTING_CLUSTER?=true
+export ZAP_LOG_LEVEL=1
 export IMAGE_PULL_SECRET_SOURCE?=${HOME}/gotk-regcred.yaml
 export IMAGE_PULL_SECRET_NAME?=gotk-regcred
 export GITOPS_USE_PROXY?=auto
@@ -65,7 +66,7 @@ NC:=\033[0m
 	clean-${PROJECT}-check ${PROJECT}-check clean-${PROJECT}-build \
 	${PROJECT}-build ${GO_CHECK_PACKAGES} clean-check check \
 	clean-build build generate manifests deploy docker-push controller-gen \
-	install uninstall lint-build run ${PROJECT}-integration integration docker-push-prerelease
+	install uninstall lint-build run ${PROJECT}-integration integration clean-integration docker-push-prerelease
 # Stop prints each line of the recipe.
 .SILENT:
 
@@ -76,9 +77,11 @@ all: go-generate ${PROJECT}-check ${PROJECT}-build
 build: gomod ${PROJECT}-check ${PROJECT}-build
 dev-build: gomod ${PROJECT}-check ${PROJECT}-build
 integration: gomod ${PROJECT}-integration
+clean-integration: clean-${PROJECT}-integration
 clean: clean-gomod clean-${PROJECT}-check \
 	clean-${PROJECT}-build clean-check clean-build \
-	clean-dev-build clean-builddir-${BUILD_DIR} mkdir-${BUILD_DIR}
+	clean-dev-build clean-builddir-${BUILD_DIR} mkdir-${BUILD_DIR} \
+	clean-integration
 
 
 # Specific CI targets.
@@ -137,6 +140,10 @@ clean-${PROJECT}-check:
 ${PROJECT}-check: ${GO_CHECK_PACKAGES}
 ${GO_CHECK_PACKAGES}: go.sum
 	$(MAKE) -C $@ --makefile=${CURDIR}/makefile.mk
+
+clean-${PROJECT}-integration:
+	$(foreach target,${GO_CHECK_PACKAGES}, \
+		$(MAKE) -C ${target} --makefile=${CURDIR}/makefile.mk clean-integration;)
 
 ${PROJECT}-integration: ${GO_CHECK_PACKAGES}
 	$(foreach target,${GO_CHECK_PACKAGES}, \

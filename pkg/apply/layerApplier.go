@@ -59,6 +59,7 @@ type LayerApplier interface {
 	Adopt(ctx context.Context, layer layers.Layer, hr *helmctlv2.HelmRelease) error
 	addOwnerRefs(layer layers.Layer, objs []runtime.Object) error
 	orphanLabel(ctx context.Context, hr *helmctlv2.HelmRelease) (*metav1.Time, error)
+	GetHelmReleases(ctx context.Context, layer layers.Layer) (foundHrs map[string]*helmctlv2.HelmRelease, err error)
 }
 
 // KubectlLayerApplier applies an AddonsLayer to a Kubernetes cluster using the kubectl command.
@@ -273,7 +274,7 @@ func (a KubectlLayerApplier) addOwnerRefs(layer layers.Layer, objs []runtime.Obj
 	return nil
 }
 
-func (a KubectlLayerApplier) getHelmReleases(ctx context.Context, layer layers.Layer) (foundHrs map[string]*helmctlv2.HelmRelease, err error) {
+func (a KubectlLayerApplier) GetHelmReleases(ctx context.Context, layer layers.Layer) (foundHrs map[string]*helmctlv2.HelmRelease, err error) {
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
 	hrList := &helmctlv2.HelmReleaseList{}
@@ -541,7 +542,7 @@ func (a KubectlLayerApplier) GetSourceAndClusterHelmReleases(ctx context.Context
 		return nil, nil, errors.WithMessagef(err, "%s - failed to get source helm releases", logging.CallerStr(logging.Me))
 	}
 
-	clusterHrs, err = a.getHelmReleases(ctx, layer)
+	clusterHrs, err = a.GetHelmReleases(ctx, layer)
 	if err != nil {
 		return nil, nil, errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
 	}
@@ -956,7 +957,7 @@ func (a KubectlLayerApplier) sourceHasRepoChanged(layer layers.Layer, source, fo
 func (a KubectlLayerApplier) ApplyWasSuccessful(ctx context.Context, layer layers.Layer) (applyIsRequired bool, hrName string, err error) {
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
-	clusterHrs, err := a.getHelmReleases(ctx, layer)
+	clusterHrs, err := a.GetHelmReleases(ctx, layer)
 	if err != nil {
 		return false, "", errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
 	}

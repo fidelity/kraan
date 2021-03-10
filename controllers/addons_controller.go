@@ -243,12 +243,12 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 			},
 			DeleteFunc: func(e event.DeleteEvent) bool {
 				r.Log.V(1).Info("delete event for AddonsLayer, not processing will be processed by controller reconciler",
-					append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object))...)
+					append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object)...)...)
 				return false
 			},
 			GenericFunc: func(e event.GenericEvent) bool {
 				r.Log.V(1).Info("generic event for AddonsLayer, not processing will be processed by controller reconciler",
-					append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object))...)
+					append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object)...)...)
 				return false
 			},
 		},
@@ -774,9 +774,9 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	} else {
 		r.Log.Info("addonsLayer is being deleted", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
 		if common.ContainsString(addonsLayer.ObjectMeta.Finalizers, kraanv1alpha1.AddonsFinalizer) {
-			_, clusterHrs, e := r.Applier.GetSourceAndClusterHelmReleases(ctx, l)
+			clusterHrs, e := r.Applier.GetHelmReleases(ctx, l)
 			if e != nil {
-				r.Log.Error(err, "failed to get helm resources", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
+				r.Log.Error(e, "failed to get helm resources", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
 				return ctrl.Result{}, errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
 			}
 

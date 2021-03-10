@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -423,6 +424,19 @@ func NewLogger(logOpts *zap.Options) logr.Logger {
 	return zap.New(zap.UseFlagOptions(logOpts), encoder).WithName("kraan")
 }
 
+func setLogLevel() string {
+	logLevel, present := os.LookupEnv("ZAP_LOG_LEVEL")
+	if !present {
+		return ""
+	}
+	logInt, e := strconv.Atoi(logLevel)
+	Expect(e).NotTo(HaveOccurred())
+	if logInt <= 0 {
+		return ""
+	}
+	return fmt.Sprintf("--zap-log-level=%d", logInt)
+}
+
 var _ = BeforeSuite(func() {
 	err := os.Setenv("USE_EXISTING_CLUSTER", "true")
 	Expect(err).ToNot(HaveOccurred())
@@ -451,7 +465,7 @@ var _ = BeforeSuite(func() {
 	)
 
 	logOpts := zap.Options{}
-	os.Args = []string{"test", "--zap-log-level=4"}
+	os.Args = []string{"test", setLogLevel()}
 	logOpts.BindFlags(flag.CommandLine)
 
 	flag.Parse()

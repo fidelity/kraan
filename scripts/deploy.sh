@@ -105,7 +105,7 @@ function args() {
   dry_run=""
   deploy_kind=0
   gitops_reg=""
-  kraan_repo=""
+  kraan_repo="kraan"
   kraan_name=""
   kraan_reg=""
   kraan_regcred=""
@@ -384,7 +384,7 @@ fi
 if [ -n "${kraan_reg}" ] ; then
   kraan_reg="${kraan_reg}/"
 fi
-if [ -n "${kraan_repo}" ] ; then
+if [[ -n "${kraan_repo}" || -n "${kraan_reg}" ]] ; then
   helm_args="${helm_args} --set kraan.kraanController.image.repository=${kraan_reg}${kraan_repo}"
 fi
 if [ -n "${kraan_name}" ] ; then

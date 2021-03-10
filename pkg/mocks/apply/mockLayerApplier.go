@@ -216,3 +216,18 @@ func (mr *MockLayerApplierMockRecorder) orphanLabel(ctx, hr interface{}) *gomock
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "orphanLabel", reflect.TypeOf((*MockLayerApplier)(nil).orphanLabel), ctx, hr)
 }
+
+// GetHelmReleases mocks base method
+func (m *MockLayerApplier) GetHelmReleases(ctx context.Context, layer layers.Layer) (map[string]*v2beta1.HelmRelease, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetHelmReleases", ctx, layer)
+	ret0, _ := ret[0].(map[string]*v2beta1.HelmRelease)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetHelmReleases indicates an expected call of GetHelmReleases
+func (mr *MockLayerApplierMockRecorder) GetHelmReleases(ctx, layer interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHelmReleases", reflect.TypeOf((*MockLayerApplier)(nil).GetHelmReleases), ctx, layer)
+}

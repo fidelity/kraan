@@ -9,10 +9,16 @@ GO_TEST_SOURCES:=$(wildcard *test.go)
 
 COVERAGE_DIR:=$(CURDIR)/coverage
 COVERAGE_HTML_DIR:=$(COVERAGE_DIR)/html
-
 COVERAGE_ARTIFACT:=${COVERAGE_HTML_DIR}/main.html
+
+INTEGRATION_COVERAGE_DIR:=$(CURDIR)/integration-coverage
+INTEGRATION_COVERAGE_HTML_DIR:=$(INTEGRATION_COVERAGE_DIR)/html
+INTEGRATION_COVERAGE_ARTIFACT:=${INTEGRATION_COVERAGE_HTML_DIR}/main.html
+
 LINT_ARTIFACT:=._gometalinter
+
 TEST_ARTIFACT:=${COVERAGE_DIR}/coverage.out
+INTEGRATION_TEST_ARTIFACT:=${INTEGRATION_COVERAGE_DIR}/integration-coverage.out
 
 YELLOW:=\033[0;33m
 GREEN:=\033[0;32m
@@ -21,6 +27,7 @@ NC:=\033[0m
 NC_DIR:=: $(CURDIR)$(NC)
 # Controller Integration test setup
 export USE_EXISTING_CLUSTER?=true
+export ZAP_LOG_LEVEL=1
 export IMAGE_PULL_SECRET_SOURCE?=${HOME}/gotk-regcred.yaml
 export IMAGE_PULL_SECRET_NAME?=gotk-regcred
 export GITOPS_USE_PROXY?=auto
@@ -30,13 +37,15 @@ export DATA_PATH?=$(shell mktemp -d -t kraan-XXXXXXXXXX)
 export SC_HOST?=localhost:8090
 
 .PHONY: all clean goimports gofmt clean-lint lint clean-test test \
-	clean-coverage coverage
+	clean-coverage coverage clean-integration integration integration-coverage clean-integration-coverage
 # Stop prints each line of the recipe.
 .SILENT:
 
 all: lint coverage
 clean: clean-lint clean-coverage clean-test
 
+integration: integration-coverage integration-test
+clean-integration: clean-integration-test clean-integration-coverage
 
 goimports: ${GO_SOURCES}
 	echo "${YELLOW}Running goimports${NC_DIR}" && \
@@ -63,17 +72,6 @@ ${TEST_ARTIFACT}: ${GO_SOURCES}
 		  exit 1; } \
 	fi
 
-integration:
-	if [ -n "${GO_TEST_SOURCES}" ]; then
-		{ echo "${YELLOW}Running integration test${NC_DIR}" && \
-		  go test -v --tags=integration && \
-		  echo "${GREEN}TEST PASSED${NC}"; } || \
-        {  echo "${RED}TEST FAILED${NC}" && \
-		  exit 1; }
-	fi
-
-
-
 clean-coverage:
 	rm -rf $(dir ${COVERAGE_ARTIFACT})
 
@@ -82,6 +80,36 @@ ${COVERAGE_ARTIFACT}: ${TEST_ARTIFACT}
 	if [ -e "$<" ]; then \
 		echo "${YELLOW}Running go tool cover${NC_DIR}" && \
 		mkdir -p $(dir ${COVERAGE_ARTIFACT}) && \
+		go tool cover -html=$< -o $@ && \
+		echo "${GREEN}Generated: file://$@${NC}"; \
+	fi
+
+
+clean-integration-test: clean-integration-coverage
+	rm -rf $(dir ${INTEGRATION_TEST_ARTIFACT})
+
+
+integration-test: ${INTEGRATION_TEST_ARTIFACT}
+${INTEGRATION_TEST_ARTIFACT}: ${GO_SOURCES}
+	if [ -n "${GO_TEST_SOURCES}" ]; then
+		{ echo "${YELLOW}Running integration test${NC_DIR}" && \
+		  mkdir -p $(dir ${INTEGRATION_TEST_ARTIFACT}) && \
+		  go test -coverprofile=$@ --tags=integration && \
+		  echo "${GREEN}TEST PASSED${NC}"; } || \
+        {  echo "${RED}TEST FAILED${NC}" && \
+		  exit 1; }
+	fi
+
+
+clean-integration-coverage:
+	rm -rf $(dir ${INTEGRATION_COVERAGE_ARTIFACT})
+
+
+integration-coverage: ${INTEGRATION_COVERAGE_ARTIFACT}
+${INTEGRATION_COVERAGE_ARTIFACT}: ${INTEGRATION_TEST_ARTIFACT}
+	if [ -e "$<" ]; then \
+		echo "${YELLOW}Running go tool cover${NC_DIR}" && \
+		mkdir -p $(dir ${INTEGRATION_COVERAGE_ARTIFACT}) && \
 		go tool cover -html=$< -o $@ && \
 		echo "${GREEN}Generated: file://$@${NC}"; \
 	fi

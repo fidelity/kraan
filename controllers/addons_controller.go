@@ -65,10 +65,12 @@ const (
 	reasonRegex = "^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$" // Regex for k8s 1.19 conditions reason field
 )
 
+// AddonsLayerReconcilerOptions are the reconciller options
 type AddonsLayerReconcilerOptions struct {
 	MaxConcurrentReconciles int
 }
 
+// SetupWithManagerAndOptions setup manager with supplied options
 func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opts AddonsLayerReconcilerOptions) error { // nolint: funlen,gocyclo,gocognit // ok
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
@@ -241,12 +243,12 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 			},
 			DeleteFunc: func(e event.DeleteEvent) bool {
 				r.Log.V(1).Info("delete event for AddonsLayer, not processing will be processed by controller reconciler",
-					append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object))...)
+					append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object)...)...)
 				return false
 			},
 			GenericFunc: func(e event.GenericEvent) bool {
 				r.Log.V(1).Info("generic event for AddonsLayer, not processing will be processed by controller reconciler",
-					append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object))...)
+					append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object)...)...)
 				return false
 			},
 		},
@@ -359,6 +361,25 @@ func (r *AddonsLayerReconciler) getK8sClient() (kubernetes.Interface, error) {
 	return clientset, nil
 }
 
+func (r *AddonsLayerReconciler) orphans(l layers.Layer, hrs []*helmctlv2.HelmRelease) (bool, error) {
+	if len(hrs) == 0 {
+		return false, nil
+	}
+
+	orphansPending := false
+
+	for _, hr := range hrs {
+		orphan, err := r.Applier.Orphan(r.Context, l, hr)
+		if err != nil {
+			return true, errors.WithMessagef(err, "%s - check for orphans failed", logging.CallerStr(logging.Me))
+		}
+
+		orphansPending = orphansPending || orphan
+	}
+
+	return orphansPending, nil
+}
+
 func (r *AddonsLayerReconciler) processPrune(l layers.Layer) (statusReconciled bool, err error) {
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
@@ -370,14 +391,27 @@ func (r *AddonsLayerReconciler) processPrune(l layers.Layer) (statusReconciled b
 	if err != nil {
 		return false, errors.WithMessagef(err, "%s - check for apply required failed", logging.CallerStr(logging.Me))
 	}
+
 	if pruneIsRequired {
 		l.SetStatusPruning()
+
+		orphans, orphanErr := r.orphans(l, hrs)
+		if orphanErr != nil {
+			return true, errors.WithMessagef(orphanErr, "%s - orphan check failed", logging.CallerStr(logging.Me))
+		}
+
+		if orphans { // Outstanding orphans waiting to be adopted
+			l.SetDelayedRequeue() // Schedule requeue
+			return true, nil      // don't proceed with prune
+		}
+
 		if pruneErr := applier.Prune(ctx, l, hrs); pruneErr != nil {
 			return true, errors.WithMessagef(pruneErr, "%s - prune failed", logging.CallerStr(logging.Me))
 		}
 		l.SetDelayedRequeue()
 		return true, nil
 	}
+
 	return false, nil
 }
 
@@ -577,6 +611,28 @@ func (r *AddonsLayerReconciler) isReady(l layers.Layer) (bool, error) {
 	return true, nil
 }
 
+func (r *AddonsLayerReconciler) adopt(l layers.Layer) error {
+	orphanedHrs, err := r.Applier.GetOrphanedHelmReleases(r.Context, l)
+	if err != nil {
+		return errors.WithMessagef(err, "%s - failed to get orphaned helm releases", logging.CallerStr(logging.Me))
+	}
+
+	sourceHrs, _, err := r.Applier.GetSourceAndClusterHelmReleases(r.Context, l)
+	if err != nil {
+		return errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
+	}
+
+	for hrName, hr := range orphanedHrs {
+		if _, ok := sourceHrs[hrName]; ok { // Orphaned HelmRelease is in our source
+			err := r.Applier.Adopt(r.Context, l, hr)
+			if err != nil {
+				return errors.WithMessagef(err, "%s - failed to adopt helm releases", logging.CallerStr(logging.Me))
+			}
+		}
+	}
+	return nil
+}
+
 func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error) { // nolint: gocyclo // ok
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
@@ -585,12 +641,6 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error
 
 	if l.IsHold() {
 		l.SetHold()
-		return "", nil
-	}
-
-	if !l.CheckK8sVersion() {
-		l.SetStatusK8sVersion()
-		l.SetDelayedRequeue()
 		return "", nil
 	}
 
@@ -611,6 +661,17 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error
 	}
 
 	defer r.updateResources(l)
+
+	err = r.adopt(l)
+	if err != nil {
+		return "", errors.WithMessagef(err, "%s - failed to perform adopt processing", logging.CallerStr(logging.Me))
+	}
+
+	if !l.CheckK8sVersion() {
+		l.SetStatusK8sVersion()
+		l.SetDelayedRequeue()
+		return "", nil
+	}
 
 	layerStatusUpdated, err := r.processPrune(l)
 	if err != nil {
@@ -658,7 +719,7 @@ func (r *AddonsLayerReconciler) updateRequeue(l layers.Layer) (res ctrl.Result, 
 // Reconcile process AddonsLayers custom resources.
 // +kubebuilder:rbac:groups=kraan.io,resources=addons,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kraan.io,resources=addons/status,verbs=get;update;patch
-func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (res ctrl.Result, err error) { // nolint:funlen,gocyclo // ok
+func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) { // nolint:funlen,gocyclo,gocognit // ok
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
 
@@ -666,7 +727,7 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (res ctrl.Result, er
 	reconcileStart := time.Now()
 
 	var addonsLayer *kraanv1alpha1.AddonsLayer = &kraanv1alpha1.AddonsLayer{}
-	if err = r.Get(ctx, req.NamespacedName, addonsLayer); err != nil {
+	if err := r.Get(ctx, req.NamespacedName, addonsLayer); err != nil {
 		if apierrors.IsNotFound(err) {
 			r.Log.Info("addonsLayer deleted", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
 		}
@@ -713,10 +774,34 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (res ctrl.Result, er
 	} else {
 		r.Log.Info("addonsLayer is being deleted", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
 		if common.ContainsString(addonsLayer.ObjectMeta.Finalizers, kraanv1alpha1.AddonsFinalizer) {
+			clusterHrs, e := r.Applier.GetHelmReleases(ctx, l)
+			if e != nil {
+				r.Log.Error(e, "failed to get helm resources", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
+				return ctrl.Result{}, errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
+			}
+
+			hrs := make([]*helmctlv2.HelmRelease, 0, len(clusterHrs))
+
+			for _, value := range clusterHrs {
+				hrs = append(hrs, value)
+			}
+
+			// label HRs owned by this layer as orphaned if not already labelled, set label value to time now.
+			orphans, orphanErr := r.orphans(l, hrs)
+			if orphanErr != nil {
+				return ctrl.Result{}, errors.WithMessagef(orphanErr, "%s - orphan check failed", logging.CallerStr(logging.Me))
+			}
+
+			if orphans { // Outstanding orphans waiting to be adopted
+				r.Log.Info("addonsLayer waiting for adoption", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
+				l.SetDelayedRequeue()     // Schedule requeue
+				return r.updateRequeue(l) // don't proceed with delete
+			}
 			// Remove our finalizer from the list and update it
 			addonsLayer.ObjectMeta.Finalizers = common.RemoveString(l.GetAddonsLayer().ObjectMeta.Finalizers, kraanv1alpha1.AddonsFinalizer)
 			r.recordReadiness(addonsLayer, true)
 			l.SetDeleted()
+			r.Log.Info("addonsLayer deleted", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
 			if err = r.Update(ctx, l.GetAddonsLayer()); err != nil {
 				r.Log.Error(err, "unable to remove finalizer", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
 				return ctrl.Result{}, err

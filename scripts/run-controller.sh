@@ -27,7 +27,7 @@ function args() {
                "-h") usage; exit;;
            "--help") usage; exit;;
                "-?") usage; exit;;
-           "--log-level") (( arg_index+=1 )); log_level="-zap-log-level=${arg_list[${arg_index}]}";;
+           "--log-level") (( arg_index+=1 )); log_level="--zap-log-level=${arg_list[${arg_index}]}";;
         *) if [ "${arg_list[${arg_index}]:0:2}" == "--" ];then
                echo "invalid argument: ${arg_list[${arg_index}]}"
                usage; exit

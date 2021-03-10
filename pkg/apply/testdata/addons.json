@@ -1,0 +1,229 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "kraan.io/v1alpha1",
+            "kind": "AddonsLayer",
+            "metadata": {
+                "finalizers": [
+                    "finalizers.kraan.io"
+                ],
+                "name": "apps",
+                "generation": 1,
+                "uid": "4707bef2-388a-4765-b5bf-2ce6715a2cb1"
+            },
+            "spec": {
+                "interval": "1m",
+                "prereqs": {
+                    "dependsOn": [
+                        "base@0.1.01",
+                        "mgmt@0.1.01"
+                    ],
+                    "k8sVersion": "v1.16"
+                },
+                "source": {
+                    "kind": "",
+                    "name": "addons-apps",
+                    "namespace": "gotk-system",
+                    "path": "./testdata/addons/apps"
+                },
+                "timeout": "30s",
+                "version": "0.1.01"
+            },
+            "status": {
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2021-01-01T00:00:00Z",
+                        "message": "AddonsLayer version 0.1.01 is Deployed, All HelmReleases deployed",
+                        "reason": "Deployed",
+                        "status": "True",
+                        "type": "Deployed"
+                    }
+                ],
+                "observedGeneration": 1,
+                "resources": [
+                    {
+                        "kind": "helmreleases.helm.toolkit.fluxcd.io",
+                        "lastTransitionTime": "2021-01-01T00:00:00Z",
+                        "name": "microservice-1",
+                        "namespace": "apps",
+                        "status": "Deployed"
+                    }
+                ],
+                "revision": "master/abc123",
+                "state": "Failed",
+                "version": "0.1.01"
+            }
+        },
+        {
+            "apiVersion": "kraan.io/v1alpha1",
+            "kind": "AddonsLayer",
+            "metadata": {
+                "finalizers": [
+                    "finalizers.kraan.io"
+                ],
+                "generation": 1,
+                "name": "base"
+
+            },
+            "spec": {
+                "interval": "1m",
+                "prereqs": {
+                    "dependsOn": [
+                        "bootstrap@0.1.01"
+                    ],
+                    "k8sVersion": "v1.16"
+                },
+                "source": {
+                    "kind": "gitrepositories.source.toolkit.fluxcd.io",
+                    "name": "addons-config",
+                    "namespace": "gotk-system",
+                    "path": "./testdata/addons/base"
+                },
+                "timeout": "30s",
+                "version": "0.1.01"
+            },
+            "status": {
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2021-01-01T00:00:00Z",
+                        "message": "AddonsLayer version 0.1.01 is Deployed, All HelmReleases deployed",
+                        "reason": "Deployed",
+                        "status": "True",
+                        "type": "Deployed"
+                    }
+                ],
+                "observedGeneration": 1,
+                "resources": [
+                    {
+                        "kind": "helmreleases.helm.toolkit.fluxcd.io",
+                        "lastTransitionTime": "2021-01-01T00:00:00Z",
+                        "name": "microservice-1",
+                        "namespace": "base",
+                        "status": "Deployed"
+                    }
+                ],
+                "revision": "master/abc123",
+                "state": "Deployed",
+                "version": "0.1.01"
+            }
+        },
+        {
+            "apiVersion": "kraan.io/v1alpha1",
+            "kind": "AddonsLayer",
+            "metadata": {
+                "finalizers": [
+                    "finalizers.kraan.io"
+                ],
+                "generation": 1,
+                "name": "bootstrap"
+            },
+            "spec": {
+                "hold": false,
+                "interval": "1m",
+                "prereqs": {
+                    "k8sVersion": "v1.16"
+                },
+                "source": {
+                    "kind": "",
+                    "name": "addons-config",
+                    "namespace": "gotk-system",
+                    "path": "./testdata/addons/bootstrap"
+                },
+                "timeout": "30s",
+                "version": "0.1.01"
+            },
+            "status": {
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2021-01-01T00:00:00Z",
+                        "message": "AddonsLayer version 0.1.01 is Deployed, All HelmReleases deployed",
+                        "reason": "Deployed",
+                        "status": "True",
+                        "type": "Deployed"
+                    }
+                ],
+                "observedGeneration": 1,
+                "resources": [
+                    {
+                        "kind": "helmreleases.helm.toolkit.fluxcd.io",
+                        "lastTransitionTime": "2021-01-01T00:00:00Z",
+                        "name": "integration-test",
+                        "namespace": "bootstrap",
+                        "status": "Deployed"
+                    },
+                    {
+                        "kind": "helmreleases.helm.toolkit.fluxcd.io",
+                        "lastTransitionTime": "2021-01-01T00:00:00Z",
+                        "name": "microservice-1",
+                        "namespace": "bootstrap",
+                        "status": "Deployed"
+                    },
+                    {
+                        "kind": "helmreleases.helm.toolkit.fluxcd.io",
+                        "lastTransitionTime": "2021-01-01T00:00:00Z",
+                        "name": "microservice-2",
+                        "namespace": "bootstrap",
+                        "status": "Deployed"
+                    }
+                ],
+                "revision": "master/abc123",
+                "state": "Deployed",
+                "version": "0.1.01"
+            }
+        },
+        {
+            "apiVersion": "kraan.io/v1alpha1",
+            "kind": "AddonsLayer",
+            "metadata": {
+                "finalizers": [
+                    "finalizers.kraan.io"
+                ],
+                "generation": 1,
+                "name": "mgmt"
+            },
+            "spec": {
+                "interval": "1m",
+                "prereqs": {
+                    "dependsOn": [
+                        "base@0.1.01"
+                    ],
+                    "k8sVersion": "v1.16"
+                },
+                "source": {
+                    "kind": "",
+                    "name": "addons-config",
+                    "namespace": "gotk-system",
+                    "path": "./testdata/addons/mgmt"
+                },
+                "timeout": "30s",
+                "version": "0.1.01"
+            },
+            "status": {
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2021-01-01T00:00:00Z",
+                        "message": "AddonsLayer version 0.1.01 is Deployed, All HelmReleases deployed",
+                        "reason": "Deployed",
+                        "status": "True",
+                        "type": "Deployed"
+                    }
+                ],
+                "observedGeneration": 1,
+                "resources": [
+                    {
+                        "kind": "helmreleases.helm.toolkit.fluxcd.io",
+                        "lastTransitionTime": "2021-01-01T00:00:00Z",
+                        "name": "microservice-1",
+                        "namespace": "mgmt",
+                        "status": "Deployed"
+                    }
+                ],
+                "revision": "master/abc123",
+                "state": "Deployed",
+                "version": "0.1.01"
+            }
+        }
+    ],
+    "kind": "List"
+}

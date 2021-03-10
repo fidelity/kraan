@@ -94,7 +94,16 @@ jobs:
 
           echo "waiting 5m for test to pass..."
           kubectl wait al --for=condition=Deployed --all --timeout=5m || (kubectl get po -A && false)
+      - name: Orphan Integration Test
+        run: |
+          echo "setting up test..."
+          kubectl apply -f ./testdata/addons-orphan/addons-source.yaml
+          kubectl patch gitrepository addons-config -n gotk-system -p "{\"spec\": {\"ref\": {\"branch\": \"$GITHUB_HEAD_REF\"}}}" --type=merge
+          kubectl apply -f ./testdata/addons-orphan/addons-repo.yaml
+          kubectl apply -f ./testdata/addons-orphan/addons.yaml
 
+          echo "waiting 5m for test to pass..."
+          kubectl wait al --for=condition=Deployed --all --timeout=5m || (kubectl get po -A && false)
   helm-publish:
     needs: integration-test
     runs-on: ubuntu-20.04

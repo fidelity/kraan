@@ -1,0 +1,596 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "helm.toolkit.fluxcd.io/v2beta1",
+            "kind": "HelmRelease",
+            "metadata": {
+                "finalizers": [
+                    "finalizers.fluxcd.io"
+                ],
+                "generation": 1,
+                "labels": {
+                    "kraan/layer": "apps"
+                },
+                "name": "microservice-1",
+                "namespace": "apps",
+                "ownerReferences": [
+                    {
+                        "apiVersion": "kraan.io/v1alpha1",
+                        "blockOwnerDeletion": true,
+                        "controller": true,
+                        "kind": "AddonsLayer",
+                        "name": "apps"
+                    }
+                ]
+            },
+            "spec": {
+                "chart": {
+                    "spec": {
+                        "chart": "podinfo",
+                        "sourceRef": {
+                            "kind": "HelmRepository",
+                            "name": "podinfo",
+                            "namespace": "gotk-system"
+                        },
+                        "version": "\u003e4.0.0"
+                    }
+                },
+                "install": {
+                    "remediation": {
+                        "retries": -1
+                    }
+                },
+                "interval": "1m0s",
+                "test": {
+                    "timeout": "2m0s"
+                },
+                "upgrade": {
+                    "remediation": {
+                        "retries": -1
+                    }
+                },
+                "values": {
+                    "podinfo": {
+                        "message": "-Microservice Test 1",
+                        "replicaCount": 1,
+                        "service": {
+                            "enabled": true,
+                            "type": "ClusterIP"
+                        }
+                    },
+                    "preHookActiveDeadlineSeconds": 60,
+                    "preHookBackoffLimit": 1,
+                    "preHookDelaySeconds": 10,
+                    "preHookRestartPolicy": "Never",
+                    "preHookSucceed": "true",
+                    "testHookActiveDeadlineSeconds": 60,
+                    "testHookBackoffLimit": 1,
+                    "testHookDelaySeconds": 10,
+                    "testHookRestartPolicy": "Never",
+                    "testHookSucceed": "true"
+                }
+            },
+            "status": {
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2021-01-01T00:00:00Z",
+                        "message": "Release reconciliation succeeded",
+                        "reason": "ReconciliationSucceeded",
+                        "status": "True",
+                        "type": "Ready"
+                    },
+                    {
+                        "lastTransitionTime": "2021-01-01T00:00:00Z",
+                        "message": "Helm install succeeded",
+                        "reason": "InstallSucceeded",
+                        "status": "True",
+                        "type": "Released"
+                    }
+                ],
+                "helmChart": "gotk-system/apps-microservice-1",
+                "lastAppliedRevision": "5.1.4",
+                "lastAttemptedRevision": "5.1.4",
+                "lastAttemptedValuesChecksum": "xyz987",
+                "lastReleaseRevision": 1,
+                "observedGeneration": 1
+            }
+        },
+        {
+            "apiVersion": "helm.toolkit.fluxcd.io/v2beta1",
+            "kind": "HelmRelease",
+            "metadata": {
+                "finalizers": [
+                    "finalizers.fluxcd.io"
+                ],
+                "generation": 1,
+                "labels": {
+                    "kraan/layer": "base"
+                },
+                "name": "microservice-1",
+                "namespace": "base",
+                "ownerReferences": [
+                    {
+                        "apiVersion": "kraan.io/v1alpha1",
+                        "blockOwnerDeletion": true,
+                        "controller": true,
+                        "kind": "AddonsLayer",
+                        "name": "base"
+                    }
+                ]
+            },
+            "spec": {
+                "chart": {
+                    "spec": {
+                        "chart": "podinfo",
+                        "sourceRef": {
+                            "kind": "HelmRepository",
+                            "name": "podinfo",
+                            "namespace": "gotk-system"
+                        },
+                        "version": "\u003e4.0.0"
+                    }
+                },
+                "install": {
+                    "remediation": {
+                        "retries": -1
+                    }
+                },
+                "interval": "1m0s",
+                "test": {
+                    "timeout": "1m0s"
+                },
+                "upgrade": {
+                    "remediation": {
+                        "retries": -1
+                    }
+                },
+                "values": {
+                    "podinfo": {
+                        "message": "-Microservice Test 1",
+                        "replicaCount": 1,
+                        "service": {
+                            "enabled": true,
+                            "type": "ClusterIP"
+                        }
+                    },
+                    "preHookActiveDeadlineSeconds": 60,
+                    "preHookBackoffLimit": 1,
+                    "preHookDelaySeconds": 10,
+                    "preHookRestartPolicy": "Never",
+                    "preHookSucceed": "true",
+                    "testHookActiveDeadlineSeconds": 60,
+                    "testHookBackoffLimit": 1,
+                    "testHookDelaySeconds": 10,
+                    "testHookRestartPolicy": "Never",
+                    "testHookSucceed": "true"
+                }
+            },
+            "status": {
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2021-01-01T00:00:00Z",
+                        "message": "Release reconciliation succeeded",
+                        "reason": "ReconciliationSucceeded",
+                        "status": "True",
+                        "type": "Ready"
+                    },
+                    {
+                        "lastTransitionTime": "2021-01-01T00:00:00Z",
+                        "message": "Helm install succeeded",
+                        "reason": "InstallSucceeded",
+                        "status": "True",
+                        "type": "Released"
+                    }
+                ],
+                "helmChart": "gotk-system/base-microservice-1",
+                "lastAppliedRevision": "5.1.4",
+                "lastAttemptedRevision": "5.1.4",
+                "lastAttemptedValuesChecksum": "xyz987",
+                "lastReleaseRevision": 1,
+                "observedGeneration": 1
+            }
+        },
+        {
+            "apiVersion": "helm.toolkit.fluxcd.io/v2beta1",
+            "kind": "HelmRelease",
+            "metadata": {
+                "annotations": {
+                    "kraan.updateVersion": "true"
+                },
+                "finalizers": [
+                    "finalizers.fluxcd.io"
+                ],
+                "generation": 1,
+                "labels": {
+                    "kraan/layer": "bootstrap"
+                },
+                "name": "integration-test",
+                "namespace": "bootstrap",
+                "ownerReferences": [
+                    {
+                        "apiVersion": "kraan.io/v1alpha1",
+                        "blockOwnerDeletion": true,
+                        "controller": true,
+                        "kind": "AddonsLayer",
+                        "name": "bootstrap"
+                    }
+                ]
+            },
+            "spec": {
+                "chart": {
+                    "spec": {
+                        "chart": "podinfo",
+                        "sourceRef": {
+                            "kind": "HelmRepository",
+                            "name": "podinfo",
+                            "namespace": "gotk-system"
+                        },
+                        "version": "\u003e4.0.0"
+                    }
+                },
+                "dependsOn": [
+                    {
+                        "name": "microservice-1",
+                        "namespace": "bootstrap"
+                    },
+                    {
+                        "name": "microservice-2",
+                        "namespace": "bootstrap"
+                    }
+                ],
+                "install": {
+                    "remediation": {
+                        "retries": -1
+                    }
+                },
+                "interval": "1m0s",
+                "test": {
+                    "enable": true,
+                    "ignoreFailures": true,
+                    "timeout": "1m0s"
+                },
+                "upgrade": {
+                    "remediation": {
+                        "retries": -1
+                    }
+                },
+                "values": {
+                    "kraanVersion": "0.1.01",
+                    "podinfo": {
+                        "message": "Integration Test",
+                        "replicaCount": 1,
+                        "service": {
+                            "enabled": true,
+                            "type": "ClusterIP"
+                        }
+                    },
+                    "preHookActiveDeadlineSeconds": 60,
+                    "preHookBackoffLimit": 1,
+                    "preHookDelaySeconds": 10,
+                    "preHookRestartPolicy": "Never",
+                    "preHookSucceed": "true",
+                    "testHookActiveDeadlineSeconds": 60,
+                    "testHookBackoffLimit": 1,
+                    "testHookDelaySeconds": 10,
+                    "testHookRestartPolicy": "Never",
+                    "testHookSucceed": "true"
+                }
+            },
+            "status": {
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2021-01-01T00:00:00Z",
+                        "message": "Release reconciliation succeeded",
+                        "reason": "ReconciliationSucceeded",
+                        "status": "True",
+                        "type": "Ready"
+                    },
+                    {
+                        "lastTransitionTime": "2021-01-01T00:00:00Z",
+                        "message": "Helm install succeeded",
+                        "reason": "InstallSucceeded",
+                        "status": "True",
+                        "type": "Released"
+                    }
+                ],
+                "helmChart": "gotk-system/bootstrap-integration-test",
+                "lastAppliedRevision": "5.1.4",
+                "lastAttemptedRevision": "5.1.4",
+                "lastAttemptedValuesChecksum": "xyz987",
+                "lastReleaseRevision": 1,
+                "observedGeneration": 1
+            }
+        },
+        {
+            "apiVersion": "helm.toolkit.fluxcd.io/v2beta1",
+            "kind": "HelmRelease",
+            "metadata": {
+                "finalizers": [
+                    "finalizers.fluxcd.io"
+                ],
+                "generation": 1,
+                "labels": {
+                    "kraan/layer": "bootstrap"
+                },
+                "name": "microservice-1",
+                "namespace": "bootstrap",
+                "ownerReferences": [
+                    {
+                        "apiVersion": "kraan.io/v1alpha1",
+                        "blockOwnerDeletion": true,
+                        "controller": true,
+                        "kind": "AddonsLayer",
+                        "name": "bootstrap"
+                    }
+                ]
+            },
+            "spec": {
+                "chart": {
+                    "spec": {
+                        "chart": "podinfo",
+                        "sourceRef": {
+                            "kind": "HelmRepository",
+                            "name": "podinfo",
+                            "namespace": "gotk-system"
+                        },
+                        "version": "\u003e4.0.0"
+                    }
+                },
+                "install": {
+                    "remediation": {
+                        "retries": -1
+                    }
+                },
+                "interval": "1m0s",
+                "test": {
+                    "enable": true,
+                    "ignoreFailures": true,
+                    "timeout": "2m0s"
+                },
+                "upgrade": {
+                    "remediation": {
+                        "retries": -1
+                    }
+                },
+                "values": {
+                    "podinfo": {
+                        "message": "-Microservice Test 1",
+                        "replicaCount": 1,
+                        "service": {
+                            "enabled": true,
+                            "type": "ClusterIP"
+                        }
+                    },
+                    "preHookActiveDeadlineSeconds": 60,
+                    "preHookBackoffLimit": 1,
+                    "preHookDelaySeconds": 10,
+                    "preHookRestartPolicy": "Never",
+                    "preHookSucceed": "true",
+                    "testHookActiveDeadlineSeconds": 60,
+                    "testHookBackoffLimit": 1,
+                    "testHookDelaySeconds": 10,
+                    "testHookRestartPolicy": "Never",
+                    "testHookSucceed": "true"
+                }
+            },
+            "status": {
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2021-01-01T00:00:00Z",
+                        "message": "Release reconciliation succeeded",
+                        "reason": "ReconciliationSucceeded",
+                        "status": "True",
+                        "type": "Ready"
+                    },
+                    {
+                        "lastTransitionTime": "2021-01-01T00:00:00Z",
+                        "message": "Helm install succeeded",
+                        "reason": "InstallSucceeded",
+                        "status": "True",
+                        "type": "Released"
+                    }
+                ],
+                "helmChart": "gotk-system/bootstrap-microservice-1",
+                "lastAppliedRevision": "5.1.4",
+                "lastAttemptedRevision": "5.1.4",
+                "lastAttemptedValuesChecksum": "xyz987",
+                "lastReleaseRevision": 1,
+                "observedGeneration": 1
+            }
+        },
+        {
+            "apiVersion": "helm.toolkit.fluxcd.io/v2beta1",
+            "kind": "HelmRelease",
+            "metadata": {
+                "finalizers": [
+                    "finalizers.fluxcd.io"
+                ],
+                "generation": 1,
+                "labels": {
+                    "kraan/layer": "bootstrap"
+                },
+                "name": "microservice-2",
+                "namespace": "bootstrap",
+                "ownerReferences": [
+                    {
+                        "apiVersion": "kraan.io/v1alpha1",
+                        "blockOwnerDeletion": true,
+                        "controller": true,
+                        "kind": "AddonsLayer",
+                        "name": "bootstrap"
+                    }
+                ]
+            },
+            "spec": {
+                "chart": {
+                    "spec": {
+                        "chart": "podinfo",
+                        "sourceRef": {
+                            "kind": "HelmRepository",
+                            "name": "podinfo",
+                            "namespace": "gotk-system"
+                        },
+                        "version": "\u003e4.0.0"
+                    }
+                },
+                "install": {
+                    "remediation": {
+                        "retries": -1
+                    }
+                },
+                "interval": "1m0s",
+                "test": {
+                    "enable": true,
+                    "ignoreFailures": true,
+                    "timeout": "1m0s"
+                },
+                "upgrade": {
+                    "remediation": {
+                        "retries": -1
+                    }
+                },
+                "values": {
+                    "podinfo": {
+                        "message": "-Microservice Test 2",
+                        "replicaCount": 1,
+                        "service": {
+                            "enabled": true,
+                            "type": "ClusterIP"
+                        }
+                    },
+                    "preHookActiveDeadlineSeconds": 60,
+                    "preHookBackoffLimit": 1,
+                    "preHookDelaySeconds": 10,
+                    "preHookRestartPolicy": "Never",
+                    "preHookSucceed": "true",
+                    "testHookActiveDeadlineSeconds": 60,
+                    "testHookBackoffLimit": 1,
+                    "testHookDelaySeconds": 10,
+                    "testHookRestartPolicy": "Never",
+                    "testHookSucceed": "true"
+                }
+            },
+            "status": {
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2021-01-01T00:00:00Z",
+                        "message": "Release reconciliation succeeded",
+                        "reason": "ReconciliationSucceeded",
+                        "status": "True",
+                        "type": "Ready"
+                    },
+                    {
+                        "lastTransitionTime": "2021-01-01T00:00:00Z",
+                        "message": "Helm install succeeded",
+                        "reason": "InstallSucceeded",
+                        "status": "True",
+                        "type": "Released"
+                    }
+                ],
+                "helmChart": "gotk-system/bootstrap-microservice-2",
+                "lastAppliedRevision": "5.1.4",
+                "lastAttemptedRevision": "5.1.4",
+                "lastAttemptedValuesChecksum": "xyz987",
+                "lastReleaseRevision": 1,
+                "observedGeneration": 1
+            }
+        },
+        {
+            "apiVersion": "helm.toolkit.fluxcd.io/v2beta1",
+            "kind": "HelmRelease",
+            "metadata": {
+                "finalizers": [
+                    "finalizers.fluxcd.io"
+                ],
+                "generation": 1,
+                "labels": {
+                    "kraan/layer": "mgmt"
+                },
+                "name": "microservice-1",
+                "namespace": "mgmt",
+                "ownerReferences": [
+                    {
+                        "apiVersion": "kraan.io/v1alpha1",
+                        "blockOwnerDeletion": true,
+                        "controller": true,
+                        "kind": "AddonsLayer",
+                        "name": "mgmt"
+                    }
+                ]
+            },
+            "spec": {
+                "chart": {
+                    "spec": {
+                        "chart": "podinfo",
+                        "sourceRef": {
+                            "kind": "HelmRepository",
+                            "name": "podinfo",
+                            "namespace": "gotk-system"
+                        },
+                        "version": "\u003e4.0.0"
+                    }
+                },
+                "install": {
+                    "remediation": {
+                        "retries": -1
+                    }
+                },
+                "interval": "1m0s",
+                "test": {
+                    "timeout": "1m0s"
+                },
+                "upgrade": {
+                    "remediation": {
+                        "retries": -1
+                    }
+                },
+                "values": {
+                    "podinfo": {
+                        "message": "-Microservice Test 1",
+                        "replicaCount": 1,
+                        "service": {
+                            "enabled": true,
+                            "type": "ClusterIP"
+                        }
+                    },
+                    "preHookActiveDeadlineSeconds": 60,
+                    "preHookBackoffLimit": 1,
+                    "preHookDelaySeconds": 10,
+                    "preHookRestartPolicy": "Never",
+                    "preHookSucceed": "true",
+                    "testHookActiveDeadlineSeconds": 60,
+                    "testHookBackoffLimit": 1,
+                    "testHookDelaySeconds": 10,
+                    "testHookRestartPolicy": "Never",
+                    "testHookSucceed": "true"
+                }
+            },
+            "status": {
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2021-01-01T00:00:00Z",
+                        "message": "Release reconciliation succeeded",
+                        "reason": "ReconciliationSucceeded",
+                        "status": "True",
+                        "type": "Ready"
+                    },
+                    {
+                        "lastTransitionTime": "2021-01-01T00:00:00Z",
+                        "message": "Helm install succeeded",
+                        "reason": "InstallSucceeded",
+                        "status": "True",
+                        "type": "Released"
+                    }
+                ],
+                "helmChart": "gotk-system/mgmt-microservice-1",
+                "lastAppliedRevision": "5.1.4",
+                "lastAttemptedRevision": "5.1.4",
+                "lastAttemptedValuesChecksum": "xyz987",
+                "lastReleaseRevision": 1,
+                "observedGeneration": 1
+            }
+        }
+    ],
+    "kind": "List"
+}

@@ -9,7 +9,6 @@ import (
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
 	"github.com/go-logr/logr"
-	testlogr "github.com/go-logr/logr/testing"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/version"
@@ -21,7 +20,7 @@ import (
 	//k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	extv1b1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake" // nolint: staticcheck // ok for now
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/internal/testutils"
@@ -72,10 +71,6 @@ func init() {
 	_ = kraanv1alpha1.AddToScheme(testScheme) // nolint:errcheck // ok
 }
 
-func fakeLogger() logr.Logger {
-	return testlogr.NullLogger{}
-}
-
 func TestCreateLayer(t *testing.T) {
 
 }
@@ -116,7 +111,7 @@ func getFromList(name string, layerList *kraanv1alpha1.AddonsLayerList) *kraanv1
 }
 
 func getLayer(layerName, testDataFileName, reposDataFileName string) (layers.Layer, error) { // nolint: unparam // ok
-	logger := fakeLogger()
+	logger := logr.Discard()
 	layerList, err := getLayersFromFile(testDataFileName)
 	if err != nil {
 		return nil, err

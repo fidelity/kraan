@@ -28,6 +28,18 @@ export REPO ?=docker.pkg.github.com/${GITHUB_ORG}/${GITHUB_REPO}
 IMG ?= ${REPO}/${PROJECT}:${VERSION}
 export CHART_VERSION?=$(shell grep version: chart/Chart.yaml | awk '{print $$2}')
 export CHART_APP_VERSION?=$(shell grep appVersion: chart/Chart.yaml | awk '{print $$2}')
+
+# Controller Integration test setup
+export USE_EXISTING_CLUSTER?=true
+export ZAP_LOG_LEVEL=1
+export IMAGE_PULL_SECRET_SOURCE?=${HOME}/gotk-regcred.yaml
+export IMAGE_PULL_SECRET_NAME?=gotk-regcred
+export GITOPS_USE_PROXY?=auto
+export KRAAN_NAMESPACE?=gotk-system
+export KUBECONFIG?=${HOME}/.kube/config
+export DATA_PATH?=$(shell mktemp -d -t kraan-XXXXXXXXXX)
+export SC_HOST?=localhost:8090
+
 ALL_GO_PACKAGES:=$(shell find ${CURDIR}/main/ ${CURDIR}/controllers/ ${CURDIR}/api/ ${CURDIR}/pkg/ \
 	-type f -name *.go -exec dirname {} \; | sort --uniq)
 GO_CHECK_PACKAGES:=$(shell echo $(subst $() $(),\\n,$(ALL_GO_PACKAGES)) | \
@@ -49,25 +61,27 @@ NC:=\033[0m
 
 # Targets that do not represent filenames need to be registered as phony or
 # Make won't always rebuild them.
-.PHONY: all clean ci-check ci-gate clean-godocs go-generate \
-	godocs clean-gomod gomod gomod-update release \
+.PHONY: all clean ci-check ci-gate go-generate \
+	clean-gomod gomod gomod-update release \
 	clean-${PROJECT}-check ${PROJECT}-check clean-${PROJECT}-build \
 	${PROJECT}-build ${GO_CHECK_PACKAGES} clean-check check \
 	clean-build build generate manifests deploy docker-push controller-gen \
-	install uninstall lint-build run ${PROJECT}-integration integration docker-push-prerelease
+	install uninstall lint-build run ${PROJECT}-integration integration clean-integration docker-push-prerelease
 # Stop prints each line of the recipe.
 .SILENT:
 
 # Allow secondary expansion of explicit rules.
 .SECONDEXPANSION: %.md %-docker.tar
 
-all: ${PROJECT}-check ${PROJECT}-build go-generate
+all: go-generate ${PROJECT}-check ${PROJECT}-build
 build: gomod ${PROJECT}-check ${PROJECT}-build
 dev-build: gomod ${PROJECT}-check ${PROJECT}-build
 integration: gomod ${PROJECT}-integration
-clean: clean-gomod clean-godocs clean-${PROJECT}-check \
+clean-integration: clean-${PROJECT}-integration
+clean: clean-gomod clean-${PROJECT}-check \
 	clean-${PROJECT}-build clean-check clean-build \
-	clean-dev-build clean-builddir-${BUILD_DIR} mkdir-${BUILD_DIR}
+	clean-dev-build clean-builddir-${BUILD_DIR} mkdir-${BUILD_DIR} \
+	clean-integration
 
 setup:
 	./bin/setup.sh
@@ -90,21 +104,12 @@ clean-builddir-${BUILD_DIR}:
 mkdir-${BUILD_DIR}:
 	mkdir -p ${BUILD_DIR}
 
-clean-godocs:
-	rm -f ${GO_DOCS_ARTIFACTS}
-
-godocs: ${GO_DOCS_ARTIFACTS}
-%.md: $$(wildcard $$(dir $$@)*.go | grep -v suite_test)
-	echo "${YELLOW}Running godocdown: $@${NC}" && \
-	godocdown -output $@ $(shell dirname $@)
-
 validate-versions:
 	./scripts/validate.sh
 
 release:
 	git checkout -b build-release-${CHART_VERSION} || exit
 	helm package --version ${CHART_VERSION} chart
-	git checkout chart/Chart.yaml
 	git add -A
 	git commit -a -m "create release for chart version ${CHART_VERSION}"
 	git checkout -B gh-pages --track origin/gh-pages || exit
@@ -115,6 +120,7 @@ release:
 	git checkout master
 	git branch -D build-release-${CHART_VERSION}
 
+clean-gomod:
 clean-gomod:
 	rm -rf ${GOMOD_ARTIFACT}
 
@@ -128,7 +134,11 @@ go.sum:  ${GOMOD_ARTIFACT}
 
 ${GOMOD_ARTIFACT}: gomod-update
 gomod-update: go.mod ${PROJECT_SOURCES}
-	go build ./...
+	go build ./... && \
+	echo "${YELLOW}go mod tidy${NC}" && \
+	go mod tidy && \
+	echo "${YELLOW}go mod download${NC}" && \
+	go mod download
 
 clean-${PROJECT}-check:
 	$(foreach target,${GO_CHECK_PACKAGES}, \
@@ -137,6 +147,10 @@ clean-${PROJECT}-check:
 ${PROJECT}-check: ${GO_CHECK_PACKAGES}
 ${GO_CHECK_PACKAGES}: go.sum
 	$(MAKE) -C $@ --makefile=${CURDIR}/makefile.mk
+
+clean-${PROJECT}-integration:
+	$(foreach target,${GO_CHECK_PACKAGES}, \
+		$(MAKE) -C ${target} --makefile=${CURDIR}/makefile.mk clean-integration;)
 
 ${PROJECT}-integration: ${GO_CHECK_PACKAGES}
 	$(foreach target,${GO_CHECK_PACKAGES}, \

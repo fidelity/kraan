@@ -43,8 +43,7 @@ jobs:
           password: ${{ secrets.DOCKER_TOKEN }}
       - name: Setup dependencies
         run: |
-          go env
-          export GOPATH=$HOME/go
+          [ -n ${GOPATH} ] && export GOPATH=$HOME/go
           ./bin/setup.sh
       # - uses: satackey/action-docker-layer-caching@v0
       #   # Ignore the failure of a step and avoid terminating the job.
@@ -72,7 +71,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Setup dependencies
-        run: ./bin/setup.sh
+        run: |
+          [ -n ${GOPATH} ] && export GOPATH=$HOME/go
+          ./bin/setup.sh
       - uses: engineerd/setup-kind@v0.5.0
       - name: Integration Test
         run: |
@@ -112,7 +113,9 @@ jobs:
         with:
           fetch-depth: 0
       - name: Setup dependencies
-        run: ./bin/setup.sh
+        run: |
+          [ -n ${GOPATH} ] && export GOPATH=$HOME/go
+          ./bin/setup.sh
       - name: Publish Helm Chart
         run: |
           [ "${{ github.event_name }}" == "pull_request" ] && export VERSION=$(cat VERSION)-dev || export VERSION=$(cat VERSION)

@@ -100,17 +100,14 @@ validate-versions:
 	./scripts/validate.sh
 
 release:
-	git checkout -b build-release-${CHART_VERSION} || exit
 	helm package --version ${CHART_VERSION} chart  || exit
-	git add -A  || exit
-	git commit -a -m "create release for chart version ${CHART_VERSION}"  || exit
+	mv kraan-controller-${CHART_VERSION}.tgz /tmp || exit
 	git checkout -B gh-pages --track origin/gh-pages || exit
-	git merge build-release-${CHART_VERSION} -m "package chart version ${CHART_VERSION}" || exit
+	mv /tmp/kraan-controller-${CHART_VERSION}.tgz . || exit
 	helm repo index --url https://fidelity.github.io/kraan/ .  || exit
 	git commit -a -m "release chart version ${CHART_VERSION}"  || exit
 	git push  || exit
 	git checkout master  || exit
-	git branch -D build-release-${CHART_VERSION}  || exit
 
 clean-gomod:
 clean-gomod:

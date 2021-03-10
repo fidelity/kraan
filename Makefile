@@ -102,7 +102,6 @@ validate-versions:
 release:
 	git checkout -b build-release-${CHART_VERSION} || exit
 	helm package --version ${CHART_VERSION} chart
-	git checkout chart/Chart.yaml
 	git add -A
 	git commit -a -m "create release for chart version ${CHART_VERSION}"
 	git checkout -B gh-pages --track origin/gh-pages || exit

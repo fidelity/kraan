@@ -101,17 +101,16 @@ validate-versions:
 
 release:
 	git checkout -b build-release-${CHART_VERSION} || exit
-	helm package --version ${CHART_VERSION} chart
-	git checkout chart/Chart.yaml
-	git add -A
-	git commit -a -m "create release for chart version ${CHART_VERSION}"
+	helm package --version ${CHART_VERSION} chart  || exit
+	git add -A  || exit
+	git commit -a -m "create release for chart version ${CHART_VERSION}"  || exit
 	git checkout -B gh-pages --track origin/gh-pages || exit
-	git merge build-release-${CHART_VERSION} -m "package chart version ${CHART_VERSION}"
-	helm repo index --url https://fidelity.github.io/kraan/ .
-	git commit -a -m "release chart version ${CHART_VERSION}"
-	git push
-	git checkout master
-	git branch -D build-release-${CHART_VERSION}
+	git merge build-release-${CHART_VERSION} -m "package chart version ${CHART_VERSION}" || exit
+	helm repo index --url https://fidelity.github.io/kraan/ .  || exit
+	git commit -a -m "release chart version ${CHART_VERSION}"  || exit
+	git push  || exit
+	git checkout master  || exit
+	git branch -D build-release-${CHART_VERSION}  || exit
 
 clean-gomod:
 clean-gomod:

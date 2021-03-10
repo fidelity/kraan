@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bootstrap
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: base
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mgmt
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: apps

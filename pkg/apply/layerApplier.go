@@ -59,6 +59,7 @@ type LayerApplier interface {
 	Adopt(ctx context.Context, layer layers.Layer, hr *helmctlv2.HelmRelease) error
 	addOwnerRefs(layer layers.Layer, objs []runtime.Object) error
 	orphanLabel(ctx context.Context, hr *helmctlv2.HelmRelease) (*metav1.Time, error)
+	GetHelmReleases(ctx context.Context, layer layers.Layer) (foundHrs map[string]*helmctlv2.HelmRelease, err error)
 }
 
 // KubectlLayerApplier applies an AddonsLayer to a Kubernetes cluster using the kubectl command.
@@ -273,7 +274,7 @@ func (a KubectlLayerApplier) addOwnerRefs(layer layers.Layer, objs []runtime.Obj
 	return nil
 }
 
-func (a KubectlLayerApplier) getHelmReleases(ctx context.Context, layer layers.Layer) (foundHrs map[string]*helmctlv2.HelmRelease, err error) {
+func (a KubectlLayerApplier) GetHelmReleases(ctx context.Context, layer layers.Layer) (foundHrs map[string]*helmctlv2.HelmRelease, err error) {
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
 	hrList := &helmctlv2.HelmReleaseList{}
@@ -424,12 +425,12 @@ func (a KubectlLayerApplier) checkSourcePath(layer layers.Layer) (sourceDir stri
 	info, err := os.Stat(sourceDir)
 	if os.IsNotExist(err) {
 		a.logDebug("source directory not found", layer)
-		return sourceDir, fmt.Errorf("source directory (%s) not found for AddonsLayer %s",
+		return sourceDir, errors.Wrapf(err, "source directory (%s) not found for AddonsLayer %s",
 			sourceDir, layer.GetName())
 	}
 	if os.IsPermission(err) {
 		a.logDebug("source directory read permission denied", layer)
-		return sourceDir, fmt.Errorf("read permission denied to source directory (%s) for AddonsLayer %s",
+		return sourceDir, errors.Wrapf(err, "read permission denied to source directory (%s) for AddonsLayer %s",
 			sourceDir, layer.GetName())
 	}
 	if err != nil {
@@ -441,7 +442,7 @@ func (a KubectlLayerApplier) checkSourcePath(layer layers.Layer) (sourceDir stri
 		sourceDir = sourceDir + string(os.PathSeparator)
 	} else {
 		// I'm not sure if this is an error, but I thought I should detect and log it
-		return sourceDir, fmt.Errorf("source path: %s, is not a directory", sourceDir)
+		return sourceDir, errors.Wrapf(err, "source path: %s, is not a directory", sourceDir)
 	}
 	return sourceDir, nil
 }
@@ -465,7 +466,7 @@ func (a KubectlLayerApplier) getSourceResources(layer layers.Layer) (objs []runt
 	defer logging.TraceExit(a.getLog(layer))
 	sourceDir, err := a.checkSourcePath(layer)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithMessagef(err, "failed to check source path")
 	}
 
 	output, err := a.doApply(layer, sourceDir)
@@ -541,7 +542,7 @@ func (a KubectlLayerApplier) GetSourceAndClusterHelmReleases(ctx context.Context
 		return nil, nil, errors.WithMessagef(err, "%s - failed to get source helm releases", logging.CallerStr(logging.Me))
 	}
 
-	clusterHrs, err = a.getHelmReleases(ctx, layer)
+	clusterHrs, err = a.GetHelmReleases(ctx, layer)
 	if err != nil {
 		return nil, nil, errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
 	}
@@ -956,7 +957,7 @@ func (a KubectlLayerApplier) sourceHasRepoChanged(layer layers.Layer, source, fo
 func (a KubectlLayerApplier) ApplyWasSuccessful(ctx context.Context, layer layers.Layer) (applyIsRequired bool, hrName string, err error) {
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
-	clusterHrs, err := a.getHelmReleases(ctx, layer)
+	clusterHrs, err := a.GetHelmReleases(ctx, layer)
 	if err != nil {
 		return false, "", errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
 	}

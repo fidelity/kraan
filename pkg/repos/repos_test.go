@@ -1,5 +1,3 @@
-// +build integration
-
 package repos_test
 
 import (
@@ -185,7 +183,7 @@ func (l linkDataTest) checkExpected(t *testing.T, repo repos.Repo, err error) {
 	} else {
 		if err != nil {
 			errStr := err.Error()
-			if !strings.HasPrefix(errStr, expected) {
+			if !strings.Contains(errStr, expected) {
 				t.Fatalf("expected error containing: '%s'\nGot: '%s'", expected, err.Error())
 			}
 		} else {

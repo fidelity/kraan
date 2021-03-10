@@ -5,37 +5,36 @@
 package mocks
 
 import (
-	reflect "reflect"
-
 	kubectl "github.com/fidelity/kraan/pkg/internal/kubectl"
 	logr "github.com/go-logr/logr"
 	gomock "github.com/golang/mock/gomock"
+	reflect "reflect"
 )
 
-// MockKubectl is a mock of Kubectl interface.
+// MockKubectl is a mock of Kubectl interface
 type MockKubectl struct {
 	ctrl     *gomock.Controller
 	recorder *MockKubectlMockRecorder
 }
 
-// MockKubectlMockRecorder is the mock recorder for MockKubectl.
+// MockKubectlMockRecorder is the mock recorder for MockKubectl
 type MockKubectlMockRecorder struct {
 	mock *MockKubectl
 }
 
-// NewMockKubectl creates a new mock instance.
+// NewMockKubectl creates a new mock instance
 func NewMockKubectl(ctrl *gomock.Controller) *MockKubectl {
 	mock := &MockKubectl{ctrl: ctrl}
 	mock.recorder = &MockKubectlMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use.
+// EXPECT returns an object that allows the caller to indicate expected use
 func (m *MockKubectl) EXPECT() *MockKubectlMockRecorder {
 	return m.recorder
 }
 
-// Apply mocks base method.
+// Apply mocks base method
 func (m *MockKubectl) Apply(arg0 string) kubectl.Command {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Apply", arg0)
@@ -43,13 +42,13 @@ func (m *MockKubectl) Apply(arg0 string) kubectl.Command {
 	return ret0
 }
 
-// Apply indicates an expected call of Apply.
+// Apply indicates an expected call of Apply
 func (mr *MockKubectlMockRecorder) Apply(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Apply", reflect.TypeOf((*MockKubectl)(nil).Apply), arg0)
 }
 
-// Delete mocks base method.
+// Delete mocks base method
 func (m *MockKubectl) Delete(arg0 ...string) kubectl.Command {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{}
@@ -61,13 +60,13 @@ func (m *MockKubectl) Delete(arg0 ...string) kubectl.Command {
 	return ret0
 }
 
-// Delete indicates an expected call of Delete.
+// Delete indicates an expected call of Delete
 func (mr *MockKubectlMockRecorder) Delete(arg0 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockKubectl)(nil).Delete), arg0...)
 }
 
-// Get mocks base method.
+// Get mocks base method
 func (m *MockKubectl) Get(arg0 ...string) kubectl.Command {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{}
@@ -79,36 +78,36 @@ func (m *MockKubectl) Get(arg0 ...string) kubectl.Command {
 	return ret0
 }
 
-// Get indicates an expected call of Get.
+// Get indicates an expected call of Get
 func (mr *MockKubectlMockRecorder) Get(arg0 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockKubectl)(nil).Get), arg0...)
 }
 
-// MockCommand is a mock of Command interface.
+// MockCommand is a mock of Command interface
 type MockCommand struct {
 	ctrl     *gomock.Controller
 	recorder *MockCommandMockRecorder
 }
 
-// MockCommandMockRecorder is the mock recorder for MockCommand.
+// MockCommandMockRecorder is the mock recorder for MockCommand
 type MockCommandMockRecorder struct {
 	mock *MockCommand
 }
 
-// NewMockCommand creates a new mock instance.
+// NewMockCommand creates a new mock instance
 func NewMockCommand(ctrl *gomock.Controller) *MockCommand {
 	mock := &MockCommand{ctrl: ctrl}
 	mock.recorder = &MockCommandMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use.
+// EXPECT returns an object that allows the caller to indicate expected use
 func (m *MockCommand) EXPECT() *MockCommandMockRecorder {
 	return m.recorder
 }
 
-// Build mocks base method.
+// Build mocks base method
 func (m *MockCommand) Build() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Build")
@@ -116,13 +115,13 @@ func (m *MockCommand) Build() string {
 	return ret0
 }
 
-// Build indicates an expected call of Build.
+// Build indicates an expected call of Build
 func (mr *MockCommandMockRecorder) Build() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Build", reflect.TypeOf((*MockCommand)(nil).Build))
 }
 
-// DryRun mocks base method.
+// DryRun mocks base method
 func (m *MockCommand) DryRun() ([]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DryRun")
@@ -131,13 +130,13 @@ func (m *MockCommand) DryRun() ([]byte, error) {
 	return ret0, ret1
 }
 
-// DryRun indicates an expected call of DryRun.
+// DryRun indicates an expected call of DryRun
 func (mr *MockCommandMockRecorder) DryRun() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DryRun", reflect.TypeOf((*MockCommand)(nil).DryRun))
 }
 
-// Run mocks base method.
+// Run mocks base method
 func (m *MockCommand) Run() ([]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Run")
@@ -146,13 +145,13 @@ func (m *MockCommand) Run() ([]byte, error) {
 	return ret0, ret1
 }
 
-// Run indicates an expected call of Run.
+// Run indicates an expected call of Run
 func (mr *MockCommandMockRecorder) Run() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockCommand)(nil).Run))
 }
 
-// WithLogger mocks base method.
+// WithLogger mocks base method
 func (m *MockCommand) WithLogger(arg0 logr.Logger) kubectl.Command {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "WithLogger", arg0)
@@ -160,13 +159,13 @@ func (m *MockCommand) WithLogger(arg0 logr.Logger) kubectl.Command {
 	return ret0
 }
 
-// WithLogger indicates an expected call of WithLogger.
+// WithLogger indicates an expected call of WithLogger
 func (mr *MockCommandMockRecorder) WithLogger(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WithLogger", reflect.TypeOf((*MockCommand)(nil).WithLogger), arg0)
 }
 
-// asString mocks base method.
+// asString mocks base method
 func (m *MockCommand) asString() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "asString")
@@ -174,13 +173,13 @@ func (m *MockCommand) asString() string {
 	return ret0
 }
 
-// asString indicates an expected call of asString.
+// asString indicates an expected call of asString
 func (mr *MockCommandMockRecorder) asString() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "asString", reflect.TypeOf((*MockCommand)(nil).asString))
 }
 
-// getArgs mocks base method.
+// getArgs mocks base method
 func (m *MockCommand) getArgs() []string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "getArgs")
@@ -188,13 +187,13 @@ func (m *MockCommand) getArgs() []string {
 	return ret0
 }
 
-// getArgs indicates an expected call of getArgs.
+// getArgs indicates an expected call of getArgs
 func (mr *MockCommandMockRecorder) getArgs() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "getArgs", reflect.TypeOf((*MockCommand)(nil).getArgs))
 }
 
-// getPath mocks base method.
+// getPath mocks base method
 func (m *MockCommand) getPath() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "getPath")
@@ -202,13 +201,13 @@ func (m *MockCommand) getPath() string {
 	return ret0
 }
 
-// getPath indicates an expected call of getPath.
+// getPath indicates an expected call of getPath
 func (mr *MockCommandMockRecorder) getPath() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "getPath", reflect.TypeOf((*MockCommand)(nil).getPath))
 }
 
-// getSubCmd mocks base method.
+// getSubCmd mocks base method
 func (m *MockCommand) getSubCmd() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "getSubCmd")
@@ -216,13 +215,13 @@ func (m *MockCommand) getSubCmd() string {
 	return ret0
 }
 
-// getSubCmd indicates an expected call of getSubCmd.
+// getSubCmd indicates an expected call of getSubCmd
 func (mr *MockCommandMockRecorder) getSubCmd() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "getSubCmd", reflect.TypeOf((*MockCommand)(nil).getSubCmd))
 }
 
-// isJSONOutput mocks base method.
+// isJSONOutput mocks base method
 func (m *MockCommand) isJSONOutput() bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "isJSONOutput")
@@ -230,7 +229,7 @@ func (m *MockCommand) isJSONOutput() bool {
 	return ret0
 }
 
-// isJSONOutput indicates an expected call of isJSONOutput.
+// isJSONOutput indicates an expected call of isJSONOutput
 func (mr *MockCommandMockRecorder) isJSONOutput() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "isJSONOutput", reflect.TypeOf((*MockCommand)(nil).isJSONOutput))

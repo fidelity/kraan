@@ -65,10 +65,12 @@ const (
 	reasonRegex = "^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$" // Regex for k8s 1.19 conditions reason field
 )
 
+// AddonsLayerReconcilerOptions are the reconciller options
 type AddonsLayerReconcilerOptions struct {
 	MaxConcurrentReconciles int
 }
 
+// SetupWithManagerAndOptions setup manager with supplied options
 func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opts AddonsLayerReconcilerOptions) error { // nolint: funlen,gocyclo,gocognit // ok
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
@@ -241,12 +243,12 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 			},
 			DeleteFunc: func(e event.DeleteEvent) bool {
 				r.Log.V(1).Info("delete event for AddonsLayer, not processing will be processed by controller reconciler",
-					append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object))...)
+					append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object)...)...)
 				return false
 			},
 			GenericFunc: func(e event.GenericEvent) bool {
 				r.Log.V(1).Info("generic event for AddonsLayer, not processing will be processed by controller reconciler",
-					append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object))...)
+					append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object)...)...)
 				return false
 			},
 		},
@@ -772,8 +774,9 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	} else {
 		r.Log.Info("addonsLayer is being deleted", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
 		if common.ContainsString(addonsLayer.ObjectMeta.Finalizers, kraanv1alpha1.AddonsFinalizer) {
-			_, clusterHrs, e := r.Applier.GetSourceAndClusterHelmReleases(ctx, l)
+			clusterHrs, e := r.Applier.GetHelmReleases(ctx, l)
 			if e != nil {
+				r.Log.Error(e, "failed to get helm resources", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
 				return ctrl.Result{}, errors.WithMessagef(err, "%s - failed to get helm releases", logging.CallerStr(logging.Me))
 			}
 
@@ -790,6 +793,7 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 			}
 
 			if orphans { // Outstanding orphans waiting to be adopted
+				r.Log.Info("addonsLayer waiting for adoption", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
 				l.SetDelayedRequeue()     // Schedule requeue
 				return r.updateRequeue(l) // don't proceed with delete
 			}
@@ -797,6 +801,7 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 			addonsLayer.ObjectMeta.Finalizers = common.RemoveString(l.GetAddonsLayer().ObjectMeta.Finalizers, kraanv1alpha1.AddonsFinalizer)
 			r.recordReadiness(addonsLayer, true)
 			l.SetDeleted()
+			r.Log.Info("addonsLayer deleted", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
 			if err = r.Update(ctx, l.GetAddonsLayer()); err != nil {
 				r.Log.Error(err, "unable to remove finalizer", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
 				return ctrl.Result{}, err

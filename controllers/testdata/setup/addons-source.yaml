@@ -1,0 +1,10 @@
+apiVersion: source.toolkit.fluxcd.io/v1beta1
+kind: GitRepository
+metadata:
+  name: addons-config
+  namespace: gotk-system
+spec:
+  interval: 1m0s
+  ref:
+    branch: master
+  url: https://github.com/fidelity/kraan.git

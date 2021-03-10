@@ -8,7 +8,7 @@ clone [[Kraan repository]](https://github.com/fidelity/kraan) or fork it and clo
 
 This project requires the following software:
 
-    golangci-lint version = 1.30.0
+    golangci-lint version = 1.38.0
     golang version >= 1.14.6
     mockgen = v1.4.4
     kubebuilder = v2.3.1

@@ -100,10 +100,14 @@ validate-versions:
 	./scripts/validate.sh
 
 release:
+	build_dir=$(shell mktmp)  || exit
+	cp -rf docs ${build_dir}  || exit
+	cp -f *.md ${build_dir}  || exit
 	helm package --version ${CHART_VERSION} chart  || exit
-	mv kraan-controller-${CHART_VERSION}.tgz /tmp || exit
+	mv kraan-controller-${CHART_VERSION}.tgz ${build_dir} || exit
 	git checkout -B gh-pages --track origin/gh-pages || exit
-	mv /tmp/kraan-controller-${CHART_VERSION}.tgz . || exit
+	cp -rf ${build_dir}/* . || exit
+	rm -rf ${build_dir} || exit
 	helm repo index --url https://fidelity.github.io/kraan/ .  || exit
 	git commit -a -m "release chart version ${CHART_VERSION}"  || exit
 	git push  || exit

@@ -26,6 +26,7 @@ function args() {
 function install_linter() {
     TARGET=$(go env GOPATH)
     curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b "${TARGET}/bin" v${linter_version}
+    ls -l "${TARGET}"
 }
 
 function install_kubebuilder() {
@@ -67,6 +68,7 @@ ret_code="${?}"
 if [[ "${ret_code}" != "0" ]] ; then
     echo "installing linter version: ${linter_version}"
     install_linter
+    env | sort
     golangci-lint --version 2>&1 | grep $linter_version >/dev/null
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then

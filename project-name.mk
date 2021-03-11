@@ -1,1 +1,0 @@
-PROJECT:=kraan-controller

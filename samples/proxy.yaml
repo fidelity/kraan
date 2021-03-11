@@ -1,3 +1,0 @@
-global:
-  env:
-    httpsProxy: https://proxy.corp.com:8080

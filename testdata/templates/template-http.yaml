@@ -1,8 +1,0 @@
-apiVersion: v1
-data:
-  username: GIT_USER
-  password: GIT_CREDENTIALS
-kind: Secret
-metadata:
-  name: kraan-http
-type: Opaque

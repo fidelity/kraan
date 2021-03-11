@@ -11,7 +11,6 @@ on:
 
 jobs:
   lint:
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -19,7 +18,7 @@ jobs:
           fetch-depth: 0
       - name: Validate
         run: |
-          make validate-versions
+          [ "${{ github.event_name }}" == "pull_request" ] && make validate-versions
   docker-build:
     needs: lint
     runs-on: ubuntu-20.04
@@ -42,7 +41,10 @@ jobs:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_TOKEN }}
       - name: Setup dependencies
-        run: ./bin/setup.sh
+        run: |
+          [ -z "${GOPATH}" ] && export GOPATH=$HOME/go
+          PATH="${GOPATH}/bin:${PATH}"
+          ./bin/setup.sh
       # - uses: satackey/action-docker-layer-caching@v0
       #   # Ignore the failure of a step and avoid terminating the job.
       #   continue-on-error: true
@@ -69,7 +71,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Setup dependencies
-        run: ./bin/setup.sh
+        run: |
+          [ -z "${GOPATH}" ] && export GOPATH=$HOME/go
+          PATH="${GOPATH}/bin:${PATH}"
+          ./bin/setup.sh
       - uses: engineerd/setup-kind@v0.5.0
       - name: Integration Test
         run: |
@@ -109,11 +114,15 @@ jobs:
         with:
           fetch-depth: 0
       - name: Setup dependencies
-        run: ./bin/setup.sh
+        run: |
+          [ -z "${GOPATH}" ] && export GOPATH=$HOME/go
+          PATH="${GOPATH}/bin:${PATH}"
+          ./bin/setup.sh
       - name: Publish Helm Chart
         run: |
           [ "${{ github.event_name }}" == "pull_request" ] && export VERSION=$(cat VERSION)-dev || export VERSION=$(cat VERSION)
           export CHART_VERSION=$VERSION
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions"
+          git checkout go.mod go.sum
           make release

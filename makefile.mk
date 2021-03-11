@@ -27,7 +27,7 @@ NC:=\033[0m
 NC_DIR:=: $(CURDIR)$(NC)
 # Controller Integration test setup
 export USE_EXISTING_CLUSTER?=true
-export ZAP_LOG_LEVEL=1
+export ZAP_LOG_LEVEL?=0
 export IMAGE_PULL_SECRET_SOURCE?=${HOME}/gotk-regcred.yaml
 export IMAGE_PULL_SECRET_NAME?=gotk-regcred
 export GITOPS_USE_PROXY?=auto

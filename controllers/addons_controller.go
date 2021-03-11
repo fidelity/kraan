@@ -705,11 +705,11 @@ func (r *AddonsLayerReconciler) updateRequeue(l layers.Layer) (res ctrl.Result, 
 	}
 	if l.NeedsRequeue() {
 		if l.IsDelayed() {
-			r.Log.Info("delayed requeue", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", l.GetName(), "interval", l.GetDelay())...)
+			r.Log.V(1).Info("delayed requeue", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", l.GetName(), "interval", l.GetDelay())...)
 			res = ctrl.Result{Requeue: true, RequeueAfter: l.GetDelay()}
 			return res, nil
 		}
-		r.Log.Info("requeue", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", l.GetName())...)
+		r.Log.V(1).Info("requeue", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", l.GetName())...)
 		res = ctrl.Result{Requeue: true}
 		return res, nil
 	}
@@ -763,7 +763,7 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 
 	if addonsLayer.ObjectMeta.DeletionTimestamp.IsZero() { // nolint: nestif // ok
 		if !common.ContainsString(addonsLayer.ObjectMeta.Finalizers, kraanv1alpha1.AddonsFinalizer) {
-			r.Log.Info("adding finalizer to addonsLayer", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
+			r.Log.V(1).Info("adding finalizer to addonsLayer", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
 			addonsLayer.ObjectMeta.Finalizers = append(l.GetAddonsLayer().ObjectMeta.Finalizers, kraanv1alpha1.AddonsFinalizer)
 			if err = r.Update(ctx, l.GetAddonsLayer()); err != nil {
 				r.Log.Error(err, "unable to register finalizer", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
@@ -838,7 +838,7 @@ func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 }
 
 func (r *AddonsLayerReconciler) upgradeFix(ctx context.Context, al *kraanv1alpha1.AddonsLayer) (updated bool, res ctrl.Result, err error) {
-	r.Log.Info("Checking existing conditions", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", al.Name)...)
+	r.Log.V(1).Info("Checking existing conditions", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", al.Name)...)
 	for _, condition := range al.Status.Conditions {
 		if condition.Status == metav1.ConditionFalse {
 			continue
@@ -1002,7 +1002,7 @@ func (r *AddonsLayerReconciler) indexHelmReleaseByOwner(o runtime.Object) []stri
 			append(logging.GetFunctionAndSource(logging.MyCaller), "kind", "helmreleases.helm.toolkit.fluxcd.io", "namespace", hr.Namespace, "name", hr.Name)...)
 		return nil
 	}
-	r.Log.Info("HelmRelease associated with layer",
+	r.Log.V(1).Info("HelmRelease associated with layer",
 		append(logging.GetFunctionAndSource(logging.MyCaller), "kind", "helmreleases.helm.toolkit.fluxcd.io", "namespace", hr.Namespace, "name", hr.Name, "layer", owner.Name)...)
 
 	return []string{owner.Name}
@@ -1030,7 +1030,7 @@ func (r *AddonsLayerReconciler) indexHelmRepoByOwner(o runtime.Object) []string 
 			append(logging.GetFunctionAndSource(logging.MyCaller), "kind", "helmrepositories.source.toolkit.fluxcd.io", "namespace", hr.Namespace, "name", hr.Name)...)
 		return nil
 	}
-	r.Log.Info("Helm Repository associated with layer",
+	r.Log.V(1).Info("Helm Repository associated with layer",
 		append(logging.GetFunctionAndSource(logging.MyCaller), "kind", "helmrepositories.source.toolkit.fluxcd.io", "namespace", hr.Namespace, "name", hr.Name, "layer", owner.Name)...)
 	return []string{owner.Name}
 }

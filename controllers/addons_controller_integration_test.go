@@ -22,10 +22,9 @@ import (
 )
 
 const (
-	AddonsLayerName            = "apps"
 	k8sList                    = "List"
 	timeout                    = time.Second * 120
-	interval                   = time.Millisecond * 250
+	interval                   = time.Second
 	addonsLayersFileName       = "testdata/addons.json"
 	addonsLayersOrphanFileName = "testdata/addons-orphan.json"
 )
@@ -54,34 +53,48 @@ func getAddonsFromFiles(fileNames ...string) *kraanv1alpha1.AddonsLayerList {
 	return addonsLayersList
 }
 
-func listAddonsLayers(ctx context.Context, log logr.Logger) []kraanv1alpha1.AddonsLayer {
+func listAddonsLayers(ctx context.Context, log logr.Logger) []*kraanv1alpha1.AddonsLayer {
 	listOptions := &client.ListOptions{}
 	addonsLayerList := &kraanv1alpha1.AddonsLayerList{}
 	Expect(k8sClient.List(ctx, addonsLayerList, listOptions)).Should(Succeed())
 	log.Info("AddonsLayers list", "items", len(addonsLayerList.Items))
-
-	return addonsLayerList.Items
+	addonsLayers := make([]*kraanv1alpha1.AddonsLayer, len(addonsLayerList.Items))
+	for index, addonsLayer := range addonsLayerList.Items {
+		addonsLayers[index] = &kraanv1alpha1.AddonsLayer{}
+		addonsLayer.DeepCopyInto(addonsLayers[index])
+		log.Info("AddonsLayer added to list", "name", addonsLayer.Name)
+	}
+	return addonsLayers
 }
 
-func deleteAddonsLayers(ctx context.Context, log logr.Logger, addonsLayersItems []kraanv1alpha1.AddonsLayer) {
+func deleteAddonsLayers(ctx context.Context, log logr.Logger, addonsLayers []*kraanv1alpha1.AddonsLayer) {
 	//var deletionPolicy metav1.DeletionPropagation = metav1.DeletePropagationOrphan
 	deleteOptions := &client.DeleteOptions{} // PropagationPolicy: &deletionPolicy
-	for _, addonsLayer := range addonsLayersItems {
-		Expect(k8sClient.Delete(ctx, &addonsLayer, deleteOptions)).Should(Succeed()) // nolint: scopelint // ok
+	for _, addonsLayer := range addonsLayers {
+		Expect(k8sClient.Delete(ctx, addonsLayer, deleteOptions)).Should(Succeed())
 		log.Info("AddonsLayer deleted", "name", addonsLayer.Name)
 	}
-	log.Info("waiting for AddonsLayer to be deleted")
+	log.Info("waiting for AddonsLayers to be deleted")
 	Eventually(func() bool {
 		time.Sleep(time.Second)
 		return len(listAddonsLayers(ctx, log)) == 0
 	}, timeout, interval).Should(BeTrue())
-	log.Info("AddonsLayer created")
+	log.Info("AddonsLayers deleted")
 }
 
-func createAddonsLayer(ctx context.Context, log logr.Logger, AddonsLayer *kraanv1alpha1.AddonsLayer) *kraanv1alpha1.AddonsLayer {
+func getAddonsLayer(ctx context.Context, log logr.Logger, addonsLayerName string) *kraanv1alpha1.AddonsLayer {
+	addonsLayer := &kraanv1alpha1.AddonsLayer{}
+	addonsLayerLookupKey := types.NamespacedName{Name: addonsLayerName}
+	Expect(k8sClient.Get(ctx, addonsLayerLookupKey, addonsLayer)).Should(Succeed())
+	log.Info("AddonsLayer retrieved")
+
+	return addonsLayer
+}
+
+func createAddonsLayer(ctx context.Context, log logr.Logger, addonsLayer *kraanv1alpha1.AddonsLayer) *kraanv1alpha1.AddonsLayer {
 	createOptions := &client.CreateOptions{}
-	Expect(k8sClient.Create(ctx, AddonsLayer, createOptions)).Should(Succeed())
-	AddonsLayerLookupKey := types.NamespacedName{Name: AddonsLayerName}
+	Expect(k8sClient.Create(ctx, addonsLayer, createOptions)).Should(Succeed())
+	AddonsLayerLookupKey := types.NamespacedName{Name: addonsLayer.Name}
 	createdAddonsLayer := &kraanv1alpha1.AddonsLayer{}
 
 	log.Info("waiting for AddonsLayer to be created")
@@ -95,17 +108,6 @@ func createAddonsLayer(ctx context.Context, log logr.Logger, AddonsLayer *kraanv
 	return createdAddonsLayer
 }
 
-func getAddonsLayers(ctx context.Context, log logr.Logger, dataFileNames ...string) []*kraanv1alpha1.AddonsLayer {
-	addonsLayersItems := getAddonsFromFiles(dataFileNames...).Items
-	addonsLayers := make([]*kraanv1alpha1.AddonsLayer, len(addonsLayersItems))
-
-	for index, addonsLayer := range addonsLayersItems {
-		addonsLayers[index] = createAddonsLayer(ctx, log, &addonsLayer) // nolint: scopelint // ok
-	}
-
-	return addonsLayers
-}
-
 func createAddonsLayers(ctx context.Context, log logr.Logger, dataFileNames ...string) []*kraanv1alpha1.AddonsLayer {
 	addonsLayersItems := getAddonsFromFiles(dataFileNames...).Items
 	addonsLayers := make([]*kraanv1alpha1.AddonsLayer, len(addonsLayersItems))
@@ -117,15 +119,16 @@ func createAddonsLayers(ctx context.Context, log logr.Logger, dataFileNames ...s
 	return addonsLayers
 }
 
-func updateAddonsLayer(ctx context.Context, log logr.Logger, addonsLayer *kraanv1alpha1.AddonsLayer) *kraanv1alpha1.AddonsLayer {
+func updateAddonsLayer(ctx context.Context, log logr.Logger, updatedAddonsLayer *kraanv1alpha1.AddonsLayer) *kraanv1alpha1.AddonsLayer {
+	addonsLayer := getAddonsLayer(ctx, log, updatedAddonsLayer.Name)
+	updatedAddonsLayer.Spec.DeepCopyInto(&addonsLayer.Spec)
 	updateOptions := &client.UpdateOptions{}
 	Expect(k8sClient.Update(ctx, addonsLayer, updateOptions)).Should(Succeed())
-	AddonsLayerLookupKey := types.NamespacedName{Name: AddonsLayerName}
-	updatedAddonsLayer := &kraanv1alpha1.AddonsLayer{}
+	addonsLayerLookupKey := types.NamespacedName{Name: addonsLayer.Name}
 
-	log.Info("waiting for AddonsLayer to be updated")
+	log.Info("Checking AddonsLayer to is updated")
 	Eventually(func() bool {
-		err := k8sClient.Get(ctx, AddonsLayerLookupKey, updatedAddonsLayer)
+		err := k8sClient.Get(ctx, addonsLayerLookupKey, updatedAddonsLayer)
 
 		return err == nil && updatedAddonsLayer.Spec.Source.Path == addonsLayer.Spec.Source.Path
 	}, timeout, interval).Should(BeTrue())
@@ -146,33 +149,33 @@ func updateAddonsLayers(ctx context.Context, log logr.Logger, dataFileNames ...s
 }
 
 func verifyAddonsLayer(ctx context.Context, log logr.Logger, addonsLayer *kraanv1alpha1.AddonsLayer, status string) {
-	createdAddonsLayer := &kraanv1alpha1.AddonsLayer{}
-	AddonsLayerLookupKey := types.NamespacedName{Name: AddonsLayerName}
+	retrievedAddonsLayer := &kraanv1alpha1.AddonsLayer{}
+	addonsLayerLookupKey := types.NamespacedName{Name: addonsLayer.Name}
 	log.Info("waiting for AddonsLayer status to be expected value", "expected", status)
 	Eventually(func() bool {
-		err := k8sClient.Get(ctx, AddonsLayerLookupKey, createdAddonsLayer)
+		err := k8sClient.Get(ctx, addonsLayerLookupKey, retrievedAddonsLayer)
 		if err != nil {
 			return false
 		}
-		log.Info("AddonsLayer status", "actual", createdAddonsLayer.Status.State, "expected", status)
+		log.Info("AddonsLayer status", "name", retrievedAddonsLayer.Name, "actual", retrievedAddonsLayer.Status.State, "expected", status)
 
-		return createdAddonsLayer.Status.State == status
+		return retrievedAddonsLayer.Status.State == status
 	}, timeout, interval).Should(BeTrue())
 	log.Info("AddonsLayer status achieved expected value", "expected", status)
 
-	Expect(createdAddonsLayer.Spec.Hold).Should(Equal(addonsLayer.Spec.Hold))
+	Expect(retrievedAddonsLayer.Spec.Hold).Should(Equal(addonsLayer.Spec.Hold))
 
-	Expect(len(createdAddonsLayer.Status.Conditions)).Should(Equal(1))
+	Expect(len(retrievedAddonsLayer.Status.Conditions)).Should(Equal(1))
 
 	message := "AddonsLayer version 0.1.01 is Deployed, All HelmReleases deployed"
 	if status == kraanv1alpha1.HoldCondition {
 		message = kraanv1alpha1.AddonsLayerHoldMsg
 	}
-	Expect(createdAddonsLayer.Status.Conditions).Should(Equal([]metav1.Condition{{
+	Expect(retrievedAddonsLayer.Status.Conditions).Should(Equal([]metav1.Condition{{
 		Type:               status,
 		Reason:             status,
 		Status:             metav1.ConditionTrue,
-		LastTransitionTime: createdAddonsLayer.Status.Conditions[0].LastTransitionTime,
+		LastTransitionTime: retrievedAddonsLayer.Status.Conditions[0].LastTransitionTime,
 		Message:            message,
 	}}))
 }
@@ -196,8 +199,8 @@ var _ = Describe("AddonsLayer controller", func() {
 			deleteAddonsLayers(ctx, log, listAddonsLayers(ctx, log))
 
 			By("By creating new AddonsLayers")
-			createdAddonsLayers := createAddonsLayers(ctx, log, addonsLayersFileName)
-			verifyAddonsLayers(ctx, log, createdAddonsLayers)
+			createAddonsLayers(ctx, log, addonsLayersFileName)
+			verifyAddonsLayers(ctx, log, listAddonsLayers(ctx, log))
 
 		})
 	})
@@ -207,9 +210,10 @@ var _ = Describe("AddonsLayer controller", func() {
 			logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter)))
 			log := logf.Log.WithName("test-two")
 
-			By("By creating a new AddonsLayers")
-			updatedAddonsLayers := updateAddonsLayers(ctx, log, addonsLayersOrphanFileName)
-			verifyAddonsLayers(ctx, log, updatedAddonsLayers)
+			By("By updating AddonsLayers to use different path in repository")
+			updateAddonsLayers(ctx, log, addonsLayersOrphanFileName)
+			time.Sleep(time.Second * 10)
+			verifyAddonsLayers(ctx, log, listAddonsLayers(ctx, log))
 			//verifyHelmReleaseNotRedeployed(ctx, log, "bootstrap", "microservice-2")
 
 		})

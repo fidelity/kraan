@@ -121,7 +121,7 @@ jobs:
       - name: Publish Helm Chart
         run: |
           [ "${{ github.event_name }}" == "pull_request" ] && export VERSION=$(cat VERSION)-dev || export VERSION=$(cat VERSION)
-          export CHART_VERSION=$VERSION
+          [ "${{ github.event_name }}" == "pull_request" ] && export CHART_VERSION=$VERSION || unset CHART_VERSION
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions"
           git checkout go.mod go.sum

@@ -19,9 +19,11 @@ MAKE_SOURCES:=makefile.mk project-name.mk Makefile
 PROJECT_SOURCES:=$(shell find ./main ./controllers/ ./api/ ./pkg/ -regex '.*.\.\(go\|json\)$$')
 
 BUILD_DIR:=build/
+RELEASE_DIR:=$(shell mktemp -d)
 GITHUB_USER?=$(shell git config --local  user.name)
 GITHUB_ORG=$(shell git config --get remote.origin.url | sed -nr '/github.com/ s/.*github.com([^"]+).*/\1/p' | cut --characters=2- | cut -f1 -d/)
 GITHUB_REPO=$(shell git config --get remote.origin.url | sed -nr '/github.com/ s/.*github.com([^"]+).*/\1/p'| cut --characters=2- | cut -f2 -d/ | cut -f1 -d.)
+GIT_BRANCH=$(shell git rev-parse --abbrev-ref HEAD)
 export VERSION?=$(shell cat VERSION)
 export REPO ?=docker.pkg.github.com/${GITHUB_ORG}/${GITHUB_REPO}
 # Image URL to use all building/pushing image targets
@@ -100,18 +102,17 @@ validate-versions:
 	./scripts/validate.sh
 
 release:
-	build_dir=$(shell mktemp)  || exit
-	cp -rf docs ${build_dir}  || exit
-	cp -f *.md ${build_dir}  || exit
+	cp -rf docs ${RELEASE_DIR}  || exit
+	cp -f *.md ${RELEASE_DIR}  || exit
 	helm package --version ${CHART_VERSION} chart  || exit
-	mv kraan-controller-${CHART_VERSION}.tgz ${build_dir} || exit
+	mv kraan-controller-${CHART_VERSION}.tgz ${RELEASE_DIR} || exit
 	git checkout -B gh-pages --track origin/gh-pages || exit
-	cp -rf ${build_dir}/* . || exit
-	rm -rf ${build_dir} || exit
+	cp -rf ${RELEASE_DIR}/* . || exit
+	rm -rf ${RELEASE_DIR} || exit
 	helm repo index --url https://fidelity.github.io/kraan/ .  || exit
 	git commit -a -m "release chart version ${CHART_VERSION}"  || exit
 	git push  || exit
-	git checkout master  || exit
+	git checkout ${GIT_BRANCH}  || exit
 
 clean-gomod:
 clean-gomod:

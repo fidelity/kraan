@@ -100,7 +100,7 @@ validate-versions:
 	./scripts/validate.sh
 
 release:
-	build_dir=$(shell mktmp)  || exit
+	build_dir=$(shell mktemp)  || exit
 	cp -rf docs ${build_dir}  || exit
 	cp -f *.md ${build_dir}  || exit
 	helm package --version ${CHART_VERSION} chart  || exit

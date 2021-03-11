@@ -44,7 +44,7 @@ jobs:
       - name: Setup dependencies
         run: |
           [ -z "${GOPATH}" ] && export GOPATH=$HOME/go
-          PATH="${GOPATH}:${PATH}"
+          PATH="${GOPATH}/bin:${PATH}"
           ./bin/setup.sh
       # - uses: satackey/action-docker-layer-caching@v0
       #   # Ignore the failure of a step and avoid terminating the job.
@@ -74,7 +74,7 @@ jobs:
       - name: Setup dependencies
         run: |
           [ -z "${GOPATH}" ] && export GOPATH=$HOME/go
-          PATH="${GOPATH}:${PATH}"
+          PATH="${GOPATH}/bin:${PATH}"
           ./bin/setup.sh
       - uses: engineerd/setup-kind@v0.5.0
       - name: Integration Test
@@ -117,7 +117,7 @@ jobs:
       - name: Setup dependencies
         run: |
           [ -z "${GOPATH}" ] && export GOPATH=$HOME/go
-          PATH="${GOPATH}:${PATH}"
+          PATH="${GOPATH}/bin:${PATH}"
           ./bin/setup.sh
       - name: Publish Helm Chart
         run: |

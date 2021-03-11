@@ -71,7 +71,9 @@ if [[ "${ret_code}" != "0" ]] ; then
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then
         echo "Failed to install linter"
-        return
+        echo "version: `golangci-lint --version`"
+        echo "expecting: $linter_version"
+        exit 1
     fi
 else
     echo "linter version: `golangci-lint --version`"
@@ -87,7 +89,7 @@ if [[ "${ret_code}" != "0" ]] ; then
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then
         echo "Failed to install kubebuilder"
-        return
+        exit 1
     fi
 else
    echo "kubebuilder version: `kubebuilder version`"     
@@ -102,7 +104,7 @@ if [[ "${ret_code}" != "0" ]] ; then
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then
         echo "Failed to install helm"
-        return
+        exit 1
     fi
 else
     echo "mockgen version: `mockgen -version`"
@@ -117,7 +119,7 @@ if [[ "${ret_code}" != "0" ]] ; then
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then
         echo "Failed to install flux"
-        return
+        exit 1
     fi
 else
     echo "flux version: `flux --version`"
@@ -132,7 +134,7 @@ if [[ "${ret_code}" != "0" ]] ; then
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then
         echo "Failed to install helm"
-        return
+        exit 1
     fi
 else
     echo "helm version: `helm version`"
@@ -147,7 +149,7 @@ if [[ "${ret_code}" != "0" ]] ; then
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then
         echo "Failed to install kind"
-        return
+        exit 1
     fi
 else
     echo "kind version: `kind version`"

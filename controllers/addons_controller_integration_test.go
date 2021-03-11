@@ -22,11 +22,12 @@ import (
 )
 
 const (
-	AddonsLayerName      = "apps"
-	k8sList              = "List"
-	timeout              = time.Second * 120
-	interval             = time.Millisecond * 250
-	addonsLayersFileName = "testdata/addons.json"
+	AddonsLayerName            = "apps"
+	k8sList                    = "List"
+	timeout                    = time.Second * 120
+	interval                   = time.Millisecond * 250
+	addonsLayersFileName       = "testdata/addons.json"
+	addonsLayersOrphanFileName = "testdata/addons-orphan.json"
 )
 
 func getAddonsFromFiles(fileNames ...string) *kraanv1alpha1.AddonsLayerList {
@@ -94,12 +95,51 @@ func createAddonsLayer(ctx context.Context, log logr.Logger, AddonsLayer *kraanv
 	return createdAddonsLayer
 }
 
+func getAddonsLayers(ctx context.Context, log logr.Logger, dataFileNames ...string) []*kraanv1alpha1.AddonsLayer {
+	addonsLayersItems := getAddonsFromFiles(dataFileNames...).Items
+	addonsLayers := make([]*kraanv1alpha1.AddonsLayer, len(addonsLayersItems))
+
+	for index, addonsLayer := range addonsLayersItems {
+		addonsLayers[index] = createAddonsLayer(ctx, log, &addonsLayer) // nolint: scopelint // ok
+	}
+
+	return addonsLayers
+}
+
 func createAddonsLayers(ctx context.Context, log logr.Logger, dataFileNames ...string) []*kraanv1alpha1.AddonsLayer {
 	addonsLayersItems := getAddonsFromFiles(dataFileNames...).Items
 	addonsLayers := make([]*kraanv1alpha1.AddonsLayer, len(addonsLayersItems))
 
 	for index, addonsLayer := range addonsLayersItems {
 		addonsLayers[index] = createAddonsLayer(ctx, log, &addonsLayer) // nolint: scopelint // ok
+	}
+
+	return addonsLayers
+}
+
+func updateAddonsLayer(ctx context.Context, log logr.Logger, addonsLayer *kraanv1alpha1.AddonsLayer) *kraanv1alpha1.AddonsLayer {
+	updateOptions := &client.UpdateOptions{}
+	Expect(k8sClient.Update(ctx, addonsLayer, updateOptions)).Should(Succeed())
+	AddonsLayerLookupKey := types.NamespacedName{Name: AddonsLayerName}
+	updatedAddonsLayer := &kraanv1alpha1.AddonsLayer{}
+
+	log.Info("waiting for AddonsLayer to be updated")
+	Eventually(func() bool {
+		err := k8sClient.Get(ctx, AddonsLayerLookupKey, updatedAddonsLayer)
+
+		return err == nil && updatedAddonsLayer.Spec.Source.Path == addonsLayer.Spec.Source.Path
+	}, timeout, interval).Should(BeTrue())
+	log.Info("AddonsLayer created")
+
+	return updatedAddonsLayer
+}
+
+func updateAddonsLayers(ctx context.Context, log logr.Logger, dataFileNames ...string) []*kraanv1alpha1.AddonsLayer {
+	addonsLayersItems := getAddonsFromFiles(dataFileNames...).Items
+	addonsLayers := make([]*kraanv1alpha1.AddonsLayer, len(addonsLayersItems))
+
+	for index, addonsLayer := range addonsLayersItems {
+		addonsLayers[index] = updateAddonsLayer(ctx, log, &addonsLayer) // nolint: scopelint // ok
 	}
 
 	return addonsLayers
@@ -155,9 +195,22 @@ var _ = Describe("AddonsLayer controller", func() {
 			By("By deleting any existing addons")
 			deleteAddonsLayers(ctx, log, listAddonsLayers(ctx, log))
 
-			By("By creating a new AddonsLayers")
+			By("By creating new AddonsLayers")
 			createdAddonsLayers := createAddonsLayers(ctx, log, addonsLayersFileName)
 			verifyAddonsLayers(ctx, log, createdAddonsLayers)
+
+		})
+	})
+	Context("When updating AddonsLayers source to move a HelmRelease from one layer to another, wait for them to be deployed state", func() {
+		It("Should not redeploy the HelmReleases moved between layers", func() {
+			ctx := context.Background()
+			logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter)))
+			log := logf.Log.WithName("test-two")
+
+			By("By creating a new AddonsLayers")
+			updatedAddonsLayers := updateAddonsLayers(ctx, log, addonsLayersOrphanFileName)
+			verifyAddonsLayers(ctx, log, updatedAddonsLayers)
+			//verifyHelmReleaseNotRedeployed(ctx, log, "bootstrap", "microservice-2")
 
 		})
 	})

@@ -440,16 +440,6 @@ func setLogLevel() string {
 var _ = BeforeSuite(func() {
 	err := os.Setenv("USE_EXISTING_CLUSTER", "true")
 	Expect(err).ToNot(HaveOccurred())
-	/*
-		logOpts := &zap.Options{}
-		f := flag.NewFlagSet("zap-log-level=4", flag.ExitOnError)
-		logOpts.BindFlags(f)
-		encCfg := uzap.NewProductionEncoderConfig()
-		encCfg.EncodeTime = zapcore.ISO8601TimeEncoder
-		encoder := zap.Encoder(zapcore.NewJSONEncoder(encCfg))
-		log = zap.New(zap.UseFlagOptions(logOpts), encoder)
-		logf.SetLogger(log)
-	*/
 	var (
 		logLevel   string
 		syncPeriod time.Duration
@@ -493,7 +483,9 @@ var _ = BeforeSuite(func() {
 	if !present {
 		namespace = gotkSystem
 	} else {
-		setupLog.Error(errNotYetSupported, "kraan namespace selection not yet supported")
+		if namespace != gotkSystem {
+			setupLog.Error(errNotYetSupported, "kraan namespace selection not yet supported")
+		}
 	}
 	Expect(namespace).To(MatchRegexp(gotkSystem))
 

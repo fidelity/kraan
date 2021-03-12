@@ -63,15 +63,17 @@ import (
 
 func init() {
 	log.SetLogger(zap.New())
+	_, keepKind := os.LookupEnv("RETAIN_KIND_CLUSTER")
+	deleteKind = !keepKind
 }
 
 var (
-	cfg       *rest.Config         // nolint:gochecknoglobals // until we understand this code better
-	k8sClient client.Client        // nolint:gochecknoglobals // until we understand this code better
-	testEnv   *envtest.Environment // nolint:gochecknoglobals // until we understand this code better
-	//log                logr.Logger                       // nolint:gochecknoglobals // needed for debugLog
+	cfg                *rest.Config                         // nolint:gochecknoglobals // until we understand this code better
+	k8sClient          client.Client                        // nolint:gochecknoglobals // until we understand this code better
+	testEnv            *envtest.Environment                 // nolint:gochecknoglobals // until we understand this code better
 	setupLog           = log.Log.WithName("initialization") // nolint:gochecknoglobals // needed for debugLog
 	errNotYetSupported = errors.New("not yet supported")    // nolint:gochecknoglobals // ok
+	deleteKind         = true                               // nolint:gochecknoglobals // ok
 )
 
 const (
@@ -95,11 +97,27 @@ func startKindCluster(logf logr.Logger) {
 	clusters, err := p.List()
 	Expect(err).NotTo(HaveOccurred())
 	if !common.ContainsString(clusters, kindClusterName) {
+		logf.Info("creating kind cluster", "cluster", kindClusterName)
 		err = p.Create(kindClusterName)
 		Expect(err).NotTo(HaveOccurred())
-		logf.Info("kind cluster crested", "cluster", kindClusterName)
+		logf.Info("kind cluster created", "cluster", kindClusterName)
 	} else {
 		logf.Info("using existing kind cluster", "cluster", kindClusterName)
+		deleteKind = false
+	}
+}
+
+func deleteKindCluster(logf logr.Logger) {
+	err := os.Setenv("KIND_CLUSTER_NAME", kindClusterName)
+	Expect(err).ToNot(HaveOccurred())
+	p := cluster.NewProvider()
+	Expect(err).ToNot(HaveOccurred())
+	clusters, err := p.List()
+	Expect(err).NotTo(HaveOccurred())
+	if common.ContainsString(clusters, kindClusterName) {
+		err = p.Delete(kindClusterName, getKubeConfig())
+		Expect(err).NotTo(HaveOccurred())
+		logf.Info("kind cluster deleted", "cluster", kindClusterName)
 	}
 }
 
@@ -193,14 +211,18 @@ func createImagePullSecret(log logr.Logger, namespace string) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func getRestClient() *rest.Config {
+func getKubeConfig() string {
 	// creates the clientset
 	kubeConfig, present := os.LookupEnv("KUBECONFIG")
 	if !present {
 		kubeConfig = os.Getenv("HOME") + "/.kube/config"
 	}
+	return kubeConfig
+}
 
-	config, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
+func getRestClient() *rest.Config {
+	// creates the rest client
+	config, err := clientcmd.BuildConfigFromFlags("", getKubeConfig())
 	Expect(err).ToNot(HaveOccurred())
 
 	return config
@@ -323,18 +345,41 @@ func portForwardPod(req portForwardPodRequest) error {
 	return fw.ForwardPorts()
 }
 
-func getSouceControllerPodName(namespace string) string {
-	listOptions := v1.ListOptions{}
-	listOptions.LabelSelector = "app=source-controller"
-	pods, err := getK8sClient().CoreV1().Pods(namespace).List(context.TODO(), listOptions)
+func waitForSouceControllerPod(logf logr.Logger, podName, namespace string) bool {
+	getOptions := v1.GetOptions{}
+	pod, err := getK8sClient().CoreV1().Pods(namespace).Get(context.TODO(), podName, getOptions)
 	Expect(err).ToNot(HaveOccurred())
-	if len(pods.Items) == 0 {
-		return ""
-	}
-	return pods.Items[0].Name
+	logf.Info("source-controller pod", "status", pod.Status.Phase)
+	return pod.Status.Phase == "Running"
 }
 
-func portForward(namespace string) {
+func getSouceControllerPodName(logf logr.Logger, namespace string) string {
+	listOptions := v1.ListOptions{}
+	listOptions.LabelSelector = "app=source-controller"
+
+	retries := 10
+	retry := 0
+	pause := time.Second * 5
+	for {
+		pods, err := getK8sClient().CoreV1().Pods(namespace).List(context.TODO(), listOptions)
+		Expect(err).ToNot(HaveOccurred())
+		if len(pods.Items) > 0 {
+			if waitForSouceControllerPod(logf, pods.Items[0].Name, namespace) {
+				return pods.Items[0].Name
+			}
+		}
+		retry++
+		if retry > retries {
+			logf.Info("source-controller pod still not ready, continuing")
+			break
+		}
+		logf.Info("source-controller pod not ready, sleeping", "seconds", int(pause/time.Second))
+		time.Sleep(pause)
+	}
+	return ""
+}
+
+func portForward(logf logr.Logger, namespace string) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
@@ -370,7 +415,7 @@ func portForward(namespace string) {
 			RestConfig: getRestClient(),
 			Pod: coreV1.Pod{
 				ObjectMeta: v1.ObjectMeta{
-					Name:      getSouceControllerPodName(namespace),
+					Name:      getSouceControllerPodName(logf, namespace),
 					Namespace: namespace,
 				},
 			},
@@ -469,14 +514,17 @@ var _ = BeforeSuite(func() {
 	if path, set := os.LookupEnv("DATA_PATH"); set {
 		repos.DefaultRootPath = path
 	}
+
 	if host, set := os.LookupEnv("SC_HOST"); set {
 		repos.DefaultHostName = host
 	}
+
 	if timeout, set := os.LookupEnv("SC_TIMEOUT"); set {
 		timeOut, e := time.ParseDuration(timeout)
 		Expect(e).NotTo(HaveOccurred())
 		repos.DefaultTimeOut = timeOut
 	}
+
 	startKindCluster(setupLog)
 
 	namespace, present := os.LookupEnv("KRAAN_NAMESPACE")
@@ -491,8 +539,7 @@ var _ = BeforeSuite(func() {
 
 	deployHelmChart(setupLog, namespace)
 	applySetupYAML(setupLog)
-
-	portForward(namespace)
+	portForward(setupLog, namespace)
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{}
@@ -554,4 +601,7 @@ var _ = AfterSuite(func() {
 	By("tearing down the test environment")
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
+	if deleteKind {
+		deleteKindCluster(setupLog)
+	}
 })

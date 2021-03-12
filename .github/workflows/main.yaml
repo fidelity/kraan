@@ -10,7 +10,7 @@ on:
     paths-ignore: ["**.md"]
 
 jobs:
-  lint:
+  validate:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -20,7 +20,7 @@ jobs:
         run: |
           [ "${{ github.event_name }}" == "pull_request" ] && make validate-versions || echo "push to master, skipping validation"
   docker-build:
-    needs: lint
+    needs: validate
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2

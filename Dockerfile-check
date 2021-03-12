@@ -27,4 +27,5 @@ RUN cp bin/* /usr/local/bin
 # Make
 RUN make clean
 RUN PATH=$PATH:/usr/local/kubebuilder/bin make
+RUN PATH=$PATH:/usr/local/kubebuilder/bin make integration
 

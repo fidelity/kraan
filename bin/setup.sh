@@ -5,6 +5,8 @@ kubebuilder_version=2.3.1
 mockgen_version=v1.4.4
 helm_version=v3.3.4
 kind_version=v0.9.0
+kubectl_version=v1.17.12
+kustomize_version=v3.8.5
 
 function usage()
 {
@@ -51,6 +53,19 @@ function install_kind() {
     curl -Lo ./kind https://kind.sigs.k8s.io/dl/${kind_version}/kind-linux-amd64
     chmod 755 kind
     $sudo mv kind /usr/local/bin
+}
+
+function install_kubectl() {
+    curl -LO https://storage.googleapis.com/kubernetes-release/release/${kubectl_version}/bin/linux/amd64/kubectl
+    chmod +x ./kubectl
+    $sudo mv kubectl /usr/local/bin
+}
+
+function install_kustomize() {
+    curl -LO https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v3.8.5/kustomize_${kustomize_version}_linux_amd64.tar.gz
+    tar xzf ./kustomize_${kustomize_version}_linux_amd64.tar.gz
+    chmod +x ./kustomize
+    $sudo mv kustomize /usr/local/bin
 }
 
 args "${@}"
@@ -153,4 +168,36 @@ if [[ "${ret_code}" != "0" ]] ; then
     fi
 else
     echo "kind version: `kind version`"
+fi
+
+kubectl version --client 2>&1 | grep ${kubectl_version} >/dev/null
+ret_code="${?}"
+if [[ "${ret_code}" != "0" ]] ; then
+    echo "installing kubectl version: ${kubectl_version}"
+    install_kubectl
+    kubectl version --client 2>&1 | grep ${kubectl_version} >/dev/null
+    ret_code="${?}"
+    if [ "${ret_code}" != "0" ] ; then
+        echo "kubectl version, required: ${kubectl_version}, actual: `kubectl version --client`"
+        echo "Failed to install kubectl"
+        exit 1
+    fi
+else
+    echo "kubectl version: `kubectl version --client`"
+fi
+
+kustomize version 2>&1 | grep ${kustomize_version} >/dev/null
+ret_code="${?}"
+if [[ "${ret_code}" != "0" ]] ; then
+    echo "installing kustomize version: ${kustomize_version}"
+    install_kustomize
+    kustomize version 2>&1 | grep ${kustomize_version} >/dev/null
+    ret_code="${?}"
+    if [ "${ret_code}" != "0" ] ; then
+        echo "kustomize version, required: ${kustomize_version}, actual: `kustomize version`"
+        echo "Failed to install kustomize"
+        exit 1
+    fi
+else
+    echo "kustomize version: `kustomize version`"
 fi

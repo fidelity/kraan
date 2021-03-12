@@ -357,7 +357,7 @@ func getSouceControllerPodName(logf logr.Logger, namespace string) string {
 	listOptions := v1.ListOptions{}
 	listOptions.LabelSelector = "app=source-controller"
 
-	retries := 10
+	retries := 25
 	retry := 0
 	pause := time.Second * 5
 	for {

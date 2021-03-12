@@ -204,6 +204,15 @@ To run integration tests:
 
     make integration
 
+If running with proxy access to github
+
+    export GITOPS_USE_PROXY?=auto
+
+If image pull secret is required to access public repositories, provide a image pull secret file
+
+    export IMAGE_PULL_SECRET_SOURCE?=${HOME}/gotk-regcred.yaml
+    export IMAGE_PULL_SECRET_NAME?=gotk-regcred
+
 ## Debugging
 
 The Kraan Controller emits json format log records. Most log record contains a number of common fields that can be used to select log messages to display when examining log data.

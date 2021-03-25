@@ -1,8 +1,5 @@
 # kraan - Building platforms on top of K8s
 
-*This project is currently in the early stages of development and expected to release
-beta versions by end of September*.
-
 ## What is kraan?
 
 kraan helps you deploy and manage *'layers'* on top of kubernetes. By applying *layers*

@@ -62,7 +62,7 @@ var (
 )
 
 const (
-	reasonRegex = "^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$" // Regex for k8s 1.19 conditions reason field
+	reasonRegex = "^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$" // Regex for k8s 1.19 conditions reason field.
 )
 
 // AddonsLayerReconcilerOptions are the reconciller options

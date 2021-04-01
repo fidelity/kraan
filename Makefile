@@ -107,6 +107,7 @@ release:
 	cp -rf ${RELEASE_DIR}/* . || exit
 	rm -rf ${RELEASE_DIR} || exit
 	helm repo index --url https://fidelity.github.io/kraan/ .  || exit
+	git add -A
 	git commit -a -m "release chart version ${CHART_VERSION}"  || exit
 	git push  || exit
 	git checkout ${GIT_BRANCH}  || exit

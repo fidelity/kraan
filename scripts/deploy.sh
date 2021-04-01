@@ -113,7 +113,7 @@ function args() {
   gitops_proxy=""
   git_url
   apply_testdata=0
-  kraan_tag="master"
+  kraan_tag=`cat VERSION`
   kraan_loglevel=""
   no_git_auth=0
   helm_action=""
@@ -398,7 +398,7 @@ if [ -n "${kraan_loglevel}" ] ; then
 fi
 
 if [ -n "${kraan_dev}" ] ; then
-  helm_args="${helm_args} --set kraan.kraanController.devmode=false"
+  helm_args="${helm_args} --set kraan.kraanController.readOnly=false"
 fi
 
 if [ -n "${values_files}" ] ; then

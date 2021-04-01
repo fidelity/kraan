@@ -39,7 +39,7 @@ spec:
         imagePullPolicy: {{ .Values.kraan.kraanController.image.imagePullPolicy | default "IfNotPresent" }}
         securityContext:
           allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: {{ .Values.kraan.kraanController.devmode }}
+          readOnlyRootFilesystem: {{ .Values.kraan.kraanController.readOnly }}
         volumeMounts:
         - mountPath: /controller/data
           name: data

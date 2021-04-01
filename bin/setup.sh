@@ -66,6 +66,7 @@ function install_kustomize() {
     tar xzf ./kustomize_${kustomize_version}_linux_amd64.tar.gz
     chmod +x ./kustomize
     $sudo mv kustomize /usr/local/bin
+    rm ./kustomize_${kustomize_version}_linux_amd64.tar.gz
 }
 
 args "${@}"

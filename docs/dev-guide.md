@@ -43,7 +43,7 @@ To build docker image type:
 
     export REPO=<name of docker repository>
     export VERSION=<version> # use to generate the image tag
-    make build
+    make dev-build
 
 If you require a proxy to access the internet set the `DOCKER_BUILD_PROXYS` environmental variable before doing 'make build', e.g.
 
@@ -54,9 +54,9 @@ For security reasons the image created uses `gcr.io/distroless/static:latest` wi
 Then to deploy the docker container:
 
     docker login <docker repository>
-    make docker-push
+    make docker-push-prerelease
 
-If the `VERSION` is not set `master` is used. The REPO will default to `docker.pkg.github.com/fidelity/kraan` which only users with privileges on the `fidelity` organization will be able to push to. However if you fork the Kraan repository then the default will be `docker.pkg.github.com/<org/user you forked to>/kraan`.
+If the `VERSION` is not set the contents of the `VERSION` file will be used. The REPO will default to `docker.pkg.github.com/fidelity/kraan` which only users with privileges on the `fidelity` organization will be able to push to. However if you fork the Kraan repository then the default will be `docker.pkg.github.com/<org/user you forked to>/kraan`. To use docker hub, set the `REPO` environmental variable to `kraan`.
 
 ## Releases
 
@@ -206,12 +206,12 @@ To run integration tests:
 
 If running with proxy access to github
 
-    export GITOPS_USE_PROXY?=auto
+    export GITOPS_USE_PROXY=auto
 
 If image pull secret is required to access public repositories, provide a image pull secret file
 
-    export IMAGE_PULL_SECRET_SOURCE?=${HOME}/gotk-regcred.yaml
-    export IMAGE_PULL_SECRET_NAME?=gotk-regcred
+    export IMAGE_PULL_SECRET_SOURCE=${HOME}/gotk-regcred.yaml
+    export IMAGE_PULL_SECRET_NAME=gotk-regcred
 
 ## Debugging
 

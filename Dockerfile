@@ -25,6 +25,7 @@ RUN curl -LO https://github.com/kubernetes-sigs/kustomize/releases/download/kust
 RUN tar xzf ./kustomize_v3.8.5_linux_amd64.tar.gz
 RUN chmod +x ./kustomize
 RUN mv kustomize bin
+RUN rm ./kustomize_v3.8.5_linux_amd64.tar.gz
 
 FROM gcr.io/distroless/static:latest
 WORKDIR /

@@ -42,7 +42,7 @@ kraan:
       logLevel: 0
       syncPeriod: 1m
 
-    devmode: false
+    readOnly: true
 
     resources:
       limits:

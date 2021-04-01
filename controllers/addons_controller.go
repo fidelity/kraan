@@ -80,7 +80,7 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 	hrepo := &sourcev1.HelmRepository{}
 
 	if err := mgr.GetFieldIndexer().IndexField(r.Context, &helmctlv2.HelmRelease{}, hrOwnerKey, r.indexHelmReleaseByOwner); err != nil {
-		return errors.Wrap(err, "failed setting up FieldIndexer for HelmRelease owners")
+		return errors.Wrap(err, "failed setting up FieldIndexer for HelmRelease owner")
 	}
 
 	if err := mgr.GetFieldIndexer().IndexField(r.Context, &sourcev1.HelmRepository{}, hrOwnerKey, r.indexHelmRepoByOwner); err != nil {

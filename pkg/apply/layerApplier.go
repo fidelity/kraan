@@ -356,17 +356,9 @@ func (a KubectlLayerApplier) isObjectPresent(ctx context.Context, layer layers.L
 	defer logging.TraceExit(a.getLog(layer))
 	key := client.ObjectKeyFromObject(obj)
 
-	existing := obj.DeepCopyObject()
+	existing := obj.DeepCopyObject().(client.Object)
 
-	var existingObj client.Object
-	switch existing.(type) {
-	case *sourcev1.HelmRepository:
-		existingObj = existing.(*sourcev1.HelmRepository)
-	case *helmctlv2.HelmRelease:
-		existingObj = existing.(*helmctlv2.HelmRelease)
-	}
-
-	err := a.client.Get(ctx, key, existingObj)
+	err := a.client.Get(ctx, key, existing)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			removeResourceVersion(obj)
@@ -682,11 +674,7 @@ func (a KubectlLayerApplier) Orphan(ctx context.Context, layer layers.Layer, hr 
 	// label HR to as orphan if not already labelled, set label value to time now.
 	key := client.ObjectKeyFromObject(hr)
 	existing := hr.DeepCopyObject()
-	theHr, ok := existing.(*helmctlv2.HelmRelease)
-	if !ok {
-		return false, fmt.Errorf("failed to convert runtime.Object to HelmRelease")
-	}
-	err = a.client.Get(ctx, key, theHr)
+	err = a.client.Get(ctx, key, existing.(client.Object))
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			removeResourceVersion(hr)
@@ -694,6 +682,10 @@ func (a KubectlLayerApplier) Orphan(ctx context.Context, layer layers.Layer, hr 
 			return false, nil
 		}
 		return false, errors.Wrapf(err, "%s - failed to get HelmRelease '%s'", logging.CallerStr(logging.Me), key)
+	}
+	theHr, ok := existing.(*helmctlv2.HelmRelease)
+	if !ok {
+		return false, fmt.Errorf("failed to convert runtime.Object to HelmRelease")
 	}
 
 	if layer.GetName() != layerOwner(theHr) {

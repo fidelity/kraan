@@ -415,7 +415,7 @@ func checkOwnerAndLabels(u testutils.TestUtil, name string, results, exepcted in
 		return false
 	}
 
-	hr := client.Object(testData.Inputs[1].([]runtime.Object)[0].(*helmctlv2.HelmRelease))
+	hr := testData.Inputs[1].([]runtime.Object)[0].(client.Object)
 	key := client.ObjectKeyFromObject(hr)
 
 	e := c.Get(context.Background(), key, hr)

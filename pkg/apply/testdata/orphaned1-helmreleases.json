@@ -9,6 +9,7 @@
                     "finalizers.fluxcd.io"
                 ],
                 "generation": 1,
+                "resourceVersion": "1",
                 "labels": {
                     "kraan/layer": "bootstrap",
                     "orphaned": "2021-03-01T00:00.00-05.00"

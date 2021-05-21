@@ -10,6 +10,8 @@ metadata:
   namespace: {{.Release.Namespace}}
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: source-controller
@@ -37,6 +39,10 @@ spec:
 {{ toYaml .Values.global.prometheusAnnotations | indent 8 }}
         {{- end }}
     spec:
+      # Required for AWS IAM Role bindings
+      # https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts-technical-overview.html
+      securityContext:
+        fsGroup: 1337
       containers:
       - name: manager
         args:
@@ -62,13 +68,15 @@ spec:
         imagePullPolicy: {{ .Values.gotk.helmController.image.imagePullPolicy | default "IfNotPresent" }}
         livenessProbe:
           httpGet:
-            path: /
-            port: http
+            path: /healthz
+            port: healthz
         ports:
         - containerPort: 9090
           name: http
         - containerPort: 8080
           name: http-prom
+        - containerPort: 9440
+          name: healthz
         readinessProbe:
           httpGet:
             path: /

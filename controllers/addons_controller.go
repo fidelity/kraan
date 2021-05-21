@@ -99,9 +99,7 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 	}
 	err = ctl.Watch(
 		&source.Kind{Type: &sourcev1.GitRepository{}},
-		&handler.EnqueueRequestsFromMapFunc{
-			ToRequests: handler.ToRequestsFunc(r.repoMapperFunc),
-		},
+		handler.EnqueueRequestsFromMapFunc(r.repoMapperFunc),
 		predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
 				r.Log.V(1).Info("create event for GitRepository", append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object)...)...)
@@ -109,13 +107,13 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
 				r.Log.V(1).Info("update event", append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.ObjectNew)...)...)
-				if diff := cmp.Diff(e.MetaOld, e.MetaNew); len(diff) > 0 {
+				if diff := cmp.Diff(e.ObjectOld.(metav1.Object), e.ObjectNew.(metav1.Object)); len(diff) > 0 {
 					r.Log.V(1).Info("update event meta change", append(logging.GetFunctionAndSource(logging.MyCaller), append(logging.GetObjKindNamespaceName(e.ObjectNew), "diff", diff)...)...)
 				}
-				if diff := cmp.Diff(e.ObjectOld, e.ObjectNew); len(diff) > 0 {
+				if diff := cmp.Diff(e.ObjectOld.(runtime.Object), e.ObjectNew.(runtime.Object)); len(diff) > 0 {
 					r.Log.V(1).Info("update event object change", append(logging.GetFunctionAndSource(logging.MyCaller), append(logging.GetObjKindNamespaceName(e.ObjectNew), "diff", diff)...)...)
 				}
-				if e.MetaOld == nil || e.MetaNew == nil {
+				if e.ObjectOld.(metav1.Object) == nil || e.ObjectNew.(metav1.Object) == nil {
 					r.Log.Error(fmt.Errorf("nill object passed to watcher"), "skipping processing",
 						append(logging.GetFunctionAndSource(logging.MyCaller), "data", logging.LogJSON(e))...)
 					return false
@@ -181,9 +179,7 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 	}
 	err = ctl.Watch(
 		&source.Kind{Type: &kraanv1alpha1.AddonsLayer{}},
-		&handler.EnqueueRequestsFromMapFunc{
-			ToRequests: handler.ToRequestsFunc(r.layerMapperFunc),
-		},
+		handler.EnqueueRequestsFromMapFunc(r.layerMapperFunc),
 		predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
 				r.Log.V(1).Info("create event for AddonsLayer, not processing will be processed by controller reconciler",
@@ -192,15 +188,16 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
 				r.Log.V(1).Info("update event for AddonsLayer", append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.ObjectNew)...)...)
-				if diff := cmp.Diff(e.MetaOld, e.MetaNew); len(diff) > 0 {
+				if diff := cmp.Diff(e.ObjectOld.(metav1.Object), e.ObjectNew.(metav1.Object)); len(diff) > 0 {
+
 					r.Log.V(1).Info("update event meta change for AddonsLayer",
 						append(logging.GetFunctionAndSource(logging.MyCaller), append(logging.GetObjKindNamespaceName(e.ObjectNew), "diff", diff)...)...)
 				}
-				if diff := cmp.Diff(e.ObjectOld, e.ObjectNew); len(diff) > 0 {
+				if diff := cmp.Diff(e.ObjectOld.(runtime.Object), e.ObjectNew.(runtime.Object)); len(diff) > 0 {
 					r.Log.V(1).Info("update event object change for AddonsLayer",
 						append(logging.GetFunctionAndSource(logging.MyCaller), append(logging.GetObjKindNamespaceName(e.ObjectNew), "diff", diff)...)...)
 				}
-				if e.MetaOld == nil || e.MetaNew == nil {
+				if e.ObjectOld.(metav1.Object) == nil || e.ObjectNew.(metav1.Object) == nil {
 					r.Log.Error(fmt.Errorf("nill object passed to watcher for AddonsLayer"), "skipping processing",
 						append(logging.GetFunctionAndSource(logging.MyCaller), "data", logging.LogJSON(e))...)
 					return false
@@ -266,10 +263,10 @@ func predicates(logger logr.Logger) predicate.Funcs {
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			logger.V(1).Info("update event", append(logging.GetFunctionAndSource(logging.MyCaller),
 				append(logging.GetObjKindNamespaceName(e.ObjectNew), "layer", logging.GetLayer(e.ObjectNew))...)...)
-			if diff := cmp.Diff(e.MetaOld, e.MetaNew); len(diff) > 0 {
+			if diff := cmp.Diff(e.ObjectOld.(metav1.Object), e.ObjectNew.(metav1.Object)); len(diff) > 0 {
 				logger.V(1).Info("update event meta change", append(logging.GetFunctionAndSource(logging.MyCaller), append(logging.GetObjKindNamespaceName(e.ObjectNew), "diff", diff)...)...)
 			}
-			if diff := cmp.Diff(e.ObjectOld, e.ObjectNew); len(diff) > 0 {
+			if diff := cmp.Diff(e.ObjectOld.(runtime.Object), e.ObjectNew.(runtime.Object)); len(diff) > 0 {
 				logger.V(1).Info("update event object change", append(logging.GetFunctionAndSource(logging.MyCaller), append(logging.GetObjKindNamespaceName(e.ObjectNew), "diff", diff)...)...)
 			}
 			return true
@@ -719,11 +716,10 @@ func (r *AddonsLayerReconciler) updateRequeue(l layers.Layer) (res ctrl.Result, 
 // Reconcile process AddonsLayers custom resources.
 // +kubebuilder:rbac:groups=kraan.io,resources=addons,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kraan.io,resources=addons/status,verbs=get;update;patch
-func (r *AddonsLayerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) { // nolint:funlen,gocyclo,gocognit // ok
+func (r *AddonsLayerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) { // nolint:funlen,gocyclo,gocognit // ok
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
 
-	ctx := r.Context
 	reconcileStart := time.Now()
 
 	var addonsLayer *kraanv1alpha1.AddonsLayer = &kraanv1alpha1.AddonsLayer{}
@@ -899,13 +895,13 @@ func (r *AddonsLayerReconciler) update(ctx context.Context, a *kraanv1alpha1.Add
 	return nil
 }
 
-func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.Request { // nolint:gocyclo //ok
+func (r *AddonsLayerReconciler) repoMapperFunc(o client.Object) []reconcile.Request { // nolint:gocyclo //ok
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
 
-	srcRepo, ok := a.Object.(*sourcev1.GitRepository)
+	srcRepo, ok := o.(*sourcev1.GitRepository)
 	if !ok {
-		r.Log.Error(fmt.Errorf("unable to cast object to GitRepository"), "skipping processing", logging.GetObjKindNamespaceName(a.Object))
+		r.Log.Error(fmt.Errorf("unable to cast object to GitRepository"), "skipping processing", logging.GetObjKindNamespaceName(o))
 		return []reconcile.Request{}
 	}
 
@@ -950,13 +946,13 @@ func (r *AddonsLayerReconciler) repoMapperFunc(a handler.MapObject) []reconcile.
 	return addons
 }
 
-func (r *AddonsLayerReconciler) layerMapperFunc(a handler.MapObject) []reconcile.Request {
+func (r *AddonsLayerReconciler) layerMapperFunc(o client.Object) []reconcile.Request {
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
 
-	src, ok := a.Object.(*kraanv1alpha1.AddonsLayer)
+	src, ok := o.(*kraanv1alpha1.AddonsLayer)
 	if !ok {
-		r.Log.Error(fmt.Errorf("unable to cast object to AddonsLayer"), "skipping processing", logging.GetObjKindNamespaceName(a.Object))
+		r.Log.Error(fmt.Errorf("unable to cast object to AddonsLayer"), "skipping processing", logging.GetObjKindNamespaceName(o))
 		return []reconcile.Request{}
 	}
 
@@ -980,7 +976,7 @@ func (r *AddonsLayerReconciler) layerMapperFunc(a handler.MapObject) []reconcile
 	return addons
 }
 
-func (r *AddonsLayerReconciler) indexHelmReleaseByOwner(o runtime.Object) []string {
+func (r *AddonsLayerReconciler) indexHelmReleaseByOwner(o client.Object) []string {
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
 
@@ -1008,7 +1004,7 @@ func (r *AddonsLayerReconciler) indexHelmReleaseByOwner(o runtime.Object) []stri
 	return []string{owner.Name}
 }
 
-func (r *AddonsLayerReconciler) indexHelmRepoByOwner(o runtime.Object) []string {
+func (r *AddonsLayerReconciler) indexHelmRepoByOwner(o client.Object) []string {
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
 

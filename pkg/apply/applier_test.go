@@ -414,15 +414,11 @@ func checkOwnerAndLabels(u testutils.TestUtil, name string, results, exepcted in
 
 		return false
 	}
-	hr := testData.Inputs[1].([]runtime.Object)[0]
-	key, e := client.ObjectKeyFromObject(hr)
-	if e != nil {
-		t.Fatalf("failed to get an ObjectKey, %s", e)
 
-		return false
-	}
+	hr := client.Object(testData.Inputs[1].([]runtime.Object)[0].(*helmctlv2.HelmRelease))
+	key := client.ObjectKeyFromObject(hr)
 
-	e = c.Get(context.Background(), key, hr)
+	e := c.Get(context.Background(), key, hr)
 	if e != nil {
 		t.Fatalf("failed to get an HelmRelease, %s", e)
 
@@ -802,14 +798,9 @@ func checkOrphanLabel(u testutils.TestUtil, name string, actual, expected interf
 		return false
 	}
 
-	key, e := client.ObjectKeyFromObject(hr)
-	if e != nil {
-		t.Fatalf("failed to get an ObjectKey, %s", e)
+	key := client.ObjectKeyFromObject(hr)
 
-		return false
-	}
-
-	e = c.Get(context.Background(), key, hr)
+	e := c.Get(context.Background(), key, hr)
 	if e != nil {
 		t.Fatalf("failed to get an HelmRelease, %s", e)
 
@@ -950,14 +941,9 @@ func checkAdoption(u testutils.TestUtil, name string, results, exepcted interfac
 		return false
 	}
 
-	key, e := client.ObjectKeyFromObject(hr)
-	if e != nil {
-		t.Fatalf("failed to get an ObjectKey, %s", e)
+	key := client.ObjectKeyFromObject(hr)
 
-		return false
-	}
-
-	e = c.Get(context.Background(), key, hr)
+	e := c.Get(context.Background(), key, hr)
 	if e != nil {
 		t.Fatalf("failed to get an HelmRelease, %s", e)
 
@@ -1086,14 +1072,9 @@ func checkOrphaning(u testutils.TestUtil, name string, results, exepcted interfa
 		return false
 	}
 
-	key, e := client.ObjectKeyFromObject(hr)
-	if e != nil {
-		t.Fatalf("failed to get an ObjectKey, %s", e)
+	key := client.ObjectKeyFromObject(hr)
 
-		return false
-	}
-
-	e = c.Get(context.Background(), key, hr)
+	e := c.Get(context.Background(), key, hr)
 	if e != nil {
 		t.Fatalf("failed to get an HelmRelease, %s", e)
 

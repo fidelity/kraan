@@ -91,7 +91,7 @@ gotk:
     image:
       repository: ghcr.io/fluxcd
       name: source-controller
-      tag: v0.7.1
+      tag: v0.12.2
       imagePullPolicy:
 
     imagePullSecrets:
@@ -143,7 +143,7 @@ gotk:
     image:
       repository: ghcr.io/fluxcd
       name: helm-controller
-      tag: v0.6.1
+      tag: v0.10.1
       imagePullPolicy:
 
     proxy: true

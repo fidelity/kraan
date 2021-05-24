@@ -632,7 +632,7 @@ func (a KubectlLayerApplier) orphanLabel(ctx context.Context, hr *helmctlv2.Helm
 	}
 	// Label not present, add it
 	now := metav1.Now()
-	labels[orphanedLabel] = strings.ReplaceAll(now.Format(time.RFC3339), ":", ".")
+	labels[orphanedLabel] = strings.ReplaceAll(now.UTC().Format(time.RFC3339), ":", ".")
 	hr.SetLabels(labels)
 	err := a.client.Update(ctx, hr, &client.UpdateOptions{})
 	if err != nil {

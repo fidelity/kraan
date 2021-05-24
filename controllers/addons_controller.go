@@ -107,13 +107,11 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
 				r.Log.V(1).Info("update event", append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.ObjectNew)...)...)
-				if diff := cmp.Diff(e.ObjectOld.(metav1.Object), e.ObjectNew.(metav1.Object)); len(diff) > 0 {
-					r.Log.V(1).Info("update event meta change", append(logging.GetFunctionAndSource(logging.MyCaller), append(logging.GetObjKindNamespaceName(e.ObjectNew), "diff", diff)...)...)
-				}
-				if diff := cmp.Diff(e.ObjectOld.(runtime.Object), e.ObjectNew.(runtime.Object)); len(diff) > 0 {
+
+				if diff := cmp.Diff(e.ObjectOld, e.ObjectNew); len(diff) > 0 {
 					r.Log.V(1).Info("update event object change", append(logging.GetFunctionAndSource(logging.MyCaller), append(logging.GetObjKindNamespaceName(e.ObjectNew), "diff", diff)...)...)
 				}
-				if e.ObjectOld.(metav1.Object) == nil || e.ObjectNew.(metav1.Object) == nil {
+				if e.ObjectOld == nil || e.ObjectNew == nil {
 					r.Log.Error(fmt.Errorf("nill object passed to watcher"), "skipping processing",
 						append(logging.GetFunctionAndSource(logging.MyCaller), "data", logging.LogJSON(e))...)
 					return false
@@ -188,16 +186,11 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
 				r.Log.V(1).Info("update event for AddonsLayer", append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.ObjectNew)...)...)
-				if diff := cmp.Diff(e.ObjectOld.(metav1.Object), e.ObjectNew.(metav1.Object)); len(diff) > 0 {
-
-					r.Log.V(1).Info("update event meta change for AddonsLayer",
-						append(logging.GetFunctionAndSource(logging.MyCaller), append(logging.GetObjKindNamespaceName(e.ObjectNew), "diff", diff)...)...)
-				}
-				if diff := cmp.Diff(e.ObjectOld.(runtime.Object), e.ObjectNew.(runtime.Object)); len(diff) > 0 {
+				if diff := cmp.Diff(e.ObjectOld, e.ObjectNew); len(diff) > 0 {
 					r.Log.V(1).Info("update event object change for AddonsLayer",
 						append(logging.GetFunctionAndSource(logging.MyCaller), append(logging.GetObjKindNamespaceName(e.ObjectNew), "diff", diff)...)...)
 				}
-				if e.ObjectOld.(metav1.Object) == nil || e.ObjectNew.(metav1.Object) == nil {
+				if e.ObjectOld == nil || e.ObjectNew == nil {
 					r.Log.Error(fmt.Errorf("nill object passed to watcher for AddonsLayer"), "skipping processing",
 						append(logging.GetFunctionAndSource(logging.MyCaller), "data", logging.LogJSON(e))...)
 					return false
@@ -263,10 +256,7 @@ func predicates(logger logr.Logger) predicate.Funcs {
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			logger.V(1).Info("update event", append(logging.GetFunctionAndSource(logging.MyCaller),
 				append(logging.GetObjKindNamespaceName(e.ObjectNew), "layer", logging.GetLayer(e.ObjectNew))...)...)
-			if diff := cmp.Diff(e.ObjectOld.(metav1.Object), e.ObjectNew.(metav1.Object)); len(diff) > 0 {
-				logger.V(1).Info("update event meta change", append(logging.GetFunctionAndSource(logging.MyCaller), append(logging.GetObjKindNamespaceName(e.ObjectNew), "diff", diff)...)...)
-			}
-			if diff := cmp.Diff(e.ObjectOld.(runtime.Object), e.ObjectNew.(runtime.Object)); len(diff) > 0 {
+			if diff := cmp.Diff(e.ObjectOld, e.ObjectNew); len(diff) > 0 {
 				logger.V(1).Info("update event object change", append(logging.GetFunctionAndSource(logging.MyCaller), append(logging.GetObjKindNamespaceName(e.ObjectNew), "diff", diff)...)...)
 			}
 			return true

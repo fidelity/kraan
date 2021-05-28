@@ -130,7 +130,7 @@ flux --version >/dev/null 2>&1
 ret_code="${?}"
 if [[ "${ret_code}" != "0" ]] ; then
     echo "Installing latest version of flux cli"
-    curl -s https://toolkit.fluxcd.io/install.sh | $sudo bash
+    curl -s https://fluxcd.io/install.sh | $sudo bash
     flux --version >/dev/null 2>&1 
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then

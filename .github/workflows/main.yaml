@@ -126,3 +126,7 @@ jobs:
           git config --global user.name "github-actions"
           git checkout go.mod go.sum
           make release
+      - name: tag repository
+        run: |
+          git tag -a $VERSION -f -m "tag version $VERSION"
+          git push origin --tags

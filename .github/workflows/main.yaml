@@ -95,7 +95,7 @@ jobs:
           kubectl apply -f ./testdata/addons/addons.yaml
 
           echo "waiting 5m for test to pass..."
-          kubectl wait al --for=condition=Deployed --all --timeout=5m || (kubectl get po -A && false)
+          kubectl wait al --for=condition=Deployed --all --timeout=5m || (kubectl get po -A && kubectl describe al -A && false)
       - name: Orphan Integration Test
         run: |
           echo "setting up test..."

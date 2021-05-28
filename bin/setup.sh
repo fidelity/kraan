@@ -5,7 +5,7 @@ kubebuilder_version=2.3.1
 mockgen_version=v1.4.4
 helm_version=v3.3.4
 kind_version=v0.9.0
-kubectl_version=v1.17.12
+kubectl_version=v1.18.19
 kustomize_version=v3.8.5
 
 function usage()

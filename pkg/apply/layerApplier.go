@@ -356,7 +356,10 @@ func (a KubectlLayerApplier) isObjectPresent(ctx context.Context, layer layers.L
 	defer logging.TraceExit(a.getLog(layer))
 	key := client.ObjectKeyFromObject(obj)
 
-	existing := obj.DeepCopyObject().(client.Object)
+	existing, ok := obj.DeepCopyObject().(client.Object)
+	if !ok {
+		return false, fmt.Errorf("failed to convert runtime.Object to client.Object")
+	}
 
 	err := a.client.Get(ctx, key, existing)
 	if err != nil {

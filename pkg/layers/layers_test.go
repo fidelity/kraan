@@ -20,7 +20,7 @@ import (
 	//k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	extv1b1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake" // nolint: staticcheck // ok for now
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/internal/testutils"
@@ -120,7 +120,7 @@ func getLayer(layerName, testDataFileName, reposDataFileName string) (layers.Lay
 	if err != nil {
 		return nil, err
 	}
-	client := fake.NewFakeClientWithScheme(testScheme, layerList, gitReposList)
+	client := fake.NewClientBuilder().WithScheme(testScheme).WithRuntimeObjects(layerList, gitReposList).Build()
 	fakeK8sClient = fakeK8s.NewSimpleClientset()
 	data := getFromList(layerName, layerList)
 	if data == nil {

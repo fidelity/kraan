@@ -21,7 +21,7 @@ import (
 	fakeK8s "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake" // nolint: staticcheck // ok for now
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 	"github.com/fidelity/kraan/pkg/apply"
@@ -189,8 +189,7 @@ func getApplierParams(t *testing.T, addonsFileNames, helmReleasesFileNames []str
 	}
 
 	if client == nil {
-		client = fake.NewFakeClientWithScheme(scheme,
-			addonsList, helmReleasesList /*, gitReposList, helmReposList*/)
+		client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(addonsList, helmReleasesList).Build()
 	}
 
 	return []interface{}{
@@ -265,7 +264,7 @@ func fakeAddonsLayer(sourcePath, layerName string, layerUID types.UID) *kraanv1a
 
 func TestNewApplier(t *testing.T) {
 	logger := testlogr.TestLogger{T: t}
-	client := fake.NewFakeClientWithScheme(testScheme)
+	client := fake.NewClientBuilder().WithScheme(testScheme).Build()
 	applier, err := apply.NewApplier(client, logger, testScheme)
 	if err != nil {
 		t.Fatalf("The NewApplier constructor returned an error: %s", err)
@@ -284,7 +283,7 @@ func TestNewApplierWithMockKubectl(t *testing.T) {
 	apply.SetNewKubectlFunc(newKFunc)
 
 	logger := testlogr.TestLogger{T: t}
-	client := fake.NewFakeClientWithScheme(testScheme)
+	client := fake.NewClientBuilder().WithScheme(testScheme).Build()
 	applier, err := apply.NewApplier(client, logger, testScheme)
 	if err != nil {
 		t.Fatalf("The NewApplier constructor returned an error: %s", err)
@@ -415,7 +414,12 @@ func checkOwnerAndLabels(u testutils.TestUtil, name string, results, exepcted in
 		return false
 	}
 
-	hr := testData.Inputs[1].([]runtime.Object)[0].(client.Object)
+	hr, ok := testData.Inputs[1].([]runtime.Object)[0].(client.Object)
+	if !ok {
+		t.Fatalf("failed to cast input data to client.Clent")
+		return false
+	}
+
 	key := client.ObjectKeyFromObject(hr)
 
 	e := c.Get(context.Background(), key, hr)
@@ -779,7 +783,7 @@ func TestLabelValue(t *testing.T) {
 	}
 }
 
-func checkOrphanLabel(u testutils.TestUtil, name string, actual, expected interface{}) bool { // nolint: funlen,gocyclo // ok
+func checkOrphanLabel(u testutils.TestUtil, name string, actual, expected interface{}) bool {
 	t := u.Testing()
 	testData := u.TestData()
 	a := castToApplier(t, testData.Config)
@@ -922,7 +926,7 @@ func TestOrphanLabel(t *testing.T) { // nolint: funlen //ok
 	}
 }
 
-func checkAdoption(u testutils.TestUtil, name string, results, exepcted interface{}) bool { // nolint: gocyclo // ok
+func checkAdoption(u testutils.TestUtil, name string, results, exepcted interface{}) bool {
 	t := u.Testing()
 	testData := u.TestData()
 	a := castToApplier(t, testData.Config)

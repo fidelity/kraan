@@ -88,13 +88,13 @@ clean-integration-test: clean-integration-coverage
 
 integration-test: ${INTEGRATION_TEST_ARTIFACT}
 ${INTEGRATION_TEST_ARTIFACT}: ${GO_SOURCES}
-	if [ -n "${GO_TEST_SOURCES}" ]; then
+	if [ -n "${GO_TEST_SOURCES}" ]; then \
 		{ echo "${YELLOW}Running integration test${NC_DIR}" && \
 		  mkdir -p $(dir ${INTEGRATION_TEST_ARTIFACT}) && \
 		  go test -coverprofile=$@ --tags=integration && \
 		  echo "${GREEN}TEST PASSED${NC}"; } || \
         {  echo "${RED}TEST FAILED${NC}" && \
-		  exit 1; }
+		  exit 1; } \
 	fi
 
 

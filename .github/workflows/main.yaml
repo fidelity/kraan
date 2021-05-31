@@ -127,13 +127,14 @@ jobs:
           git checkout go.mod go.sum
           make release
   tag-repo:
+    needs: helm-publish
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
       - name: tag repository
-        # if: github.event_name == 'push'
+        if: github.event_name == 'push'
         run: |
           export VERSION=$(cat VERSION)
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"

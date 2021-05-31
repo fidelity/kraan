@@ -126,9 +126,16 @@ jobs:
           git config --global user.name "github-actions"
           git checkout go.mod go.sum
           make release
+  tag-repo:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - name: tag repository
         # if: github.event_name == 'push'
         run: |
+          pwd
           export VERSION=$(cat VERSION)
           git tag -a $VERSION -m "tag version $VERSION"
           git push origin --tags

@@ -127,6 +127,8 @@ jobs:
           git checkout go.mod go.sum
           make release
       - name: tag repository
+        # if: github.event_name == 'push'
         run: |
-          git tag -a $VERSION -f -m "tag version $VERSION"
+          export VERSION=$(cat VERSION)
+          git tag -a $VERSION -m "tag version $VERSION"
           git push origin --tags

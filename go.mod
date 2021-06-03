@@ -19,15 +19,14 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.7.1
 	go.uber.org/zap v1.16.0
-	golang.org/x/mod v0.3.0
-	golang.org/x/tools v0.0.0-20201002184944-ecd9fd270d5d // indirect
+	golang.org/x/mod v0.3.1-0.20200828183125-ce943fd02449
 	helm.sh/helm/v3 v3.5.2
-	k8s.io/api v0.20.2
+	k8s.io/api v0.21.1
 	k8s.io/apiextensions-apiserver v0.20.2
-	k8s.io/apimachinery v0.20.4
-	k8s.io/cli-runtime v0.20.2
-	k8s.io/client-go v0.20.2
-	k8s.io/kubectl v0.20.1
+	k8s.io/apimachinery v0.21.1
+	k8s.io/cli-runtime v0.21.1
+	k8s.io/client-go v0.21.1
+	k8s.io/kubectl v0.21.1
 	sigs.k8s.io/controller-runtime v0.8.3
 	sigs.k8s.io/kind v0.10.0
 )

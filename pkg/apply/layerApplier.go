@@ -24,6 +24,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -350,15 +351,17 @@ func (a KubectlLayerApplier) getHelmRepos(ctx context.Context, layer layers.Laye
 	return foundHrs, nil
 }
 
-func (a KubectlLayerApplier) isObjectPresent(ctx context.Context, layer layers.Layer, obj runtime.Object) (bool, error) {
+func (a KubectlLayerApplier) isObjectPresent(ctx context.Context, layer layers.Layer, obj client.Object) (bool, error) {
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
-	key, err := client.ObjectKeyFromObject(obj)
-	if err != nil {
-		return false, errors.Wrapf(err, "%s - failed to get an ObjectKey '%s'", logging.CallerStr(logging.Me), getObjLabel(obj))
+	key := client.ObjectKeyFromObject(obj)
+
+	existing, ok := obj.DeepCopyObject().(client.Object)
+	if !ok {
+		return false, fmt.Errorf("failed to convert runtime.Object to client.Object")
 	}
-	existing := obj.DeepCopyObject()
-	err = a.client.Get(ctx, key, existing)
+
+	err := a.client.Get(ctx, key, existing)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			removeResourceVersion(obj)
@@ -371,7 +374,7 @@ func (a KubectlLayerApplier) isObjectPresent(ctx context.Context, layer layers.L
 	return true, nil
 }
 
-func (a KubectlLayerApplier) applyObject(ctx context.Context, layer layers.Layer, obj runtime.Object) error {
+func (a KubectlLayerApplier) applyObject(ctx context.Context, layer layers.Layer, obj client.Object) error {
 	logging.TraceCall(a.getLog(layer))
 	defer logging.TraceExit(a.getLog(layer))
 	a.logDebug("applying object", layer, logging.GetObjKindNamespaceName(obj)...)
@@ -632,7 +635,7 @@ func (a KubectlLayerApplier) orphanLabel(ctx context.Context, hr *helmctlv2.Helm
 	}
 	// Label not present, add it
 	now := metav1.Now()
-	labels[orphanedLabel] = strings.ReplaceAll(now.Format(time.RFC3339), ":", ".")
+	labels[orphanedLabel] = strings.ReplaceAll(now.UTC().Format(time.RFC3339), ":", ".")
 	hr.SetLabels(labels)
 	err := a.client.Update(ctx, hr, &client.UpdateOptions{})
 	if err != nil {
@@ -672,12 +675,9 @@ func (a KubectlLayerApplier) Orphan(ctx context.Context, layer layers.Layer, hr 
 	defer logging.TraceExit(a.getLog(layer))
 
 	// label HR to as orphan if not already labelled, set label value to time now.
-	key, err := client.ObjectKeyFromObject(hr)
-	if err != nil {
-		return false, errors.Wrapf(err, "%s - failed to get an ObjectKey '%s'", logging.CallerStr(logging.Me), getObjLabel(hr))
-	}
+	key := client.ObjectKeyFromObject(hr)
 	existing := hr.DeepCopyObject()
-	err = a.client.Get(ctx, key, existing)
+	err = a.client.Get(ctx, key, existing.(client.Object))
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			removeResourceVersion(hr)
@@ -963,7 +963,7 @@ func (a KubectlLayerApplier) ApplyWasSuccessful(ctx context.Context, layer layer
 	}
 
 	for key, hr := range clusterHrs {
-		if !fluxmeta.InReadyCondition(hr.Status.Conditions) {
+		if !apimeta.IsStatusConditionTrue(hr.Status.Conditions, fluxmeta.ReadyCondition) {
 			a.logInfo("unsuccessful HelmRelease deployment", layer, append(logging.GetObjKindNamespaceName(hr), "resource", hr)...)
 			return false, key, nil
 		}

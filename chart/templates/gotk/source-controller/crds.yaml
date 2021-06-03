@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.3.0
+    controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: {{.Release.Namespace}}
@@ -190,7 +190,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.3.0
+    controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: {{.Release.Namespace}}
@@ -203,6 +203,8 @@ spec:
     listKind: GitRepositoryList
     plural: gitrepositories
     singular: gitrepository
+    shortNames:
+    - gitrepo
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -247,6 +249,9 @@ spec:
               interval:
                 description: The interval at which to check for repository updates.
                 type: string
+              recurseSubmodules:
+                description: When enabled, after the clone is created, initializes all submodules within, using their default settings. This option is available only when using the 'go-git' GitImplementation.
+                type: boolean
               ref:
                 description: The Git reference to checkout and monitor for changes, defaults to master branch.
                 properties:
@@ -405,7 +410,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.3.0
+    controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: {{.Release.Namespace}}
@@ -418,6 +423,8 @@ spec:
     listKind: HelmChartList
     plural: helmcharts
     singular: helmchart
+    shortNames:
+    - hc
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -488,8 +495,13 @@ spec:
                 description: This flag tells the controller to suspend the reconciliation of this source.
                 type: boolean
               valuesFile:
-                description: Alternative values file to use as the default chart values, expected to be a relative path in the SourceRef. Ignored when omitted.
+                description: Alternative values file to use as the default chart values, expected to be a relative path in the SourceRef. Deprecated in favor of ValuesFiles, for backwards compatibility the file defined here is merged before the ValuesFiles items. Ignored when omitted.
                 type: string
+              valuesFiles:
+                description: Alternative list of values files to use as the chart values (values.yaml is not included by default), expected to be a relative path in the SourceRef. Values files are merged in the order of this list with the last file overriding the first. Ignored when omitted.
+                items:
+                  type: string
+                type: array
               version:
                 default: '*'
                 description: The chart version semver expression, ignored for charts from GitRepository and Bucket sources. Defaults to latest when omitted.
@@ -596,7 +608,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.3.0
+    controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: {{.Release.Namespace}}
@@ -608,6 +620,8 @@ spec:
     kind: HelmRepository
     listKind: HelmRepositoryList
     plural: helmrepositories
+    shortNames:
+    - helmrepo
     singular: helmrepository
   scope: Namespaced
   versions:

@@ -9,6 +9,7 @@
                     "finalizers.fluxcd.io"
                 ],
                 "generation": 1,
+                "resourceVersion": "1",
                 "labels": {
                     "kraan/layer": "bootstrap"
                 },

@@ -95,7 +95,7 @@ jobs:
           kubectl apply -f ./testdata/addons/addons.yaml
 
           echo "waiting 5m for test to pass..."
-          kubectl wait al --for=condition=Deployed --all --timeout=5m || (kubectl get po -A && false)
+          kubectl wait al --for=condition=Deployed --all --timeout=5m || (kubectl get po -A && kubectl describe al -A && false)
       - name: Orphan Integration Test
         run: |
           echo "setting up test..."
@@ -126,3 +126,18 @@ jobs:
           git config --global user.name "github-actions"
           git checkout go.mod go.sum
           make release
+  tag-repo:
+    needs: helm-publish
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: tag repository
+        if: github.event_name == 'push'
+        run: |
+          export VERSION=$(cat VERSION)
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions"
+          git tag -a $VERSION -m "tag version $VERSION"
+          git push origin --tags

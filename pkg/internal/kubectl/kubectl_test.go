@@ -340,7 +340,7 @@ func (s *Setup) WithArgs(expectedArgs ...string) *Setup {
 	s.args = expectedArgs
 	s.cmdArgs = append([]string{s.subCmd}, expectedArgs...)
 	s.runArgs = s.cmdArgs
-	s.dryRunArgs = append(s.runArgs, "--server-dry-run")
+	s.dryRunArgs = append(s.runArgs, "--dry-run=server")
 	if s.expectJSON {
 		jsonArgs := []string{"-o", "json"}
 		s.runArgs = append(s.runArgs, jsonArgs...)

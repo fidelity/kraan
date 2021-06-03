@@ -9,6 +9,7 @@
                     "finalizers.fluxcd.io"
                 ],
                 "generation": 1,
+                "resourceVersion": "1",
                 "labels": {
                     "kraan/layer": "apps"
                 },
@@ -104,6 +105,7 @@
                     "finalizers.fluxcd.io"
                 ],
                 "generation": 1,
+                "resourceVersion": "1",
                 "labels": {
                     "kraan/layer": "base"
                 },
@@ -202,6 +204,7 @@
                     "finalizers.fluxcd.io"
                 ],
                 "generation": 1,
+                "resourceVersion": "1",
                 "labels": {
                     "kraan/layer": "bootstrap"
                 },
@@ -310,6 +313,7 @@
                     "finalizers.fluxcd.io"
                 ],
                 "generation": 1,
+                "resourceVersion": "1",
                 "labels": {
                     "kraan/layer": "bootstrap"
                 },
@@ -407,6 +411,7 @@
                     "finalizers.fluxcd.io"
                 ],
                 "generation": 1,
+                "resourceVersion": "1",
                 "labels": {
                     "kraan/layer": "bootstrap"
                 },
@@ -504,6 +509,7 @@
                     "finalizers.fluxcd.io"
                 ],
                 "generation": 1,
+                "resourceVersion": "1",
                 "labels": {
                     "kraan/layer": "mgmt"
                 },

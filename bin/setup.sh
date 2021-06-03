@@ -5,7 +5,7 @@ kubebuilder_version=2.3.1
 mockgen_version=v1.4.4
 helm_version=v3.3.4
 kind_version=v0.9.0
-kubectl_version=v1.17.12
+kubectl_version=v1.19.3
 kustomize_version=v3.8.5
 
 function usage()
@@ -130,7 +130,7 @@ flux --version >/dev/null 2>&1
 ret_code="${?}"
 if [[ "${ret_code}" != "0" ]] ; then
     echo "Installing latest version of flux cli"
-    curl -s https://toolkit.fluxcd.io/install.sh | $sudo bash
+    curl -s https://fluxcd.io/install.sh | $sudo bash
     flux --version >/dev/null 2>&1 
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then

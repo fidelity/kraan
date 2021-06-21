@@ -11,7 +11,7 @@ require (
 	github.com/go-logr/logr v0.4.0
 	github.com/go-logr/zapr v0.4.0 // indirect
 	github.com/golang/mock v1.5.0
-	github.com/google/go-cmp v0.5.2
+	github.com/google/go-cmp v0.5.4
 	github.com/onsi/ginkgo v1.14.1
 	github.com/onsi/gomega v1.10.2
 	github.com/paulcarlton-ww/goutils/pkg/kubectl v0.0.4
@@ -20,13 +20,12 @@ require (
 	github.com/prometheus/client_golang v1.7.1
 	go.uber.org/zap v1.16.0
 	golang.org/x/mod v0.3.0
-	golang.org/x/tools v0.0.0-20201002184944-ecd9fd270d5d // indirect
 	helm.sh/helm/v3 v3.5.2
-	k8s.io/api v0.20.2
+	k8s.io/api v0.21.2
 	k8s.io/apiextensions-apiserver v0.20.2
-	k8s.io/apimachinery v0.20.4
+	k8s.io/apimachinery v0.21.2
 	k8s.io/cli-runtime v0.20.2
-	k8s.io/client-go v0.20.2
+	k8s.io/client-go v0.21.2
 	k8s.io/kubectl v0.20.1
 	sigs.k8s.io/controller-runtime v0.8.3
 	sigs.k8s.io/kind v0.10.0

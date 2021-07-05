@@ -18,7 +18,7 @@ require (
 	github.com/paulcarlton-ww/goutils/pkg/testutils v0.1.42
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.7.1
-	go.uber.org/zap v1.16.0
+	go.uber.org/zap v1.18.1
 	golang.org/x/mod v0.3.0
 	golang.org/x/tools v0.0.0-20201002184944-ecd9fd270d5d // indirect
 	helm.sh/helm/v3 v3.5.2

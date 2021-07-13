@@ -42,7 +42,7 @@ const (
 )
 
 var (
-	ownerLabel     string                                            = "kraan/layer"
+	ownerLabel                                                       = "kraan/layer"
 	newKubectlFunc func(logger logr.Logger) (kubectl.Kubectl, error) = kubectl.NewKubectl
 )
 

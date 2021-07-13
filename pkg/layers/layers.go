@@ -196,7 +196,7 @@ func (l *KraanLayer) setStatus(status, message string) {
 	length := len(l.addonsLayer.Status.Conditions)
 	if length > 0 {
 		last := &l.addonsLayer.Status.Conditions[length-1]
-		if last.Message == message && last.Type == status {
+		if last.Message == message && last.Type == status && last.ObservedGeneration == l.addonsLayer.Generation {
 			return
 		}
 		l.addonsLayer.Status.Conditions = []metav1.Condition{}
@@ -207,6 +207,7 @@ func (l *KraanLayer) setStatus(status, message string) {
 		Reason:             status,
 		Status:             metav1.ConditionTrue,
 		LastTransitionTime: metav1.Now(),
+		ObservedGeneration: l.addonsLayer.Generation,
 		Message:            message,
 	})
 	l.addonsLayer.Status.State = status

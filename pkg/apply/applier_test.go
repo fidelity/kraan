@@ -57,7 +57,7 @@ const (
 var (
 	testScheme = runtime.NewScheme()
 	fakeClient client.Client
-	nilTS      *metav1.Time = nil
+	nilTS      *metav1.Time
 )
 
 func init() {
@@ -608,7 +608,7 @@ func TestLayerOwner(t *testing.T) {
 }
 
 func getUID(text types.UID) types.UID {
-	var uid types.UID = text
+	var uid = text
 	return uid
 }
 

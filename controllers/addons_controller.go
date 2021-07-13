@@ -712,7 +712,7 @@ func (r *AddonsLayerReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	reconcileStart := time.Now()
 
-	var addonsLayer *kraanv1alpha1.AddonsLayer = &kraanv1alpha1.AddonsLayer{}
+	addonsLayer := &kraanv1alpha1.AddonsLayer{}
 	if err := r.Get(ctx, req.NamespacedName, addonsLayer); err != nil {
 		if apierrors.IsNotFound(err) {
 			r.Log.Info("addonsLayer deleted", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
@@ -836,6 +836,7 @@ func (r *AddonsLayerReconciler) upgradeFix(ctx context.Context, al *kraanv1alpha
 			newCondition.Type = condition.Type
 			newCondition.Reason = newCondition.Type
 			newCondition.Message = fmt.Sprintf("%s, %s", condition.Reason, condition.Message)
+			newCondition.ObservedGeneration = al.Generation
 			al.Status.Conditions = []metav1.Condition{newCondition}
 			if al.Status.Resources == nil {
 				al.Status.Resources = []kraanv1alpha1.Resource{}

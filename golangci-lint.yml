@@ -187,10 +187,8 @@ linters:
     - funlen
     - gocognit
     - gocyclo
-    - goerr113
     - goheader
     - goimports
-    - golint
     - gomodguard
     - goprintffuncname
     - govet
@@ -207,14 +205,15 @@ linters:
     - noctx
     - nolintlint
     - prealloc
+    - revive
     - rowserrcheck
-    - scopelint
     - sqlclosecheck
     - stylecheck
     - unconvert
     - unparam
     - whitespace
   disable:
+    - goerr113
     - gochecknoglobals
     - gochecknoinits
     - gci
@@ -228,6 +227,7 @@ linters:
     - gosec
     - gosimple
     - nlreturn
+    - scopelint
     - testpackage
     - wsl
 

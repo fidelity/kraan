@@ -90,6 +90,15 @@ spec:
       imagePullSecrets:
       - name: {{ .Values.kraan.kraanController.imagePullSecrets.name }}
       {{- end }}
+      {{- if .Values.kraan.kraanController.priorityClassName }}
+      priorityClassName: {{ .Values.kraan.kraanController.priorityClassName }}
+      {{- end }}
+      {{- if .Values.kraan.kraanController.preemptionPolicy }}
+      preemptionPolicy: {{ .Values.kraan.kraanController.preemptionPolicy }}
+      {{- end }}
+      {{- if .Values.kraan.kraanController.priority }}
+      priority: {{ .Values.kraan.kraanController.priority }}
+      {{- end }}
     {{- if .Values.kraan.kraanController.nodeSelector }}
       nodeSelector:
 {{ toYaml .Values.kraan.kraanController.nodeSelector | indent 8 }}

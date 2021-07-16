@@ -68,6 +68,12 @@ kraan:
     ##
     affinity: {}
 
+    ## https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/
+    ##
+    priorityClassName: {}
+    preemptionPolicy: {}
+    priority: {}
+
 gotk:
   rbac:
     enabled: true
@@ -123,6 +129,12 @@ gotk:
     ##
     affinity: {}
 
+    ## https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/
+    ##
+    priorityClassName: {}
+    preemptionPolicy: {}
+    priority: {}
+
   helmController:
     crd:
       enabled: true
@@ -171,3 +183,9 @@ gotk:
     ## Pod affinity
     ##
     affinity: {}
+
+    ## https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/
+    ##
+    priorityClassName: {}
+    preemptionPolicy: {}
+    priority: {}

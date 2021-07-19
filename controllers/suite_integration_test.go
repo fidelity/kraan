@@ -359,7 +359,7 @@ func getSouceControllerPodName(logf logr.Logger, namespace string) string {
 
 	retries := 25
 	retry := 0
-	pause := time.Second * 5
+	pause := time.Second * 30
 	for {
 		pods, err := getK8sClient().CoreV1().Pods(namespace).List(context.TODO(), listOptions)
 		Expect(err).ToNot(HaveOccurred())

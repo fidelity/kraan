@@ -49,7 +49,7 @@ kraan:
         cpu: 1000m
         memory: 1Gi
       requests:
-        cpu: 500m
+        cpu: 100m
         memory: 128Mi
 
     tolerations:
@@ -110,7 +110,7 @@ gotk:
         cpu: 1000m
         memory: 1Gi
       requests:
-        cpu: 500m
+        cpu: 100m
         memory: 128Mi
 
     tolerations:
@@ -165,7 +165,7 @@ gotk:
         cpu: 1000m
         memory: 1Gi
       requests:
-        cpu: 500m
+        cpu: 100m
         memory: 128Mi
 
     tolerations:

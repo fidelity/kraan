@@ -360,6 +360,12 @@ func getSouceControllerPodName(logf logr.Logger, namespace string) string {
 	retries := 25
 	retry := 0
 	pause := time.Second * 10
+	kubeCtl, err := kubectl.NewKubectl(logf)
+	Expect(err).ToNot(HaveOccurred())
+	cmd := kubeCtl.Get("node", "-o", "yaml")
+	out, e := cmd.Run()
+	Expect(e).ToNot(HaveOccurred())
+	logf.Info(string(out))
 	for {
 		pods, err := getK8sClient().CoreV1().Pods(namespace).List(context.TODO(), listOptions)
 		Expect(err).ToNot(HaveOccurred())

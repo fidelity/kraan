@@ -359,7 +359,7 @@ func getSouceControllerPodName(logf logr.Logger, namespace string) string {
 
 	retries := 25
 	retry := 0
-	pause := time.Second * 30
+	pause := time.Second * 10
 	for {
 		pods, err := getK8sClient().CoreV1().Pods(namespace).List(context.TODO(), listOptions)
 		Expect(err).ToNot(HaveOccurred())
@@ -374,7 +374,15 @@ func getSouceControllerPodName(logf logr.Logger, namespace string) string {
 			break
 		}
 		logf.Info("source-controller pod not ready, sleeping", "seconds", int(pause/time.Second))
+
+		kubeCtl, err := kubectl.NewKubectl(logf)
+		Expect(err).ToNot(HaveOccurred())
+		cmd := kubeCtl.Get("deployment", "-o", "yaml", "-n", "gotk-system")
+		out, e := cmd.Run()
+		Expect(e).ToNot(HaveOccurred())
+		logf.Info(string(out))
 		time.Sleep(pause)
+
 	}
 	return ""
 }

@@ -4,7 +4,7 @@ linter_version=1.38.0
 kubebuilder_version=2.3.1
 mockgen_version=v1.4.4
 helm_version=v3.3.4
-kind_version=v0.9.0
+kind_version=v0.10.0
 kubectl_version=v1.19.3
 kustomize_version=v3.8.5
 

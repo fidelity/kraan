@@ -383,7 +383,7 @@ func getSouceControllerPodName(logf logr.Logger, namespace string) string {
 
 		kubeCtl, err := kubectl.NewKubectl(logf)
 		Expect(err).ToNot(HaveOccurred())
-		cmd := kubeCtl.Get("deployment", "-o", "yaml", "-n", "gotk-system")
+		cmd := kubeCtl.Get("pod", "-o", "json", "-n", "gotk-system")
 		out, e := cmd.Run()
 		Expect(e).ToNot(HaveOccurred())
 		logf.Info(string(out))

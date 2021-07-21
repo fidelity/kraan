@@ -119,7 +119,7 @@ if [[ "${ret_code}" != "0" ]] ; then
     mockgen -version 2>&1 | grep ${mockgen_version} >/dev/null
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then
-        echo "Failed to install helm"
+        echo "Failed to install mockgen"
         exit 1
     fi
 else

@@ -76,6 +76,8 @@ jobs:
           PATH="${GOPATH}/bin:${PATH}"
           ./bin/setup.sh
       - uses: engineerd/setup-kind@v0.5.0
+        with:
+          version: "v0.10.0"
       - name: Integration Test
         run: |
           [ "${{ github.event_name }}" == "pull_request" ] && export DOCKER_IMG='kraan-controller-prerelease' || export DOCKER_IMG='kraan-controller'
@@ -83,6 +85,7 @@ jobs:
           export CHART_VERSION=$VERSION
           export REPO=kraan
           kubectl cluster-info
+          kubectl version
 
           echo "installing kraan..."
           helm install kraan --set kraan.kraanController.image.name=$DOCKER_IMG --set kraan.kraanController.image.tag=${VERSION} --set kraan.kraanController.resources=null --set gotk.sourceController.resources=null --set gotk.helmController.resources=null --wait --timeout=2m --create-namespace --namespace gotk-system chart || (kubectl describe deploy -n gotk-system && kubectl describe po -n gotk-system && false)

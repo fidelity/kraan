@@ -21,7 +21,7 @@ jobs:
           [ "${{ github.event_name }}" == "pull_request" ] && make validate-versions || echo "push to master, skipping validation"
   docker-build:
     needs: validate
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
       - name: Determine Tag
@@ -51,7 +51,6 @@ jobs:
       - name: Prerelease - Lint, Test, Build, and Push
         if: github.event_name == 'pull_request'
         run: |
-          kind create cluster --name integration-testing-cluster
           make clean
           make dev-build
           make docker-push-prerelease
@@ -68,7 +67,7 @@ jobs:
 
   integration-test:
     needs: docker-build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
       - name: Setup dependencies
@@ -109,7 +108,7 @@ jobs:
           kubectl wait al --for=condition=Deployed --all --timeout=5m || (kubectl get po -A && false)
   helm-publish:
     needs: integration-test
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
         with:

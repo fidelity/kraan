@@ -387,7 +387,7 @@ func getSouceControllerPodName(logf logr.Logger, namespace string) string {
 		// out, e := cmd.Run()
 		// Expect(e).ToNot(HaveOccurred())
 		// logf.Info(string(out))
-		// time.Sleep(pause)
+		time.Sleep(pause)
 	}
 	return ""
 }

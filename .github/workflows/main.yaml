@@ -51,7 +51,7 @@ jobs:
       - name: Prerelease - Lint, Test, Build, and Push
         if: github.event_name == 'pull_request'
         run: |
-          kind create cluster integration-testing-cluster
+          kind create cluster --name integration-testing-cluster
           make clean
           make dev-build
           make docker-push-prerelease

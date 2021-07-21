@@ -19,54 +19,54 @@ jobs:
       - name: Validate
         run: |
           [ "${{ github.event_name }}" == "pull_request" ] && make validate-versions || echo "push to master, skipping validation"
-  # docker-build:
-  #   needs: validate
-  #   runs-on: ubuntu-18.04
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #     - name: Determine Tag
-  #       run: |
-  #         [ "${{ github.event_name }}" == "pull_request" ] && export VERSION=$(cat VERSION)-dev || export VERSION=$(cat VERSION)
-  #         echo "VERSION=$VERSION" >> $GITHUB_ENV
-  #         echo "REPO=kraan" >> $GITHUB_ENV
-  #         echo "using $VERSION as the release version"
-  #     - name: Setup Go environment
-  #       uses: actions/setup-go@v2
-  #       with:
-  #         # The Go version to download (if necessary) and use. Supports semver spec and ranges.
-  #         go-version: 1.15
-  #     - name: Login to GitHub Packages Docker Registry
-  #       uses: docker/login-action@v1
-  #       with:
-  #         username: ${{ secrets.DOCKER_USER }}
-  #         password: ${{ secrets.DOCKER_TOKEN }}
-  #     - name: Setup dependencies
-  #       run: |
-  #         [ -z "${GOPATH}" ] && export GOPATH=$HOME/go
-  #         PATH="${GOPATH}/bin:${PATH}"
-  #         ./bin/setup.sh
-  #     # - uses: satackey/action-docker-layer-caching@v0
-  #     #   # Ignore the failure of a step and avoid terminating the job.
-  #     #   continue-on-error: true
-  #     - name: Prerelease - Lint, Test, Build, and Push
-  #       if: github.event_name == 'pull_request'
-  #       run: |
-  #         make clean
-  #         make dev-build
-  #         make docker-push-prerelease
-  #     - name: Release - Lint, Test, Build, and Push
-  #       if: github.event_name == 'push'
-  #       run: |
-  #         if docker pull kraan/kraan-controller:$VERSION; then
-  #           echo "image already exists. Skipping..."
-  #           exit 0
-  #         fi
-  #         make clean
-  #         make build
-  #         make docker-push
+  docker-build:
+    needs: validate
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Determine Tag
+        run: |
+          [ "${{ github.event_name }}" == "pull_request" ] && export VERSION=$(cat VERSION)-dev || export VERSION=$(cat VERSION)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "REPO=kraan" >> $GITHUB_ENV
+          echo "using $VERSION as the release version"
+      - name: Setup Go environment
+        uses: actions/setup-go@v2
+        with:
+          # The Go version to download (if necessary) and use. Supports semver spec and ranges.
+          go-version: 1.15
+      - name: Login to GitHub Packages Docker Registry
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+      - name: Setup dependencies
+        run: |
+          [ -z "${GOPATH}" ] && export GOPATH=$HOME/go
+          PATH="${GOPATH}/bin:${PATH}"
+          ./bin/setup.sh
+      # - uses: satackey/action-docker-layer-caching@v0
+      #   # Ignore the failure of a step and avoid terminating the job.
+      #   continue-on-error: true
+      - name: Prerelease - Lint, Test, Build, and Push
+        if: github.event_name == 'pull_request'
+        run: |
+          make clean
+          make dev-build
+          make docker-push-prerelease
+      - name: Release - Lint, Test, Build, and Push
+        if: github.event_name == 'push'
+        run: |
+          if docker pull kraan/kraan-controller:$VERSION; then
+            echo "image already exists. Skipping..."
+            exit 0
+          fi
+          make clean
+          make build
+          make docker-push
 
   integration-test:
-    # needs: docker-build
+    needs: docker-build
     runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v2

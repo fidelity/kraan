@@ -4,7 +4,7 @@ linter_version=1.38.0
 kubebuilder_version=2.3.1
 mockgen_version=v1.4.4
 helm_version=v3.3.4
-kind_version=v0.9.0
+kind_version=v0.10.0
 kubectl_version=v1.19.3
 kustomize_version=v3.8.5
 
@@ -20,6 +20,7 @@ function args() {
         case "$1" in
             "--help") usage; exit;;
             "-?") usage; exit;;
+            "--skip-kind") installKind=0;return;;
             *) usage; exit;;
         esac
     done
@@ -68,6 +69,8 @@ function install_kustomize() {
     $sudo mv kustomize /usr/local/bin
     rm ./kustomize_${kustomize_version}_linux_amd64.tar.gz
 }
+
+installKind=1
 
 args "${@}"
 
@@ -119,7 +122,7 @@ if [[ "${ret_code}" != "0" ]] ; then
     mockgen -version 2>&1 | grep ${mockgen_version} >/dev/null
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then
-        echo "Failed to install helm"
+        echo "Failed to install mockgen"
         exit 1
     fi
 else
@@ -158,7 +161,7 @@ fi
 
 kind version 2>&1 | grep ${kind_version} >/dev/null
 ret_code="${?}"
-if [[ "${ret_code}" != "0" ]] ; then
+if [[ "${ret_code}" != "0" ]] && [ $installKind == 1 ] ; then
     echo "installing kind version: ${kind_version}"
     install_kind
     kind version 2>&1 | grep ${kind_version} >/dev/null

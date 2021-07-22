@@ -96,6 +96,15 @@ spec:
       imagePullSecrets:
       - name: {{ .Values.gotk.sourceController.imagePullSecrets.name }}
       {{- end }}
+      {{- if .Values.gotk.sourceController.priorityClassName }}
+      priorityClassName: {{ .Values.gotk.sourceController.priorityClassName }}
+      {{- end }}
+      {{- if .Values.gotk.sourceController.preemptionPolicy }}
+      preemptionPolicy: {{ .Values.gotk.sourceController.preemptionPolicy }}
+      {{- end }}
+      {{- if .Values.gotk.sourceController.priority }}
+      priority: {{ .Values.gotk.sourceController.priority }}
+      {{- end }}
     {{- if .Values.gotk.sourceController.nodeSelector }}
       nodeSelector:
 {{ toYaml .Values.gotk.sourceController.nodeSelector | indent 8 }}

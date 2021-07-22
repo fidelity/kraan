@@ -73,7 +73,6 @@ function install_kustomize() {
 installKind=1
 
 args "${@}"
-echo $installKind
 
 sudo -E env >/dev/null 2>&1
 if [ $? -eq 0 ]; then
@@ -162,7 +161,7 @@ fi
 
 kind version 2>&1 | grep ${kind_version} >/dev/null
 ret_code="${?}"
-if [[ "${ret_code}" != "0" ]] && $installKind ; then
+if [[ "${ret_code}" != "0" ]] && [ $installKind == 1 ] ; then
     echo "installing kind version: ${kind_version}"
     install_kind
     kind version 2>&1 | grep ${kind_version} >/dev/null

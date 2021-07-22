@@ -380,13 +380,12 @@ func getSouceControllerPodName(logf logr.Logger, namespace string) string {
 			break
 		}
 		logf.Info("source-controller pod not ready, sleeping", "seconds", int(pause/time.Second))
-
-		// kubeCtl, err := kubectl.NewKubectl(logf)
-		// Expect(err).ToNot(HaveOccurred())
-		// cmd := kubeCtl.Get("replicaset", "-o", "json", "-n", "gotk-system")
-		// out, e := cmd.Run()
-		// Expect(e).ToNot(HaveOccurred())
-		// logf.Info(string(out))
+		kubeCtl, err := kubectl.NewKubectl(logf)
+		Expect(err).ToNot(HaveOccurred())
+		cmd := kubeCtl.Get("pods", "-o", "json", "-n", "gotk-system")
+		out, e := cmd.Run()
+		Expect(e).ToNot(HaveOccurred())
+		logf.Info(string(out))
 		time.Sleep(pause)
 	}
 	return ""

@@ -3,24 +3,57 @@ name: CI
 on: push
 
 jobs:
-  validate:
+  # validate:
+  #   runs-on: ubuntu-20.04
+  #   steps:
+  #     - name: Validate
+  #       run: |
+  #         kind version
+  #         kind create cluster
+  #         echo "sleep 60s to ensure the kind process everything."
+  #         sleep 60s
+  #         kubectl get node -o yaml
+  # checkOld:
+  #   runs-on: ubuntu-18.04
+  #   steps:
+  #     - name: Validate
+  #       run: |
+  #         kind version
+  #         kind create cluster
+  #         echo "sleep 60s to ensure the kind process everything."
+  #         sleep 60s
+  #         kubectl get node -o yaml
+
+  integration-test:
     runs-on: ubuntu-20.04
     steps:
-      - name: Validate
+      - uses: actions/checkout@v2
+      - name: Setup dependencies
         run: |
-          kind version
-          kind create cluster
-          echo "sleep 60s to ensure the kind process everything."
+          [ -z "${GOPATH}" ] && export GOPATH=$HOME/go
+          PATH="${GOPATH}/bin:${PATH}"
+          ./bin/setup.sh
+      - uses: engineerd/setup-kind@v0.5.0
+      - name: Integration Test
+        run: |
+          [ "${{ github.event_name }}" == "pull_request" ] && export DOCKER_IMG='kraan-controller-prerelease' || export DOCKER_IMG='kraan-controller'
+          [ "${{ github.event_name }}" == "pull_request" ] && export VERSION=$(cat VERSION)-dev || export VERSION=$(cat VERSION)
+          export CHART_VERSION=$VERSION
+          export REPO=kraan
+          kubectl cluster-info
+          echo "sleep 60s"
           sleep 60s
           kubectl get node -o yaml
-  checkOld:
-    runs-on: ubuntu-18.04
-    steps:
-      - name: Validate
-        run: |
-          kind version
-          kind create cluster
-          echo "sleep 60s to ensure the kind process everything."
-          sleep 60s
-          kubectl get node -o yaml
+          echo "installing kraan..."
+          helm install kraan --set kraan.kraanController.image.name=$DOCKER_IMG --set kraan.kraanController.image.tag=${VERSION} --set kraan.kraanController.resources=null --set gotk.sourceController.resources=null --set gotk.helmController.resources=null --wait --timeout=2m --create-namespace --namespace gotk-system chart || (kubectl describe deploy -n gotk-system && kubectl describe po -n gotk-system && false)
+
+          echo "setting up test..."
+          kubectl apply -f ./testdata/namespaces.yaml
+          kubectl apply -f ./testdata/addons/addons-source.yaml
+          kubectl patch gitrepository addons-config -n gotk-system -p "{\"spec\": {\"ref\": {\"branch\": \"$GITHUB_HEAD_REF\"}}}" --type=merge
+          kubectl apply -f ./testdata/addons/addons-repo.yaml
+          kubectl apply -f ./testdata/addons/addons.yaml
+
+          echo "waiting 5m for test to pass..."
+          kubectl wait al --for=condition=Deployed --all --timeout=5m || (kubectl get po -A && kubectl describe al -A && false)
   

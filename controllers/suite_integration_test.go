@@ -101,6 +101,8 @@ func startKindCluster(logf logr.Logger) {
 		err = p.Create(kindClusterName)
 		Expect(err).NotTo(HaveOccurred())
 		logf.Info("kind cluster created", "cluster", kindClusterName)
+		logf.Info("sleep 60 seconds to wait the node get ready")
+		time.sleep(60 * time.Second)
 	} else {
 		logf.Info("using existing kind cluster", "cluster", kindClusterName)
 		deleteKind = false

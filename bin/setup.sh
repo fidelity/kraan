@@ -20,7 +20,7 @@ function args() {
         case "$1" in
             "--help") usage; exit;;
             "-?") usage; exit;;
-            "--skip-kind") installKind=0;;
+            "--skip-kind") installKind=0;return;;
             *) usage; exit;;
         esac
     done
@@ -73,7 +73,7 @@ function install_kustomize() {
 installKind=1
 
 args "${@}"
-
+echo $installKind
 
 sudo -E env >/dev/null 2>&1
 if [ $? -eq 0 ]; then

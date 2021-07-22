@@ -1,0 +1,14 @@
+name: CI
+
+on: push
+
+jobs:
+  validate:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Validate
+        run: |
+          kind version
+          kind create cluster
+          kubectl get node -o yaml
+  

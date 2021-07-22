@@ -34,6 +34,7 @@ jobs:
           PATH="${GOPATH}/bin:${PATH}"
       - name: Integration Test
         run: |
+          kind create cluster
           [ "${{ github.event_name }}" == "pull_request" ] && export DOCKER_IMG='kraan-controller-prerelease' || export DOCKER_IMG='kraan-controller'
           [ "${{ github.event_name }}" == "pull_request" ] && export VERSION=$(cat VERSION)-dev || export VERSION=$(cat VERSION)
           export CHART_VERSION=$VERSION

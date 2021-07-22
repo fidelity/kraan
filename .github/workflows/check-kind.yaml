@@ -10,5 +10,17 @@ jobs:
         run: |
           kind version
           kind create cluster
+          echo "sleep 60s to ensure the kind process everything."
+          sleep 60s
+          kubectl get node -o yaml
+  checkOld:
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Validate
+        run: |
+          kind version
+          kind create cluster
+          echo "sleep 60s to ensure the kind process everything."
+          sleep 60s
           kubectl get node -o yaml
   

@@ -20,6 +20,7 @@ function args() {
         case "$1" in
             "--help") usage; exit;;
             "-?") usage; exit;;
+            "--skip-kind") installKind=0;;
             *) usage; exit;;
         esac
     done
@@ -69,7 +70,10 @@ function install_kustomize() {
     rm ./kustomize_${kustomize_version}_linux_amd64.tar.gz
 }
 
+installKind=1
+
 args "${@}"
+
 
 sudo -E env >/dev/null 2>&1
 if [ $? -eq 0 ]; then
@@ -158,7 +162,7 @@ fi
 
 kind version 2>&1 | grep ${kind_version} >/dev/null
 ret_code="${?}"
-if [[ "${ret_code}" != "0" ]] ; then
+if [[ "${ret_code}" != "0" ]] && $installKind ; then
     echo "installing kind version: ${kind_version}"
     install_kind
     kind version 2>&1 | grep ${kind_version} >/dev/null

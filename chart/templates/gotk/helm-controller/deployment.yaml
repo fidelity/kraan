@@ -85,6 +85,15 @@ spec:
       imagePullSecrets:
       - name: {{ .Values.gotk.helmController.imagePullSecrets.name }}
       {{- end }}
+      {{- if .Values.gotk.helmController.priorityClassName }}
+      priorityClassName: {{ .Values.gotk.helmController.priorityClassName }}
+      {{- end }}
+      {{- if .Values.gotk.helmController.preemptionPolicy }}
+      preemptionPolicy: {{ .Values.gotk.helmController.preemptionPolicy }}
+      {{- end }}
+      {{- if .Values.gotk.helmController.priority }}
+      priority: {{ .Values.gotk.helmController.priority }}
+      {{- end }}
     {{- if .Values.gotk.helmController.nodeSelector }}
       nodeSelector:
 {{ toYaml .Values.gotk.helmController.nodeSelector | indent 8 }}

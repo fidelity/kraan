@@ -18,7 +18,8 @@ jobs:
           fetch-depth: 0
       - name: Validate
         run: |
-          if [ "${{ github.event_name }}" == "pull_request" ] then
+          if [ "${{ github.event_name }}" == "pull_request" ] 
+          then
             make validate-versions
           else
             echo "push to master, skipping validation"

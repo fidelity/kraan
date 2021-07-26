@@ -18,7 +18,11 @@ jobs:
           fetch-depth: 0
       - name: Validate
         run: |
-          [ "${{ github.event_name }}" == "pull_request" ] && make validate-versions || echo "push to master, skipping validation"
+          if [ "${{ github.event_name }}" == "pull_request" ] then
+            make validate-versions
+          else
+            echo "push to master, skipping validation"
+          fi
   docker-build:
     needs: validate
     runs-on: ubuntu-20.04

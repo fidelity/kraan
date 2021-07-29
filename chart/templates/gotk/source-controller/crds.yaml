@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.1
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: {{.Release.Namespace}}
@@ -190,7 +190,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.1
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: {{.Release.Namespace}}
@@ -202,9 +202,9 @@ spec:
     kind: GitRepository
     listKind: GitRepositoryList
     plural: gitrepositories
-    singular: gitrepository
     shortNames:
     - gitrepo
+    singular: gitrepository
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -246,6 +246,30 @@ spec:
               ignore:
                 description: Ignore overrides the set of excluded patterns in the .sourceignore format (which is the same as .gitignore). If not provided, a default will be used, consult the documentation for your version to find out what those are.
                 type: string
+              include:
+                description: Extra git repositories to map into the repository
+                items:
+                  description: GitRepositoryInclude defines a source with a from and to path.
+                  properties:
+                    fromPath:
+                      description: The path to copy contents from, defaults to the root directory.
+                      type: string
+                    repository:
+                      description: Reference to a GitRepository to include.
+                      properties:
+                        name:
+                          description: Name of the referent
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    toPath:
+                      description: The path to copy contents to, defaults to the name of the source ref.
+                      type: string
+                  required:
+                  - repository
+                  type: object
+                type: array
               interval:
                 description: The interval at which to check for repository updates.
                 type: string
@@ -383,6 +407,32 @@ spec:
                   - type
                   type: object
                 type: array
+              includedArtifacts:
+                description: IncludedArtifacts represents the included artifacts from the last successful repository sync.
+                items:
+                  description: Artifact represents the output of a source synchronisation.
+                  properties:
+                    checksum:
+                      description: Checksum is the SHA1 checksum of the artifact.
+                      type: string
+                    lastUpdateTime:
+                      description: LastUpdateTime is the timestamp corresponding to the last update of this artifact.
+                      format: date-time
+                      type: string
+                    path:
+                      description: Path is the relative file path of this artifact.
+                      type: string
+                    revision:
+                      description: Revision is a human readable identifier traceable in the origin source system. It can be a Git commit SHA, Git tag, a Helm index timestamp, a Helm chart version, etc.
+                      type: string
+                    url:
+                      description: URL is the HTTP address of this artifact.
+                      type: string
+                  required:
+                  - path
+                  - url
+                  type: object
+                type: array
               lastHandledReconcileAt:
                 description: LastHandledReconcileAt holds the value of the most recent reconcile request value, so a change can be detected.
                 type: string
@@ -410,7 +460,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.1
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: {{.Release.Namespace}}
@@ -422,9 +472,9 @@ spec:
     kind: HelmChart
     listKind: HelmChartList
     plural: helmcharts
-    singular: helmchart
     shortNames:
     - hc
+    singular: helmchart
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -608,7 +658,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.1
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: {{.Release.Namespace}}
@@ -657,6 +707,9 @@ spec:
               interval:
                 description: The interval at which to check the upstream for updates.
                 type: string
+              passCredentials:
+                description: PassCredentials allows the credentials from the SecretRef to be passed on to a host that does not match the host as defined in URL. This may be required if the host of the advertised chart URLs in the index differ from the defined URL. Enabling this should be done with caution, as it can potentially result in credentials getting stolen in a MITM-attack.
+                type: boolean
               secretRef:
                 description: The name of the secret containing authentication credentials for the Helm repository. For HTTP/S basic auth the secret must contain username and password fields. For TLS the secret must contain a certFile and keyFile, and/or caCert fields.
                 properties:

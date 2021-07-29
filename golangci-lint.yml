@@ -187,7 +187,6 @@ linters:
     - funlen
     - gocognit
     - gocyclo
-    - goerr113
     - goheader
     - goimports
     - golint
@@ -222,6 +221,7 @@ linters:
     - gocritic
     - godot
     - godox
+    - goerr113
     - gofmt
     - gofumpt
     - gomnd

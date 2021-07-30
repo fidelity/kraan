@@ -712,7 +712,7 @@ func (r *AddonsLayerReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	reconcileStart := time.Now()
 
-	var addonsLayer *kraanv1alpha1.AddonsLayer = &kraanv1alpha1.AddonsLayer{}
+	addonsLayer := &kraanv1alpha1.AddonsLayer{}
 	if err := r.Get(ctx, req.NamespacedName, addonsLayer); err != nil {
 		if apierrors.IsNotFound(err) {
 			r.Log.Info("addonsLayer deleted", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)

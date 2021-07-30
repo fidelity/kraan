@@ -3,9 +3,9 @@
 linter_version=1.38.0
 kubebuilder_version=2.3.1
 mockgen_version=v1.4.4
-helm_version=v3.3.4
-kind_version=v0.10.0
-kubectl_version=v1.19.3
+helm_version=v3.6.1
+kind_version=v0.11.1
+kubectl_version=v1.21.0
 kustomize_version=v3.8.5
 
 function usage()

@@ -608,7 +608,7 @@ func TestLayerOwner(t *testing.T) {
 }
 
 func getUID(text types.UID) types.UID {
-	var uid types.UID = text
+	uid := text
 	return uid
 }
 

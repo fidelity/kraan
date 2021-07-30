@@ -8,10 +8,6 @@ on:
   pull_request:
     branches: [master]
     paths-ignore: ["**.md"]
-  pull_request_target:
-    branches: [master]
-    paths-ignore: ["**.md"]
-
 jobs:
   validate:
     runs-on: ubuntu-20.04

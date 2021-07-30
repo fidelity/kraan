@@ -42,7 +42,7 @@ jobs:
         uses: actions/setup-go@v2
         with:
           # The Go version to download (if necessary) and use. Supports semver spec and ranges.
-          go-version: 1.15
+          go-version: 1.16.5
       - name: Login to GitHub Packages Docker Registry
         uses: docker/login-action@v1
         with:

@@ -90,7 +90,6 @@ jobs:
           sleep 60s
           kubectl get node
       - name: Prerelease - pull image from artifact
-        id: download
         if: github.event_name == 'pull_request'
         uses: actions/download-artifact@v2 
         with:
@@ -98,9 +97,7 @@ jobs:
       - name: Prerelease - load image
         if: github.event_name == 'pull_request'
         run: |
-          ls -al ${{steps.download.outputs.download-path}}
-          ls -al ${{steps.download.outputs.download-path}}/image
-          docker load -i ${{steps.download.outputs.download-path}}/image/*
+          docker load -i *.tar
           docker images
       - name: Integration Test
         run: |

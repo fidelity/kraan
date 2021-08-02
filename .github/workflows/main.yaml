@@ -32,7 +32,6 @@ jobs:
         run: |
           [ "${{ github.event_name }}" == "pull_request" ] && export VERSION=$(cat VERSION)-dev || export VERSION=$(cat VERSION)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "REPO=kraan" >> $GITHUB_ENV
           echo "using $VERSION as the release version"
       - name: Setup Go environment
         uses: actions/setup-go@v2
@@ -40,6 +39,7 @@ jobs:
           # The Go version to download (if necessary) and use. Supports semver spec and ranges.
           go-version: 1.16.5
       - name: Login to GitHub Packages Docker Registry
+        if: github.event_name == 'push'
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKER_USER }}

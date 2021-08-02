@@ -81,7 +81,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
-      - name: Setup dependencies
+      - name: Create kind cluster
         run: |
           [ -z "${GOPATH}" ] && export GOPATH=$HOME/go
           PATH="${GOPATH}/bin:${PATH}"
@@ -97,8 +97,9 @@ jobs:
       - name: Prerelease - load image
         if: github.event_name == 'pull_request'
         run: |
+          export VERSION=$(cat VERSION)-dev
           docker load -i *.tar
-          docker images
+          kind load docker-image kraan/kraan-controller-prerelease:$VERSION
       - name: Integration Test
         run: |
           [ "${{ github.event_name }}" == "pull_request" ] && export DOCKER_IMG='kraan-controller-prerelease' || export DOCKER_IMG='kraan-controller'

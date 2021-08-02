@@ -98,7 +98,7 @@ jobs:
       - name: Prerelease - load image
         if: github.event_name == 'pull_request'
         run: |
-          docker load -i ${{steps.download.outputs.download-path}}
+          docker load -i ${{steps.download.outputs.download-path}}/image/*.tar
           docker images
       - name: Integration Test
         run: |

@@ -80,8 +80,8 @@ jobs:
     needs: docker-build
     runs-on: ubuntu-20.04
     steps:
+      - uses: actions/checkout@v2
       - name: Setup dependencies
-        uses: actions/checkout@v2
         run: |
           [ -z "${GOPATH}" ] && export GOPATH=$HOME/go
           PATH="${GOPATH}/bin:${PATH}"

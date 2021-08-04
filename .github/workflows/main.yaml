@@ -40,6 +40,7 @@ jobs:
           # The Go version to download (if necessary) and use. Supports semver spec and ranges.
           go-version: 1.16.5
       - name: Login to GitHub Packages Docker Registry
+        if: github.event_name == 'push'
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKER_USER }}
@@ -57,7 +58,13 @@ jobs:
         run: |
           make clean
           make dev-build
-          make docker-push-prerelease
+      - name: Prerelease - Store docker image as artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v2
+        with:
+          name: image
+          path: build/*.tar
+          if-no-files-found: error
       - name: Release - Lint, Test, Build, and Push
         if: github.event_name == 'push'
         run: |
@@ -74,7 +81,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
-      - name: Setup dependencies
+      - name: Create kind cluster
         run: |
           [ -z "${GOPATH}" ] && export GOPATH=$HOME/go
           PATH="${GOPATH}/bin:${PATH}"
@@ -82,6 +89,17 @@ jobs:
           echo "sleep 60s to wait node ready"
           sleep 60s
           kubectl get node
+      - name: Prerelease - pull image from artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/download-artifact@v2 
+        with:
+          name: image
+      - name: Prerelease - load image
+        if: github.event_name == 'pull_request'
+        run: |
+          export VERSION=$(cat VERSION)-dev
+          docker load -i *.tar
+          kind load docker-image kraan/kraan-controller-prerelease:$VERSION
       - name: Integration Test
         run: |
           [ "${{ github.event_name }}" == "pull_request" ] && export DOCKER_IMG='kraan-controller-prerelease' || export DOCKER_IMG='kraan-controller'
@@ -114,6 +132,7 @@ jobs:
           echo "waiting 5m for test to pass..."
           kubectl wait al --for=condition=Deployed --all --timeout=5m || (kubectl get po -A && false)
   helm-publish:
+    if: github.event_name == 'push'
     needs: integration-test
     runs-on: ubuntu-20.04
     steps:
@@ -127,13 +146,14 @@ jobs:
           ./bin/setup.sh
       - name: Publish Helm Chart
         run: |
-          [ "${{ github.event_name }}" == "pull_request" ] && export VERSION=$(cat VERSION)-dev || export VERSION=$(cat VERSION)
-          [ "${{ github.event_name }}" == "pull_request" ] && export CHART_VERSION=$VERSION || unset CHART_VERSION
+          export VERSION=$(cat VERSION)
+          unset CHART_VERSION
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions"
           git checkout go.mod go.sum
           make release
   tag-repo:
+    if: github.event_name == 'push'
     needs: helm-publish
     runs-on: ubuntu-20.04
     steps:
@@ -141,7 +161,6 @@ jobs:
         with:
           fetch-depth: 0
       - name: tag repository
-        if: github.event_name == 'push'
         run: |
           export VERSION=$(cat VERSION)
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"

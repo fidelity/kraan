@@ -57,11 +57,11 @@ jobs:
         with:
           version: v1.37.1
           skip-go-installation: true
-          args: --timeout=2m
+          args: --timeout=10m
       # - uses: satackey/action-docker-layer-caching@v0
       #   # Ignore the failure of a step and avoid terminating the job.
       #   continue-on-error: true
-      - name: Prerelease - Test, Build, and Push
+      - name: Prerelease - Test, Build
         if: github.event_name == 'pull_request'
         run: |
           make clean

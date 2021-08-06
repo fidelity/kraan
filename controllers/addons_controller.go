@@ -836,6 +836,7 @@ func (r *AddonsLayerReconciler) upgradeFix(ctx context.Context, al *kraanv1alpha
 			newCondition.Type = condition.Type
 			newCondition.Reason = newCondition.Type
 			newCondition.Message = fmt.Sprintf("%s, %s", condition.Reason, condition.Message)
+			newCondition.ObservedGeneration = al.Generation
 			al.Status.Conditions = []metav1.Condition{newCondition}
 			if al.Status.Resources == nil {
 				al.Status.Resources = []kraanv1alpha1.Resource{}

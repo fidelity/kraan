@@ -23,7 +23,7 @@ import (
 
 const (
 	k8sList                    = "List"
-	timeout                    = time.Second * 120
+	timeout                    = time.Second * 600
 	interval                   = time.Second
 	addonsLayersFileName       = "testdata/addons.json"
 	addonsLayersOrphanFileName = "testdata/addons-orphan.json"
@@ -177,6 +177,7 @@ func verifyAddonsLayer(ctx context.Context, log logr.Logger, addonsLayer *kraanv
 		Status:             metav1.ConditionTrue,
 		LastTransitionTime: retrievedAddonsLayer.Status.Conditions[0].LastTransitionTime,
 		Message:            message,
+		ObservedGeneration: retrievedAddonsLayer.Status.Conditions[0].ObservedGeneration,
 	}}))
 }
 

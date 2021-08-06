@@ -1,0 +1,102 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "kraan.io/v1alpha1",
+            "kind": "AddonsLayer",
+            "metadata": {
+                "name": "apps"
+            },
+            "spec": {
+                "interval": "15s",
+                "prereqs": {
+                    "dependsOn": [
+                        "base@0.1.01",
+                        "mgmt@0.1.01"
+                    ],
+                    "k8sVersion": "v1.16"
+                },
+                "source": {
+                    "kind": "",
+                    "name": "addons-config",
+                    "namespace": "gotk-system",
+                    "path": "./testdata/addons/apps"
+                },
+                "timeout": "30s",
+                "version": "0.1.01"
+            }
+        },
+        {
+            "apiVersion": "kraan.io/v1alpha1",
+            "kind": "AddonsLayer",
+            "metadata": {
+                "name": "base"
+
+            },
+            "spec": {
+                "interval": "15s",
+                "prereqs": {
+                    "dependsOn": [
+                        "bootstrap@0.1.01"
+                    ],
+                    "k8sVersion": "v1.16"
+                },
+                "source": {
+                    "kind": "gitrepositories.source.toolkit.fluxcd.io",
+                    "name": "addons-config",
+                    "namespace": "gotk-system",
+                    "path": "./testdata/addons/base"
+                },
+                "timeout": "30s",
+                "version": "0.1.01"
+            }
+        },
+        {
+            "apiVersion": "kraan.io/v1alpha1",
+            "kind": "AddonsLayer",
+            "metadata": {
+                "name": "bootstrap"
+            },
+            "spec": {
+                "hold": false,
+                "interval": "15s",
+                "prereqs": {
+                    "k8sVersion": "v1.16"
+                },
+                "source": {
+                    "kind": "",
+                    "name": "addons-config",
+                    "namespace": "gotk-system",
+                    "path": "./testdata/addons/bootstrap"
+                },
+                "timeout": "30s",
+                "version": "0.1.01"
+            }
+        },
+        {
+            "apiVersion": "kraan.io/v1alpha1",
+            "kind": "AddonsLayer",
+            "metadata": {
+                "name": "mgmt"
+            },
+            "spec": {
+                "interval": "15s",
+                "prereqs": {
+                    "dependsOn": [
+                        "base@0.1.01"
+                    ],
+                    "k8sVersion": "v1.16"
+                },
+                "source": {
+                    "kind": "",
+                    "name": "addons-config",
+                    "namespace": "gotk-system",
+                    "path": "./testdata/addons/mgmt"
+                },
+                "timeout": "30s",
+                "version": "0.1.01"
+            }
+        }
+    ],
+    "kind": "List"
+}

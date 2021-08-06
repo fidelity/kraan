@@ -42,14 +42,14 @@ kraan:
       logLevel: 0
       syncPeriod: 1m
 
-    devmode: false
+    readOnly: true
 
     resources:
       limits:
         cpu: 1000m
         memory: 1Gi
       requests:
-        cpu: 500m
+        cpu: 100m
         memory: 128Mi
 
     tolerations:
@@ -67,6 +67,12 @@ kraan:
     ## Pod affinity
     ##
     affinity: {}
+
+    ## https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/
+    ##
+    priorityClassName: {}
+    preemptionPolicy: {}
+    priority: {}
 
 gotk:
   rbac:
@@ -91,7 +97,7 @@ gotk:
     image:
       repository: ghcr.io/fluxcd
       name: source-controller
-      tag: v0.7.1
+      tag: v0.15.1
       imagePullPolicy:
 
     imagePullSecrets:
@@ -104,7 +110,7 @@ gotk:
         cpu: 1000m
         memory: 1Gi
       requests:
-        cpu: 500m
+        cpu: 100m
         memory: 128Mi
 
     tolerations:
@@ -122,6 +128,12 @@ gotk:
     ## Pod affinity
     ##
     affinity: {}
+
+    ## https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/
+    ##
+    priorityClassName: {}
+    preemptionPolicy: {}
+    priority: {}
 
   helmController:
     crd:
@@ -143,7 +155,7 @@ gotk:
     image:
       repository: ghcr.io/fluxcd
       name: helm-controller
-      tag: v0.6.1
+      tag: v0.11.1
       imagePullPolicy:
 
     proxy: true
@@ -153,7 +165,7 @@ gotk:
         cpu: 1000m
         memory: 1Gi
       requests:
-        cpu: 500m
+        cpu: 100m
         memory: 128Mi
 
     tolerations:
@@ -171,3 +183,9 @@ gotk:
     ## Pod affinity
     ##
     affinity: {}
+
+    ## https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/
+    ##
+    priorityClassName: {}
+    preemptionPolicy: {}
+    priority: {}

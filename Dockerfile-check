@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.14 as builder
+FROM golang:1.16 as builder
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -20,11 +20,12 @@ COPY bin/ bin/
 RUN apt install -y curl
 RUN bin/setup.sh
 # Temporary fix see https://github.com/fidelity/kraan/issues/114
-RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.17.12/bin/linux/amd64/kubectl
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.19.3/bin/linux/amd64/kubectl
 RUN chmod +x ./kubectl
 RUN mv kubectl bin
 RUN cp bin/* /usr/local/bin
 # Make
 RUN make clean
 RUN PATH=$PATH:/usr/local/kubebuilder/bin make
+RUN PATH=$PATH:/usr/local/kubebuilder/bin make integration
 

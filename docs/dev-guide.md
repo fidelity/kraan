@@ -8,7 +8,7 @@ clone [[Kraan repository]](https://github.com/fidelity/kraan) or fork it and clo
 
 This project requires the following software:
 
-    golangci-lint version = 1.30.0
+    golangci-lint version = 1.38.0
     golang version >= 1.14.6
     mockgen = v1.4.4
     kubebuilder = v2.3.1
@@ -42,23 +42,27 @@ For example to run this on the `kubectl` package:
 To build docker image type:
 
     export REPO=<name of docker repository>
-    export VERSION=<version>
-    make build
+    export VERSION=<version> # use to generate the image tag
+    make dev-build
+
+If you require a proxy to access the internet set the `DOCKER_BUILD_PROXYS` environmental variable before doing 'make build', e.g.
+
+    export DOCKER_BUILD_PROXYS="--build-arg HTTP_PROXY=$HTTP_PROXY --build-arg HTTPS_PROXY=$HTTPS_PROXY"
 
 For security reasons the image created uses `gcr.io/distroless/static:latest` with user `nobody`. When debugging issues it is sometimes useful to be able to access a shell in the pod container and install additional tools. To facilitate this a `dev-build` make target is provided which builds an image using `ubuntu` and allows root access. When deploying this development image use the `--kraan-dev` option when running the `scripts/deploy.sh` utility (see Deployment section below) to allow writes to the container filesystem.
 
 Then to deploy the docker container:
 
     docker login <docker repository>
-    make docker-push
+    make docker-push-prerelease
 
-If the `VERSION` is not set `master` is used. The REPO will default to `docker.pkg.github.com/fidelity/kraan` which only users with privileges on the `fidelity` organization will be able to push to. However if you fork the Kraan repository then the default will be `docker.pkg.github.com/<org/user you forked to>/kraan`.
+If the `VERSION` is not set the contents of the `VERSION` file will be used. The REPO will default to `docker.pkg.github.com/fidelity/kraan` which only users with privileges on the `fidelity` organization will be able to push to. However if you fork the Kraan repository then the default will be `docker.pkg.github.com/<org/user you forked to>/kraan`. To use docker hub, set the `REPO` environmental variable to `kraan`.
 
 ## Releases
 
 The offical releases use docker hub repository: kraan/kraan-controller. The 'master' tag will be contain a version of kraan built from the master branch. Release versions will be deployed to this repository for public use.
 
-Helm Charts are deployed to github pages so can be accessed via repo: kraan https://fidelity.github.io/kraan/
+Helm Charts are deployed to github pages so can be accessed via repo: kraan <https://fidelity.github.io/kraan/>
 
     helm repo add kraan https://fidelity.github.io/kraan/
     helm search repo --regexp kraan --versions
@@ -67,7 +71,6 @@ Helm Charts are deployed to github pages so can be accessed via repo: kraan http
 
 To create a release set `VERSION` to the Kraan-Controller version, `REPO` to 'kraan' and `CHART_VERSION` to the chart version, then build and push the image:
 
-    export VERSION=v0.1.xx
     export REPO=kraan
     make clean-build
     make build
@@ -116,6 +119,7 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
                                 The secret should be called 'kraan-regcred'.
     '--kraan-image-reg'   provide image registry to use for Kraan, defaults to empty for docker hub
     '--kraan-image-repo'  provide image repository prefix to use for Kraan, defaults to 'kraan' for docker hub org.
+    '--kraan-image-name'  the name of the kraan image to use, defaults to kraan-controller.
     '--kraan-tag'         the tag of the kraan image to use.
     '--kraan-loglevel'    loglevel to use for kraan controller, 0 for info, 1 for debug, 2 for trace.
     '--kraan-dev'         select development mode, makes pod filesystem writable for debugging purposes.
@@ -199,6 +203,15 @@ If you elected to use the `--testdata` option when setting up the cluster test d
 To run integration tests:
 
     make integration
+
+If running with proxy access to github
+
+    export GITOPS_USE_PROXY=auto
+
+If image pull secret is required to access public repositories, provide a image pull secret file
+
+    export IMAGE_PULL_SECRET_SOURCE=${HOME}/gotk-regcred.yaml
+    export IMAGE_PULL_SECRET_NAME=gotk-regcred
 
 ## Debugging
 

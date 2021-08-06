@@ -79,6 +79,7 @@ type Layer interface {
 
 // KraanLayer is the Schema for the addons API.
 type KraanLayer struct {
+	Name        string `json:"layer-name"`
 	updated     bool
 	requeue     bool
 	delayed     bool
@@ -98,6 +99,7 @@ type KraanLayer struct {
 func CreateLayer(ctx context.Context, client client.Client, k8client kubernetes.Interface, log logr.Logger,
 	recorder record.EventRecorder, scheme *runtime.Scheme, addonsLayer *kraanv1alpha1.AddonsLayer) Layer {
 	l := &KraanLayer{
+		Name:        addonsLayer.Name,
 		requeue:     false,
 		delayed:     false,
 		updated:     false,
@@ -194,7 +196,7 @@ func (l *KraanLayer) setStatus(status, message string) {
 	length := len(l.addonsLayer.Status.Conditions)
 	if length > 0 {
 		last := &l.addonsLayer.Status.Conditions[length-1]
-		if last.Message == message && last.Type == status {
+		if last.Message == message && last.Type == status && last.ObservedGeneration == l.addonsLayer.Generation {
 			return
 		}
 		l.addonsLayer.Status.Conditions = []metav1.Condition{}
@@ -205,6 +207,7 @@ func (l *KraanLayer) setStatus(status, message string) {
 		Reason:             status,
 		Status:             metav1.ConditionTrue,
 		LastTransitionTime: metav1.Now(),
+		ObservedGeneration: l.addonsLayer.Generation,
 		Message:            message,
 	})
 	l.addonsLayer.Status.State = status

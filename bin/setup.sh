@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Set versions of software required
-linter_version=1.30.0
+linter_version=1.38.0
 kubebuilder_version=2.3.1
 mockgen_version=v1.4.4
-helm_version=v3.3.4
-kind_version=v0.9.0
+helm_version=v3.6.1
+kind_version=v0.11.1
+kubectl_version=v1.21.0
+kustomize_version=v3.8.5
 
 function usage()
 {
@@ -18,6 +20,7 @@ function args() {
         case "$1" in
             "--help") usage; exit;;
             "-?") usage; exit;;
+            "--skip-kind") installKind=0;return;;
             *) usage; exit;;
         esac
     done
@@ -53,6 +56,22 @@ function install_kind() {
     $sudo mv kind /usr/local/bin
 }
 
+function install_kubectl() {
+    curl -LO https://storage.googleapis.com/kubernetes-release/release/${kubectl_version}/bin/linux/amd64/kubectl
+    chmod +x ./kubectl
+    $sudo mv kubectl /usr/local/bin
+}
+
+function install_kustomize() {
+    curl -LO https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v3.8.5/kustomize_${kustomize_version}_linux_amd64.tar.gz
+    tar xzf ./kustomize_${kustomize_version}_linux_amd64.tar.gz
+    chmod +x ./kustomize
+    $sudo mv kustomize /usr/local/bin
+    rm ./kustomize_${kustomize_version}_linux_amd64.tar.gz
+}
+
+installKind=1
+
 args "${@}"
 
 sudo -E env >/dev/null 2>&1
@@ -71,7 +90,9 @@ if [[ "${ret_code}" != "0" ]] ; then
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then
         echo "Failed to install linter"
-        return
+        echo "version: `golangci-lint --version`"
+        echo "expecting: $linter_version"
+        exit 1
     fi
 else
     echo "linter version: `golangci-lint --version`"
@@ -87,7 +108,7 @@ if [[ "${ret_code}" != "0" ]] ; then
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then
         echo "Failed to install kubebuilder"
-        return
+        exit 1
     fi
 else
    echo "kubebuilder version: `kubebuilder version`"     
@@ -101,8 +122,8 @@ if [[ "${ret_code}" != "0" ]] ; then
     mockgen -version 2>&1 | grep ${mockgen_version} >/dev/null
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then
-        echo "Failed to install helm"
-        return
+        echo "Failed to install mockgen"
+        exit 1
     fi
 else
     echo "mockgen version: `mockgen -version`"
@@ -112,12 +133,12 @@ flux --version >/dev/null 2>&1
 ret_code="${?}"
 if [[ "${ret_code}" != "0" ]] ; then
     echo "Installing latest version of flux cli"
-    curl -s https://toolkit.fluxcd.io/install.sh | $sudo bash
+    curl -s https://fluxcd.io/install.sh | $sudo bash
     flux --version >/dev/null 2>&1 
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then
         echo "Failed to install flux"
-        return
+        exit 1
     fi
 else
     echo "flux version: `flux --version`"
@@ -132,7 +153,7 @@ if [[ "${ret_code}" != "0" ]] ; then
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then
         echo "Failed to install helm"
-        return
+        exit 1
     fi
 else
     echo "helm version: `helm version`"
@@ -140,15 +161,47 @@ fi
 
 kind version 2>&1 | grep ${kind_version} >/dev/null
 ret_code="${?}"
-if [[ "${ret_code}" != "0" ]] ; then
+if [[ "${ret_code}" != "0" ]] && [ $installKind == 1 ] ; then
     echo "installing kind version: ${kind_version}"
     install_kind
     kind version 2>&1 | grep ${kind_version} >/dev/null
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then
         echo "Failed to install kind"
-        return
+        exit 1
     fi
 else
     echo "kind version: `kind version`"
+fi
+
+kubectl version --client 2>&1 | grep ${kubectl_version} >/dev/null
+ret_code="${?}"
+if [[ "${ret_code}" != "0" ]] ; then
+    echo "installing kubectl version: ${kubectl_version}"
+    install_kubectl
+    kubectl version --client 2>&1 | grep ${kubectl_version} >/dev/null
+    ret_code="${?}"
+    if [ "${ret_code}" != "0" ] ; then
+        echo "kubectl version, required: ${kubectl_version}, actual: `kubectl version --client`"
+        echo "Failed to install kubectl"
+        exit 1
+    fi
+else
+    echo "kubectl version: `kubectl version --client`"
+fi
+
+kustomize version 2>&1 | grep ${kustomize_version} >/dev/null
+ret_code="${?}"
+if [[ "${ret_code}" != "0" ]] ; then
+    echo "installing kustomize version: ${kustomize_version}"
+    install_kustomize
+    kustomize version 2>&1 | grep ${kustomize_version} >/dev/null
+    ret_code="${?}"
+    if [ "${ret_code}" != "0" ] ; then
+        echo "kustomize version, required: ${kustomize_version}, actual: `kustomize version`"
+        echo "Failed to install kustomize"
+        exit 1
+    fi
+else
+    echo "kustomize version: `kustomize version`"
 fi

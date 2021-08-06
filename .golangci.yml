@@ -184,17 +184,14 @@ linters:
     - funlen
     - gocognit
     - gocyclo
-    - goerr113
     - goheader
     - goimports
     - golint
     - gomodguard
     - goprintffuncname
     - govet
-    - ineffassign
-    - interfacer
+    - ineffassign 
     - lll
-    - maligned
     - misspell
     - nakedret
     - nestif
@@ -221,6 +218,7 @@ linters:
     - gocritic
     - godot
     - godox
+    - goerr113
     - gofmt
     - gofumpt
     - gomnd

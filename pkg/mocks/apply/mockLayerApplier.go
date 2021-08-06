@@ -10,6 +10,8 @@ import (
 	layers "github.com/fidelity/kraan/pkg/layers"
 	v2beta1 "github.com/fluxcd/helm-controller/api/v2beta1"
 	gomock "github.com/golang/mock/gomock"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	runtime "k8s.io/apimachinery/pkg/runtime"
 	reflect "reflect"
 )
 
@@ -124,4 +126,108 @@ func (m *MockLayerApplier) GetResources(ctx context.Context, layer layers.Layer)
 func (mr *MockLayerApplierMockRecorder) GetResources(ctx, layer interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResources", reflect.TypeOf((*MockLayerApplier)(nil).GetResources), ctx, layer)
+}
+
+// GetSourceAndClusterHelmReleases mocks base method
+func (m *MockLayerApplier) GetSourceAndClusterHelmReleases(ctx context.Context, layer layers.Layer) (map[string]*v2beta1.HelmRelease, map[string]*v2beta1.HelmRelease, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSourceAndClusterHelmReleases", ctx, layer)
+	ret0, _ := ret[0].(map[string]*v2beta1.HelmRelease)
+	ret1, _ := ret[1].(map[string]*v2beta1.HelmRelease)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetSourceAndClusterHelmReleases indicates an expected call of GetSourceAndClusterHelmReleases
+func (mr *MockLayerApplierMockRecorder) GetSourceAndClusterHelmReleases(ctx, layer interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSourceAndClusterHelmReleases", reflect.TypeOf((*MockLayerApplier)(nil).GetSourceAndClusterHelmReleases), ctx, layer)
+}
+
+// Orphan mocks base method
+func (m *MockLayerApplier) Orphan(ctx context.Context, layer layers.Layer, hr *v2beta1.HelmRelease) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Orphan", ctx, layer, hr)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Orphan indicates an expected call of Orphan
+func (mr *MockLayerApplierMockRecorder) Orphan(ctx, layer, hr interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Orphan", reflect.TypeOf((*MockLayerApplier)(nil).Orphan), ctx, layer, hr)
+}
+
+// GetOrphanedHelmReleases mocks base method
+func (m *MockLayerApplier) GetOrphanedHelmReleases(ctx context.Context, layer layers.Layer) (map[string]*v2beta1.HelmRelease, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOrphanedHelmReleases", ctx, layer)
+	ret0, _ := ret[0].(map[string]*v2beta1.HelmRelease)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetOrphanedHelmReleases indicates an expected call of GetOrphanedHelmReleases
+func (mr *MockLayerApplierMockRecorder) GetOrphanedHelmReleases(ctx, layer interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrphanedHelmReleases", reflect.TypeOf((*MockLayerApplier)(nil).GetOrphanedHelmReleases), ctx, layer)
+}
+
+// Adopt mocks base method
+func (m *MockLayerApplier) Adopt(ctx context.Context, layer layers.Layer, hr *v2beta1.HelmRelease) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Adopt", ctx, layer, hr)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Adopt indicates an expected call of Adopt
+func (mr *MockLayerApplierMockRecorder) Adopt(ctx, layer, hr interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Adopt", reflect.TypeOf((*MockLayerApplier)(nil).Adopt), ctx, layer, hr)
+}
+
+// addOwnerRefs mocks base method
+func (m *MockLayerApplier) addOwnerRefs(layer layers.Layer, objs []runtime.Object) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "addOwnerRefs", layer, objs)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// addOwnerRefs indicates an expected call of addOwnerRefs
+func (mr *MockLayerApplierMockRecorder) addOwnerRefs(layer, objs interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "addOwnerRefs", reflect.TypeOf((*MockLayerApplier)(nil).addOwnerRefs), layer, objs)
+}
+
+// orphanLabel mocks base method
+func (m *MockLayerApplier) orphanLabel(ctx context.Context, hr *v2beta1.HelmRelease) (*v1.Time, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "orphanLabel", ctx, hr)
+	ret0, _ := ret[0].(*v1.Time)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// orphanLabel indicates an expected call of orphanLabel
+func (mr *MockLayerApplierMockRecorder) orphanLabel(ctx, hr interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "orphanLabel", reflect.TypeOf((*MockLayerApplier)(nil).orphanLabel), ctx, hr)
+}
+
+// GetHelmReleases mocks base method
+func (m *MockLayerApplier) GetHelmReleases(ctx context.Context, layer layers.Layer) (map[string]*v2beta1.HelmRelease, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetHelmReleases", ctx, layer)
+	ret0, _ := ret[0].(map[string]*v2beta1.HelmRelease)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetHelmReleases indicates an expected call of GetHelmReleases
+func (mr *MockLayerApplierMockRecorder) GetHelmReleases(ctx, layer interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHelmReleases", reflect.TypeOf((*MockLayerApplier)(nil).GetHelmReleases), ctx, layer)
 }

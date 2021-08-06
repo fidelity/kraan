@@ -105,7 +105,7 @@ function args() {
   dry_run=""
   deploy_kind=0
   gitops_reg=""
-  kraan_repo=""
+  kraan_repo="kraan"
   kraan_name=""
   kraan_reg=""
   kraan_regcred=""
@@ -113,7 +113,7 @@ function args() {
   gitops_proxy=""
   git_url
   apply_testdata=0
-  kraan_tag="master"
+  kraan_tag=`cat VERSION`
   kraan_loglevel=""
   no_git_auth=0
   helm_action=""
@@ -384,7 +384,7 @@ fi
 if [ -n "${kraan_reg}" ] ; then
   kraan_reg="${kraan_reg}/"
 fi
-if [ -n "${kraan_repo}" ] ; then
+if [[ -n "${kraan_repo}" || -n "${kraan_reg}" ]] ; then
   helm_args="${helm_args} --set kraan.kraanController.image.repository=${kraan_reg}${kraan_repo}"
 fi
 if [ -n "${kraan_name}" ] ; then
@@ -398,7 +398,7 @@ if [ -n "${kraan_loglevel}" ] ; then
 fi
 
 if [ -n "${kraan_dev}" ] ; then
-  helm_args="${helm_args} --set kraan.kraanController.devmode=false"
+  helm_args="${helm_args} --set kraan.kraanController.readOnly=false"
 fi
 
 if [ -n "${values_files}" ] ; then

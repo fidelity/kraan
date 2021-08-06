@@ -82,9 +82,6 @@ clean: clean-gomod clean-${PROJECT}-check \
 	clean-dev-build clean-builddir-${BUILD_DIR} mkdir-${BUILD_DIR} \
 	clean-integration
 
-setup:
-	./bin/setup.sh
-
 lint:
 	golangci-lint run --concurrency=1 -v --print-resources-usage
 

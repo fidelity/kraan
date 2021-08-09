@@ -3,7 +3,7 @@ module github.com/fidelity/kraan
 go 1.14
 
 require (
-	github.com/fluxcd/helm-controller/api v0.11.1
+	github.com/fluxcd/helm-controller/api v0.11.2
 	github.com/fluxcd/pkg/apis/meta v0.10.1
 	github.com/fluxcd/pkg/untar v0.1.0
 	github.com/fluxcd/source-controller/api v0.15.1

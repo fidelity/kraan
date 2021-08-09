@@ -267,7 +267,7 @@ func displayStatus(status *kraanv1alpha1.AddonsLayerStatus) string {
 		return fmt.Sprintf("failed to generate json output for actual result, error: %s", err.Error())
 	}
 
-	return fmt.Sprintf("%s", statusJSON)
+	return statusJSON
 }
 
 func compareStatus(actual, expected *kraanv1alpha1.AddonsLayerStatus) error {

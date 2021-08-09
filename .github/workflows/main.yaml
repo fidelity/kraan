@@ -53,7 +53,7 @@ jobs:
       # - uses: satackey/action-docker-layer-caching@v0
       #   # Ignore the failure of a step and avoid terminating the job.
       #   continue-on-error: true
-      - name: Prerelease - Lint, Test, Build, and Push
+      - name: Prerelease - Lint, Test, Build
         if: github.event_name == 'pull_request'
         run: |
           make clean
@@ -75,7 +75,6 @@ jobs:
           make clean
           make build
           make docker-push
-
   integration-test:
     needs: docker-build
     runs-on: ubuntu-20.04
@@ -108,17 +107,14 @@ jobs:
           export REPO=kraan
           kubectl cluster-info
           kubectl version
-
           echo "installing kraan..."
           helm install kraan --set kraan.kraanController.image.name=$DOCKER_IMG --set kraan.kraanController.image.tag=${VERSION} --set kraan.kraanController.resources=null --set gotk.sourceController.resources=null --set gotk.helmController.resources=null --wait --timeout=2m --create-namespace --namespace gotk-system chart || (kubectl describe deploy -n gotk-system && kubectl describe po -n gotk-system && false)
-
           echo "setting up test..."
           kubectl apply -f ./testdata/namespaces.yaml
           kubectl apply -f ./testdata/addons/addons-source.yaml
           kubectl patch gitrepository addons-config -n gotk-system -p "{\"spec\": {\"ref\": {\"branch\": \"$GITHUB_HEAD_REF\"}}}" --type=merge
           kubectl apply -f ./testdata/addons/addons-repo.yaml
           kubectl apply -f ./testdata/addons/addons.yaml
-
           echo "waiting 5m for test to pass..."
           kubectl wait al --for=condition=Deployed --all --timeout=5m || (kubectl get po -A && kubectl describe al -A && false)
       - name: Orphan Integration Test
@@ -128,7 +124,6 @@ jobs:
           kubectl patch gitrepository addons-config -n gotk-system -p "{\"spec\": {\"ref\": {\"branch\": \"$GITHUB_HEAD_REF\"}}}" --type=merge
           kubectl apply -f ./testdata/addons-orphan/addons-repo.yaml
           kubectl apply -f ./testdata/addons-orphan/addons.yaml
-
           echo "waiting 5m for test to pass..."
           kubectl wait al --for=condition=Deployed --all --timeout=5m || (kubectl get po -A && false)
   helm-publish:

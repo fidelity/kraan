@@ -3,14 +3,14 @@ module github.com/fidelity/kraan
 go 1.14
 
 require (
-	github.com/fluxcd/helm-controller/api v0.11.1
+	github.com/fluxcd/helm-controller/api v0.11.2
 	github.com/fluxcd/pkg/apis/meta v0.10.1
 	github.com/fluxcd/pkg/untar v0.1.0
-	github.com/fluxcd/source-controller/api v0.15.1
+	github.com/fluxcd/source-controller/api v0.15.4
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.4.0
 	github.com/golang/mock v1.5.0
-	github.com/google/go-cmp v0.5.5
+	github.com/google/go-cmp v0.5.6
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.14.0
 	github.com/paulcarlton-ww/goutils/pkg/kubectl v0.0.4

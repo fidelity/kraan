@@ -16,8 +16,6 @@ jobs:
         with:
           fetch-depth: 0
       - name: Validate
-        env:
-          GITREPO: ${{ github.event.pull_request.head.repo.full_name }}
         run: |
           if [ "${{ github.event_name }}" == "pull_request" ] 
           then

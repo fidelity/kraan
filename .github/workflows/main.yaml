@@ -19,9 +19,6 @@ jobs:
         env:
           GITREPO: ${{ github.event.pull_request.head.repo.full_name }}
         run: |
-          echo "{\"spec\": {\"ref\": {\"branch\": \"$GITHUB_HEAD_REF\"},\"url\": \"$GITHUB_SERVER_URL/$GITREPO.git\"}}"
-          [ "${{ github.event_name }}" != "push" ] && export GITREPO='fidelity/kra'
-          echo "{\"spec\": {\"ref\": {\"branch\": \"$GITHUB_HEAD_REF\"},\"url\": \"$GITHUB_SERVER_URL/$GITREPO.git\"}}"
           if [ "${{ github.event_name }}" == "pull_request" ] 
           then
             make validate-versions

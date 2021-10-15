@@ -100,7 +100,7 @@ jobs:
           docker load -i *.tar
           kind load docker-image kraan/kraan-controller-prerelease:$VERSION
       - name: Integration Test
-      - env:
+        env:
           GITREPO: ${{ github.event.pull_request.head.repo.full_name }}
         run: |
           [ "${{ github.event_name }}" == "pull_request" ] && export DOCKER_IMG='kraan-controller-prerelease' || export DOCKER_IMG='kraan-controller'
@@ -120,7 +120,7 @@ jobs:
           echo "waiting 5m for test to pass..."
           kubectl wait al --for=condition=Deployed --all --timeout=5m || (kubectl get po -A && kubectl describe al -A && false)
       - name: Orphan Integration Test
-      - env:
+        env:
           GITREPO: ${{ github.event.pull_request.head.repo.full_name }}
         run: |
           echo "setting up test..."

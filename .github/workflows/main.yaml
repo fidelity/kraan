@@ -100,6 +100,8 @@ jobs:
           docker load -i *.tar
           kind load docker-image kraan/kraan-controller-prerelease:$VERSION
       - name: Integration Test
+      - env:
+          GITREPO: ${{ github.event.pull_request.head.repo.full_name }}
         run: |
           [ "${{ github.event_name }}" == "pull_request" ] && export DOCKER_IMG='kraan-controller-prerelease' || export DOCKER_IMG='kraan-controller'
           [ "${{ github.event_name }}" == "pull_request" ] && export VERSION=$(cat VERSION)-dev || export VERSION=$(cat VERSION)
@@ -112,16 +114,18 @@ jobs:
           echo "setting up test..."
           kubectl apply -f ./testdata/namespaces.yaml
           kubectl apply -f ./testdata/addons/addons-source.yaml
-          kubectl patch gitrepository addons-config -n gotk-system -p "{\"spec\": {\"ref\": {\"branch\": \"$GITHUB_HEAD_REF\"}}}" --type=merge
+          kubectl patch gitrepository addons-config -n gotk-system -p "{\"spec\": {\"ref\": {\"branch\": \"$GITHUB_HEAD_REF\"},\"url\": \"$GITHUB_SERVER_URL/$GITREPO.git\"}}" --type=merge
           kubectl apply -f ./testdata/addons/addons-repo.yaml
           kubectl apply -f ./testdata/addons/addons.yaml
           echo "waiting 5m for test to pass..."
           kubectl wait al --for=condition=Deployed --all --timeout=5m || (kubectl get po -A && kubectl describe al -A && false)
       - name: Orphan Integration Test
+      - env:
+          GITREPO: ${{ github.event.pull_request.head.repo.full_name }}
         run: |
           echo "setting up test..."
           kubectl apply -f ./testdata/addons-orphan/addons-source.yaml
-          kubectl patch gitrepository addons-config -n gotk-system -p "{\"spec\": {\"ref\": {\"branch\": \"$GITHUB_HEAD_REF\"}}}" --type=merge
+          kubectl patch gitrepository addons-config -n gotk-system -p "{\"spec\": {\"ref\": {\"branch\": \"$GITHUB_HEAD_REF\"},\"url\": \"$GITHUB_SERVER_URL/$GITREPO.git\"}}" --type=merge
           kubectl apply -f ./testdata/addons-orphan/addons-repo.yaml
           kubectl apply -f ./testdata/addons-orphan/addons.yaml
           echo "waiting 5m for test to pass..."

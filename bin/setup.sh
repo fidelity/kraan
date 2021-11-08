@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Set versions of software required
 linter_version=1.38.0
-kubebuilder_version=2.3.1
 mockgen_version=v1.4.4
 helm_version=v3.6.1
 kind_version=v0.11.1
@@ -10,7 +9,7 @@ kustomize_version=v3.8.5
 
 function usage()
 {
-    echo "USAGE: ${0##*/}"
+    echo "USAGE: ${0##*/} [--debug]"
     echo "Install software required for golang project"
 }
 
@@ -20,6 +19,7 @@ function args() {
         case "$1" in
             "--help") usage; exit;;
             "-?") usage; exit;;
+            "--debug") set -x;return;;
             "--skip-kind") installKind=0;return;;
             *) usage; exit;;
         esac
@@ -36,13 +36,8 @@ function install_kubebuilder() {
     arch=$(go env GOARCH)
 
     # download kubebuilder and extract it to tmp
-    curl -L https://go.kubebuilder.io/dl/${kubebuilder_version}/${os}/${arch} | tar -xz -C /tmp/
-
-    # move to a long-term location and put it on your path
-    # (you'll need to set the KUBEBUILDER_ASSETS env var if you put it somewhere else)
-    $sudo mv /tmp/kubebuilder_${kubebuilder_version}_${os}_${arch} /usr/local/kubebuilder
-    echo "add the following to your bash profile"
-    echo "export PATH=\$PATH:/usr/local/kubebuilder/bin"
+    curl -L -o kubebuilder https://go.kubebuilder.io/dl/latest/$(go env GOOS)/$(go env GOARCH)
+    chmod +x kubebuilder && sudo mv kubebuilder /usr/local/bin/
 }
 
 function install_helm() {
@@ -99,12 +94,12 @@ else
 fi
 
 export PATH=$PATH:/usr/local/kubebuilder/bin
-kubebuilder version 2>&1 | grep ${kubebuilder_version} >/dev/null
+kubebuilder version 2>&1 >/dev/null
 ret_code="${?}"
 if [[ "${ret_code}" != "0" ]] ; then
-    echo "installing kubebuilder version: ${kubebuilder_version}"
+    echo "installing kubebuilder version: "
     install_kubebuilder
-    kubebuilder version 2>&1 | grep ${kubebuilder_version} >/dev/null
+    kubebuilder version 2>&1 >/dev/null
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then
         echo "Failed to install kubebuilder"

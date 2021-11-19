@@ -58,7 +58,7 @@ function install_kubectl() {
 }
 
 function install_kustomize() {
-    curl -LO https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v3.8.5/kustomize_${kustomize_version}_linux_amd64.tar.gz
+    curl -LO https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/${kustomize_version}/kustomize_${kustomize_version}_linux_amd64.tar.gz
     tar xzf ./kustomize_${kustomize_version}_linux_amd64.tar.gz
     chmod +x ./kustomize
     $sudo mv kustomize /usr/local/bin

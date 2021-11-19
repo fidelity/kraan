@@ -195,7 +195,7 @@ build: mkdir-${BUILD_DIR} ${BUILD_ARTIFACT}
 		docker buildx build --platform linux/$${arch} --rm --pull=true \
 			${DOCKER_BUILD_OPTIONS} \
 			${DOCKER_BUILD_PROXYS} \
-			--build-arg TARGETARCH=${arch} \
+			--build-arg TARGETARCH=$${arch} \
 			--tag ${IMG} \
 			--file $< \
 			. && \

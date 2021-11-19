@@ -45,8 +45,8 @@ GO_CHECK_PACKAGES:=$(shell echo $(subst $() $(),\\n,$(ALL_GO_PACKAGES)) | \
 	awk '{print $$0}')
 
 CHECK_ARTIFACT:=${BUILD_DIR}${PROJECT}-check-${VERSION}-docker.tar
-BUILD_ARTIFACT:=${BUILD_DIR}${PROJECT}-build-${VERSION}-docker.tar
-DEV_BUILD_ARTIFACT:=${BUILD_DIR}${PROJECT}-dev-build-${VERSION}-docker.tar
+BUILD_ARTIFACT:=${BUILD_DIR}${PROJECT}-${VERSION}-build-docker.tar
+DEV_BUILD_ARTIFACT:=${BUILD_DIR}${PROJECT}-${VERSION}-build-dev-docker.tar
 
 GOMOD_CACHE_ARTIFACT:=${GOMOD_CACHE_DIR}._gomod
 GOMOD_ARTIFACT:=_gomod
@@ -184,20 +184,22 @@ check: mkdir-${BUILD_DIR} ${CHECK_ARTIFACT}
 clean-build:
 	rm -f ${BUILD_ARTIFACT}
 
+ARCHS := amd64 arm64
+
 build: DOCKER_SOURCES=Dockerfile ${MAKE_SOURCES} ${PROJECT_SOURCES}
 build: IMG=${REPO}/${PROJECT}:${VERSION}
 build: mkdir-${BUILD_DIR} ${BUILD_ARTIFACT}
 
-%-docker.tar: $${DOCKER_SOURCES}
+%-build-docker.tar: $${DOCKER_SOURCES}
 	for arch in $(ARCHS); do \
-		docker buildx build --platform linux/${arch} --rm --pull=true \
+		docker buildx build --platform linux/$${arch} --rm --pull=true \
 			${DOCKER_BUILD_OPTIONS} \
-			--build-arg TARGETARCH=${arch} \
 			${DOCKER_BUILD_PROXYS} \
-			--tag ${IMG} --push \
+			--build-arg TARGETARCH=${arch} \
+			--tag ${IMG} \
 			--file $< \
 			. && \
-		docker save --output $@ ${IMG} \
+		docker save --output $@ ${IMG} ; \
 	done ;
 clean-dev-build:
 	rm -f ${DEV_BUILD_ARTIFACT}
@@ -206,7 +208,7 @@ dev-build: DOCKER_SOURCES=Dockerfile-dev ${MAKE_SOURCES} ${PROJECT_SOURCES}
 dev-build: IMG=${REPO}/${PROJECT}-prerelease:${VERSION}
 dev-build: mkdir-${BUILD_DIR} ${DEV_BUILD_ARTIFACT}
 
-%-docker.tar: $${DOCKER_SOURCES}
+%-build-dev-docker.tar: $${DOCKER_SOURCES}
 	docker build --rm --pull=true \
 		${DOCKER_BUILD_OPTIONS} \
 		${DOCKER_BUILD_PROXYS} \

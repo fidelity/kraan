@@ -53,18 +53,18 @@ jobs:
       # - uses: satackey/action-docker-layer-caching@v0
       #   # Ignore the failure of a step and avoid terminating the job.
       #   continue-on-error: true
-      - name: Prerelease - Lint, Test, Build
-        if: github.event_name == 'pull_request'
-        run: |
-          make clean
-          make dev-build
-      - name: Prerelease - Store docker image as artifact
-        if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v2
-        with:
-          name: image
-          path: build/*.tar
-          if-no-files-found: error
+      # - name: Prerelease - Lint, Test, Build
+      #   if: github.event_name == 'pull_request'
+      #   run: |
+      #     make clean
+      #     make dev-build
+      # - name: Prerelease - Store docker image as artifact
+      #   if: github.event_name == 'pull_request'
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: image
+      #     path: build/*.tar
+      #     if-no-files-found: error
       - name: Release - Lint, Test, Build, and Push
         if: github.event_name == 'pull_request'
         run: |

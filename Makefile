@@ -189,14 +189,16 @@ build: IMG=${REPO}/${PROJECT}:${VERSION}
 build: mkdir-${BUILD_DIR} ${BUILD_ARTIFACT}
 
 %-docker.tar: $${DOCKER_SOURCES}
-	docker build --rm --pull=true \
-		${DOCKER_BUILD_OPTIONS} \
-		${DOCKER_BUILD_PROXYS} \
-		--tag ${IMG} \
-		--file $< \
-		. && \
-	docker save --output $@ ${IMG}
-
+	for arch in $(ARCHS); do \
+		docker buildx build --platform linux/${arch} --rm --pull=true \
+			${DOCKER_BUILD_OPTIONS} \
+			--build-arg TARGETARCH=${arch} \
+			${DOCKER_BUILD_PROXYS} \
+			--tag ${IMG} --push \
+			--file $< \
+			. && \
+		docker save --output $@ ${IMG} \
+	done ;
 clean-dev-build:
 	rm -f ${DEV_BUILD_ARTIFACT}
 

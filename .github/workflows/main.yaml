@@ -66,7 +66,7 @@ jobs:
           path: build/*.tar
           if-no-files-found: error
       - name: Release - Lint, Test, Build, and Push
-        if: github.event_name == 'push'
+        if: github.event_name == 'pull_request'
         run: |
           if docker pull kraan/kraan-controller:$VERSION; then
             echo "image already exists. Skipping..."
@@ -74,7 +74,7 @@ jobs:
           fi
           make clean
           make build
-          make docker-push
+
   integration-test:
     needs: docker-build
     runs-on: ubuntu-20.04

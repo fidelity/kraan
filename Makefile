@@ -191,6 +191,8 @@ build: IMG=${REPO}/${PROJECT}:${VERSION}
 build: mkdir-${BUILD_DIR} ${BUILD_ARTIFACT}
 
 %-build-docker.tar: $${DOCKER_SOURCES}
+	docker -v
+	docker buildx create --platform linux/amd64/,linux/arm64 --name mybuilder --use
 	docker buildx ls
 	for arch in $(ARCHS); do \
 		echo "${YELLOW}Building $${arch} image.${NC}" && \

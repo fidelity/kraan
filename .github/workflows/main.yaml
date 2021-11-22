@@ -65,15 +65,33 @@ jobs:
       #     name: image
       #     path: build/*-amd64.tar
       #     if-no-files-found: error
-      - name: Release - Lint, Test, Build, and Push
-        if: github.event_name == 'pull_request'
-        run: |
-          if docker pull kraan/kraan-controller:$VERSION; then
-            echo "image already exists. Skipping..."
-            exit 0
-          fi
-          make clean
-          make build
+      # - name: Release - Lint, Test, Build, and Push
+      #   if: github.event_name == 'pull_request'
+      #   run: |
+      #     if docker pull kraan/kraan-controller:$VERSION; then
+      #       echo "image already exists. Skipping..."
+      #       exit 0
+      #     fi
+      #     make clean
+      #     make build
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@master
+        with:
+          platforms: all
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@master
+      - name: Build
+        uses: docker/build-push-action@v2
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: .
+          file: ./Dockerfile
+          platforms: linux/arm64
+          push: false
+          tags: kraan/kraan-controller:$VERSION
+          build-args: |
+            TARGETARCH=arm64
 
   integration-test:
     needs: docker-build

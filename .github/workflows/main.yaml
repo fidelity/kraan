@@ -63,7 +63,7 @@ jobs:
       #   uses: actions/upload-artifact@v2
       #   with:
       #     name: image
-      #     path: build/*.tar
+      #     path: build/*-amd64.tar
       #     if-no-files-found: error
       - name: Release - Lint, Test, Build, and Push
         if: github.event_name == 'pull_request'
@@ -98,7 +98,7 @@ jobs:
         run: |
           export VERSION=$(cat VERSION)-dev
           docker load -i *.tar
-          kind load docker-image kraan/kraan-controller-prerelease:$VERSION
+          kind load docker-image kraan/kraan-controller-prerelease:$VERSION-amd64
       - name: Integration Test
         env:
           GITREPO: ${{ github.event.pull_request.head.repo.full_name }}

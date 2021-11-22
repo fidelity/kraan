@@ -25,7 +25,7 @@ RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/b
 RUN chmod +x ./kubectl
 RUN mv kubectl bin
 RUN curl -LO https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v3.8.6/kustomize_v3.8.6_linux_${TARGETARCH}.tar.gz
-RUN tar xzf ./kustomize_v3.8.6_linux_${TARGETARCH}.tar.gz
+RUN tar xzvf ./kustomize_v3.8.6_linux_${TARGETARCH}.tar.gz
 RUN chmod +x ./kustomize
 RUN mv kustomize bin
 RUN rm ./kustomize_v3.8.6_linux_${TARGETARCH}.tar.gz

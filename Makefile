@@ -203,7 +203,7 @@ build: mkdir-${BUILD_DIR} ${BUILD_ARTIFACT}
 			--tag ${IMG} \
 			--file $< \
 			. && \
-		docker save --output $@ ${IMG} ; \
+		docker save --output $@ ${IMG}-$${arch} ; \
 	done ;
 clean-dev-build:
 	rm -f ${DEV_BUILD_ARTIFACT}

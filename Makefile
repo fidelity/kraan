@@ -196,14 +196,13 @@ build: mkdir-${BUILD_DIR} ${BUILD_ARTIFACT}
 	docker buildx ls
 	for arch in $(ARCHS); do \
 		echo "${YELLOW}Building $${arch} image.${NC}" && \
-		docker buildx build --builder mybuilder --platform linux/$${arch} --rm --pull=true \
+		docker buildx build --builder mybuilder --platform linux/$${arch} --rm --pull=true --push \
 			${DOCKER_BUILD_OPTIONS} \
 			${DOCKER_BUILD_PROXYS} \
 			--build-arg TARGETARCH=$${arch} \
 			--tag ${IMG} \
 			--file $< \
 			. && \
-		docker save --output $@ ${IMG} ; \
 	done ;
 clean-dev-build:
 	rm -f ${DEV_BUILD_ARTIFACT}

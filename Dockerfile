@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.16 as builder
+FROM golang:1.16-bullseye as builder
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -19,7 +19,6 @@ ENV GOARCH=${TARGETARCH}
 
 # Build
 RUN mkdir bin
-RUN CGO_ENABLED=0 GOOS=linux GOARCH="${GOARCH}" GO111MODULE=on go build -a -o bin/kraan-controller main/main.go
 RUN apt install -y curl tar
 RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/${TARGETARCH}/kubectl
 RUN chmod +x ./kubectl
@@ -29,6 +28,7 @@ RUN tar xzvf ./kustomize_v4.0.5_linux_${TARGETARCH}.tar.gz
 RUN chmod +x ./kustomize
 RUN mv kustomize bin
 RUN rm ./kustomize_v4.0.5_linux_${TARGETARCH}.tar.gz
+RUN CGO_ENABLED=0 GOOS=linux GOARCH="${GOARCH}" GO111MODULE=on go build -a -o bin/kraan-controller main/main.go
 
 FROM gcr.io/distroless/static:latest
 WORKDIR /

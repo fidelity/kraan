@@ -20,11 +20,11 @@ require (
 	go.uber.org/zap v1.18.1
 	golang.org/x/mod v0.3.1-0.20200828183125-ce943fd02449
 	helm.sh/helm/v3 v3.6.3
-	k8s.io/api v0.21.3
+	k8s.io/api v0.22.4
 	k8s.io/apiextensions-apiserver v0.21.3
-	k8s.io/apimachinery v0.21.3
-	k8s.io/cli-runtime v0.21.3
-	k8s.io/client-go v0.21.3
+	k8s.io/apimachinery v0.22.4
+	k8s.io/cli-runtime v0.22.4
+	k8s.io/client-go v0.22.4
 	k8s.io/kubectl v0.21.3
 	sigs.k8s.io/controller-runtime v0.9.5
 	sigs.k8s.io/kind v0.11.1

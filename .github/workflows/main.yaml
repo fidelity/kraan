@@ -89,7 +89,7 @@ jobs:
           file: ./Dockerfile
           platforms: linux/arm64
           push: false
-          tags: kraan/kraan-controller:$VERSION
+          tags: kraan/kraan-controller:0.3.9
           build-args: |
             TARGETARCH=arm64
 

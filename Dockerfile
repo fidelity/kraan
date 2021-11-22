@@ -20,7 +20,7 @@ ENV GOARCH=${TARGETARCH}
 # Build
 RUN mkdir bin
 RUN CGO_ENABLED=0 GOOS=linux GOARCH="${GOARCH}" GO111MODULE=on go build -a -o bin/kraan-controller main/main.go
-RUN apt install -y curl
+RUN apt install -y curl tar
 RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/${TARGETARCH}/kubectl
 RUN chmod +x ./kubectl
 RUN mv kubectl bin

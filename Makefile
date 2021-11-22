@@ -184,14 +184,16 @@ check: mkdir-${BUILD_DIR} ${CHECK_ARTIFACT}
 clean-build:
 	rm -f ${BUILD_ARTIFACT}
 
-ARCHS := amd64 arm64
+ARCHS := arm64 amd64
 
 build: DOCKER_SOURCES=Dockerfile ${MAKE_SOURCES} ${PROJECT_SOURCES}
 build: IMG=${REPO}/${PROJECT}:${VERSION}
 build: mkdir-${BUILD_DIR} ${BUILD_ARTIFACT}
 
 %-build-docker.tar: $${DOCKER_SOURCES}
+	docker buildx ls
 	for arch in $(ARCHS); do \
+		echo "${YELLOW}Building $${arch} image.${NC}" && \
 		docker buildx build --platform linux/$${arch} --rm --pull=true \
 			${DOCKER_BUILD_OPTIONS} \
 			${DOCKER_BUILD_PROXYS} \

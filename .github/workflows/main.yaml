@@ -57,17 +57,9 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: image
-          path: build/*-amd64.tar
+          path: build/*.tar
           if-no-files-found: error
-      - name: Release - Lint, Test, Build, and Push
-        if: github.event_name == 'pull_request'
-        run: |
-          if docker pull kraan/kraan-controller:$VERSION; then
-            echo "image already exists. Skipping..."
-            exit 0
-          fi
-          make clean
-          make build
+
       - name: Login to GitHub Packages Docker Registry
         if: github.event_name == 'push'
         uses: docker/login-action@v1

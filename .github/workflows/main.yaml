@@ -39,65 +39,81 @@ jobs:
         with:
           # The Go version to download (if necessary) and use. Supports semver spec and ranges.
           go-version: 1.16.5
+      - name: Setup dependencies
+        run: |
+          [ -z "${GOPATH}" ] && export GOPATH=$HOME/go
+          PATH="${GOPATH}/bin:${PATH}"
+          ./bin/setup.sh --skip-kind
+      - uses: satackey/action-docker-layer-caching@v0
+        # Ignore the failure of a step and avoid terminating the job.
+        continue-on-error: true
+      - name: Prerelease - Lint, Test, Build
+        if: github.event_name == 'pull_request'
+        run: |
+          make clean
+          make dev-build
+      - name: Prerelease - Store docker image as artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v2
+        with:
+          name: image
+          path: build/*-amd64.tar
+          if-no-files-found: error
+      - name: Release - Lint, Test, Build, and Push
+        if: github.event_name == 'pull_request'
+        run: |
+          if docker pull kraan/kraan-controller:$VERSION; then
+            echo "image already exists. Skipping..."
+            exit 0
+          fi
+          make clean
+          make build
       - name: Login to GitHub Packages Docker Registry
         if: github.event_name == 'push'
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_TOKEN }}
-      - name: Setup dependencies
-        run: |
-          [ -z "${GOPATH}" ] && export GOPATH=$HOME/go
-          PATH="${GOPATH}/bin:${PATH}"
-          ./bin/setup.sh --skip-kind
-      # - uses: satackey/action-docker-layer-caching@v0
-      #   # Ignore the failure of a step and avoid terminating the job.
-      #   continue-on-error: true
-      # - name: Prerelease - Lint, Test, Build
-      #   if: github.event_name == 'pull_request'
-      #   run: |
-      #     make clean
-      #     make dev-build
-      # - name: Prerelease - Store docker image as artifact
-      #   if: github.event_name == 'pull_request'
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: image
-      #     path: build/*-amd64.tar
-      #     if-no-files-found: error
-      # - name: Release - Lint, Test, Build, and Push
-      #   if: github.event_name == 'pull_request'
-      #   run: |
-      #     if docker pull kraan/kraan-controller:$VERSION; then
-      #       echo "image already exists. Skipping..."
-      #       exit 0
-      #     fi
-      #     make clean
-      #     make build
       - name: Prepare
         id: prep
+        if: github.event_name == 'push'
         run: |
           VERSION=$(cat VERSION)
           TAGS=kraan/kraan-controller:${VERSION}
           echo ::set-output name=tags::${TAGS}
       - name: Set up QEMU
+        if: github.event_name == 'push'
         uses: docker/setup-qemu-action@master
         with:
           platforms: all
       - name: Set up Docker Buildx
         id: buildx
+        if: github.event_name == 'push'
         uses: docker/setup-buildx-action@master
-      - name: Build
+      - name: Build Arm64 image
+        if: github.event_name == 'push'
         uses: docker/build-push-action@v2
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
           file: ./Dockerfile
           platforms: linux/arm64
-          push: false
+          push: true
           tags: ${{ steps.prep.outputs.tags }}
           build-args: |
             TARGETARCH=arm64
+      - name: Build Amd64 image
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v2
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.prep.outputs.tags }}
+          build-args: |
+            TARGETARCH=amd64
 
   integration-test:
     needs: docker-build

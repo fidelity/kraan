@@ -15,7 +15,6 @@ COPY api/ api
 RUN go mod download
 
 ARG TARGETARCH
-ENV GOARCH=${TARGETARCH}
 
 # Build
 RUN mkdir bin
@@ -28,7 +27,7 @@ RUN tar xzvf ./kustomize_v3.8.7_linux_${TARGETARCH}.tar.gz
 RUN chmod +x ./kustomize
 RUN mv kustomize bin
 RUN rm ./kustomize_v3.8.7_linux_${TARGETARCH}.tar.gz
-RUN CGO_ENABLED=0 GOOS=linux GOARCH="${GOARCH}" GO111MODULE=on go build -a -o bin/kraan-controller main/main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH="${TARGETARCH}" GO111MODULE=on go build -a -o bin/kraan-controller main/main.go
 
 FROM gcr.io/distroless/static:latest
 WORKDIR /

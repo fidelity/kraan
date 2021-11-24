@@ -74,6 +74,12 @@ jobs:
       #     fi
       #     make clean
       #     make build
+      - name: Prepare
+        id: prep
+        run: |
+          VERSION=$(cat VERSION)
+          TAGS=kraan/kraan-controller:${VERSION}
+          echo ::set-output name=tags::${TAGS}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@master
         with:
@@ -89,7 +95,7 @@ jobs:
           file: ./Dockerfile
           platforms: linux/arm64
           push: false
-          tags: kraan/kraan-controller:0.3.9
+          tags: ${{ steps.prep.outputs.tags }}
           build-args: |
             TARGETARCH=arm64
 

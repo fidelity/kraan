@@ -44,9 +44,9 @@ jobs:
           [ -z "${GOPATH}" ] && export GOPATH=$HOME/go
           PATH="${GOPATH}/bin:${PATH}"
           ./bin/setup.sh --skip-kind
-      - uses: satackey/action-docker-layer-caching@v0
-        # Ignore the failure of a step and avoid terminating the job.
-        continue-on-error: true
+      # - uses: satackey/action-docker-layer-caching@v0
+      #   # Ignore the failure of a step and avoid terminating the job.
+      #   continue-on-error: true
       - name: Prerelease - Lint, Test, Build
         if: github.event_name == 'pull_request'
         run: |

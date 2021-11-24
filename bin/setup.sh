@@ -5,7 +5,7 @@ mockgen_version=v1.4.4
 helm_version=v3.6.1
 kind_version=v0.11.1
 kubectl_version=v1.21.0
-kustomize_version=v3.8.5
+kustomize_version=v3.8.7
 
 function usage()
 {
@@ -58,7 +58,7 @@ function install_kubectl() {
 }
 
 function install_kustomize() {
-    curl -LO https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v3.8.5/kustomize_${kustomize_version}_linux_amd64.tar.gz
+    curl -LO https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/${kustomize_version}/kustomize_${kustomize_version}_linux_amd64.tar.gz
     tar xzf ./kustomize_${kustomize_version}_linux_amd64.tar.gz
     chmod +x ./kustomize
     $sudo mv kustomize /usr/local/bin

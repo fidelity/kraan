@@ -12,13 +12,13 @@ require (
 	github.com/golang/mock v1.5.0
 	github.com/google/go-cmp v0.5.6
 	github.com/onsi/ginkgo v1.16.4
-	github.com/onsi/gomega v1.14.0
+	github.com/onsi/gomega v1.17.0
 	github.com/paulcarlton-ww/goutils/pkg/kubectl v0.0.4
 	github.com/paulcarlton-ww/goutils/pkg/testutils v0.1.42
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.0
-	go.uber.org/zap v1.18.1
-	golang.org/x/mod v0.3.1-0.20200828183125-ce943fd02449
+	go.uber.org/zap v1.20.0
+	golang.org/x/mod v0.4.2
 	helm.sh/helm/v3 v3.6.3
 	k8s.io/api v0.21.3
 	k8s.io/apiextensions-apiserver v0.21.3

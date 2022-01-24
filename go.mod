@@ -12,7 +12,7 @@ require (
 	github.com/golang/mock v1.5.0
 	github.com/google/go-cmp v0.5.6
 	github.com/onsi/ginkgo v1.16.4
-	github.com/onsi/gomega v1.14.0
+	github.com/onsi/gomega v1.18.0
 	github.com/paulcarlton-ww/goutils/pkg/kubectl v0.0.4
 	github.com/paulcarlton-ww/goutils/pkg/testutils v0.1.42
 	github.com/pkg/errors v0.9.1

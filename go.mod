@@ -8,7 +8,7 @@ require (
 	github.com/fluxcd/pkg/untar v0.1.0
 	github.com/fluxcd/source-controller/api v0.15.4
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-logr/logr v0.4.0
+	github.com/go-logr/logr v1.2.0
 	github.com/golang/mock v1.5.0
 	github.com/google/go-cmp v0.5.6
 	github.com/onsi/ginkgo v1.16.4
@@ -16,15 +16,15 @@ require (
 	github.com/paulcarlton-ww/goutils/pkg/kubectl v0.0.4
 	github.com/paulcarlton-ww/goutils/pkg/testutils v0.1.42
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.11.0
+	github.com/prometheus/client_golang v1.12.1
 	go.uber.org/zap v1.20.0
-	golang.org/x/mod v0.4.2
+	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3
 	helm.sh/helm/v3 v3.6.3
-	k8s.io/api v0.21.3
-	k8s.io/apiextensions-apiserver v0.21.3
-	k8s.io/apimachinery v0.21.3
+	k8s.io/api v0.24.0
+	k8s.io/apiextensions-apiserver v0.24.0
+	k8s.io/apimachinery v0.24.0
 	k8s.io/cli-runtime v0.21.3
-	k8s.io/client-go v0.21.3
+	k8s.io/client-go v0.24.0
 	k8s.io/kubectl v0.21.3
 	sigs.k8s.io/controller-runtime v0.9.5
 	sigs.k8s.io/kind v0.11.1

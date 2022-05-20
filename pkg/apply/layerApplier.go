@@ -88,9 +88,6 @@ func NewApplier(client client.Client, logger logr.Logger, scheme *runtime.Scheme
 
 func (a KubectlLayerApplier) getLog(layer layers.Layer) (logger logr.Logger) {
 	logger = layer.GetLogger()
-	if logger == nil {
-		logger = a.logger
-	}
 	return logger
 }
 

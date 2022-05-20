@@ -80,7 +80,7 @@ type fetchArtifactTest struct {
 }
 
 func TestFetchArtifact(t *testing.T) {
-	testRepos := repos.NewRepos(context.Background(), testlogr.TestLogger{T: t})
+	testRepos := repos.NewRepos(context.Background(), testlogr.NewTestLogger(t))
 
 	newTest := func(ctx context.Context, t *testing.T, name, repoYAML string, testRepos repos.Repos, expected interface{}) fetchArtifactTest {
 		return fetchArtifactTest{
@@ -123,7 +123,7 @@ type syncRepoTest struct {
 }
 
 func TestSyncRepo(t *testing.T) {
-	testRepos := repos.NewRepos(context.Background(), testlogr.TestLogger{T: t})
+	testRepos := repos.NewRepos(context.Background(), testlogr.NewTestLogger((t)))
 
 	newTest := func(name, path string, expected interface{}) syncRepoTest {
 		return syncRepoTest{
@@ -193,7 +193,7 @@ func (l linkDataTest) checkExpected(t *testing.T, repo repos.Repo, err error) {
 }
 
 func TestLinkData(t *testing.T) {
-	testRepos := repos.NewRepos(context.Background(), testlogr.TestLogger{T: t})
+	testRepos := repos.NewRepos(context.Background(), testlogr.NewTestLogger(t))
 
 	newTest := func(name, path, layerPath, sourcePath string, createTarget, createSource bool, expected interface{}) linkDataTest {
 		return linkDataTest{

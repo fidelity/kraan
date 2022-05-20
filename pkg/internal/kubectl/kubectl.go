@@ -205,9 +205,7 @@ func (c *abstractCommand) DryRun() (output []byte, err error) {
 
 // WithLogger sets the Logger the command should use to log actions if passed a Logger that is not nil.
 func (c *abstractCommand) WithLogger(logger logr.Logger) (self Command) {
-	if logger != nil {
-		c.logger = logger
-	}
+	c.logger = logger
 	return c
 }
 

@@ -3,15 +3,15 @@ module github.com/fidelity/kraan
 go 1.14
 
 require (
-	github.com/fluxcd/helm-controller/api v0.11.2
-	github.com/fluxcd/pkg/apis/meta v0.10.1
+	github.com/fluxcd/helm-controller/api v0.21.0
+	github.com/fluxcd/pkg/apis/meta v0.13.0
 	github.com/fluxcd/pkg/untar v0.1.0
-	github.com/fluxcd/source-controller/api v0.15.4
+	github.com/fluxcd/source-controller/api v0.24.4
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-logr/logr v0.4.0
+	github.com/go-logr/logr v1.2.2
 	github.com/golang/mock v1.5.0
 	github.com/google/go-cmp v0.5.6
-	github.com/onsi/ginkgo v1.16.4
+	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.18.1
 	github.com/paulcarlton-ww/goutils/pkg/kubectl v0.0.4
 	github.com/paulcarlton-ww/goutils/pkg/testutils v0.1.42
@@ -20,13 +20,13 @@ require (
 	go.uber.org/zap v1.20.0
 	golang.org/x/mod v0.4.2
 	helm.sh/helm/v3 v3.6.3
-	k8s.io/api v0.21.3
-	k8s.io/apiextensions-apiserver v0.21.3
-	k8s.io/apimachinery v0.21.3
+	k8s.io/api v0.23.6
+	k8s.io/apiextensions-apiserver v0.23.6
+	k8s.io/apimachinery v0.23.6
 	k8s.io/cli-runtime v0.21.3
-	k8s.io/client-go v0.21.3
+	k8s.io/client-go v0.23.6
 	k8s.io/kubectl v0.21.3
-	sigs.k8s.io/controller-runtime v0.9.5
+	sigs.k8s.io/controller-runtime v0.11.2
 	sigs.k8s.io/kind v0.11.1
 )
 

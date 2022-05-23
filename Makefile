@@ -125,7 +125,7 @@ clean-gomod:
 	rm -rf ${GOMOD_ARTIFACT}
 
 go.mod:
-	go mod tidy
+	go mod tidy -compat=1.17
 
 gomod: go.sum
 go.sum:  ${GOMOD_ARTIFACT}
@@ -136,7 +136,7 @@ ${GOMOD_ARTIFACT}: gomod-update
 gomod-update: go.mod ${PROJECT_SOURCES}
 	go build ./... && \
 	echo "${YELLOW}go mod tidy${NC}" && \
-	go mod tidy && \
+	go mod tidy -compat=1.17 && \
 	echo "${YELLOW}go mod download${NC}" && \
 	go mod download
 

@@ -137,7 +137,6 @@ gomod-update: go.mod ${PROJECT_SOURCES}
 	echo "${YELLOW}go mod tidy -go=1.16 && go mod tidy -go=1.17${NC}" && \
 	go mod tidy -go=1.16 && go mod tidy -go=1.17 && \
 	echo "${YELLOW}go mod download${NC}" && \
-	go mod download && \
 	go build ./... 
 
 clean-${PROJECT}-check:

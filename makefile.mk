@@ -38,7 +38,7 @@ export SC_HOST?=localhost:8090
 # Stop prints each line of the recipe.
 .SILENT:
 
-all: lint coverage
+all: coverage
 clean: clean-lint clean-coverage clean-test
 
 integration: integration-coverage integration-test

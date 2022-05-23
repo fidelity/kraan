@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Set versions of software required
 linter_version=1.38.0
-mockgen_version=v1.4.4
+# mockgen_version=v1.4.4
 helm_version=v3.6.1
 kind_version=v0.11.1
 kubectl_version=v1.21.0
@@ -109,20 +109,20 @@ else
    echo "kubebuilder version: `kubebuilder version`"     
 fi
 
-mockgen -version 2>&1 | grep ${mockgen_version} >/dev/null
-ret_code="${?}"
-if [[ "${ret_code}" != "0" ]] ; then
-    echo "installing mockgen version: ${mockgen_version}"
-    GO111MODULE=on go get github.com/golang/mock/mockgen@${mockgen_version}
-    mockgen -version 2>&1 | grep ${mockgen_version} >/dev/null
-    ret_code="${?}"
-    if [ "${ret_code}" != "0" ] ; then
-        echo "Failed to install mockgen"
-        exit 1
-    fi
-else
-    echo "mockgen version: `mockgen -version`"
-fi
+# mockgen -version 2>&1 | grep ${mockgen_version} >/dev/null
+# ret_code="${?}"
+# if [[ "${ret_code}" != "0" ]] ; then
+#     echo "installing mockgen version: ${mockgen_version}"
+#     GO111MODULE=on go get github.com/golang/mock/mockgen@${mockgen_version}
+#     mockgen -version 2>&1 | grep ${mockgen_version} >/dev/null
+#     ret_code="${?}"
+#     if [ "${ret_code}" != "0" ] ; then
+#         echo "Failed to install mockgen"
+#         exit 1
+#     fi
+# else
+#     echo "mockgen version: `mockgen -version`"
+# fi
 
 flux --version >/dev/null 2>&1 
 ret_code="${?}"

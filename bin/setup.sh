@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Set versions of software required
-linter_version=1.38.0
+linter_version=1.46.2
 mockgen_version=v1.6.0
 helm_version=v3.6.1
 kind_version=v0.11.1

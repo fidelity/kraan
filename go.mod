@@ -9,7 +9,7 @@ require (
 	github.com/fluxcd/source-controller/api v0.24.4
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v1.2.2
-	github.com/golang/mock v1.5.0
+	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.6
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.18.1

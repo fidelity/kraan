@@ -136,7 +136,6 @@ ${GOMOD_ARTIFACT}: gomod-update
 gomod-update: go.mod ${PROJECT_SOURCES}
 	echo "${YELLOW}go mod tidy -go=1.16 && go mod tidy -go=1.17${NC}" && \
 	go mod tidy -go=1.16 && go mod tidy -go=1.17 && \
-	go generate ./... \
 	go build ./... 
 
 clean-${PROJECT}-check:

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Set versions of software required
 linter_version=1.38.0
-mockgen_version=v1.5.0
+mockgen_version=v1.4.4
 helm_version=v3.6.1
 kind_version=v0.11.1
 kubectl_version=v1.21.0

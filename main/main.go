@@ -25,7 +25,7 @@ import (
 	// +kubebuilder:scaffold:imports
 
 	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta1"
-	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	uzap "go.uber.org/zap"

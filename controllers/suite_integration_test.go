@@ -1,3 +1,4 @@
+//go:build integration
 // +build integration
 
 package controllers_test
@@ -23,7 +24,7 @@ import (
 	"k8s.io/client-go/transport/spdy"
 
 	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta1"
-	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/ghodss/yaml"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"

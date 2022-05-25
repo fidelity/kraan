@@ -32,7 +32,7 @@ func TestNewKubectl(t *testing.T) {
 	logger := testlogr.NewTestLogger(t)
 	k, err := kubectl.NewKubectl(logger)
 	if err != nil {
-		t.Errorf("The NewKubectl function returned an error! %w", err)
+		t.Errorf("The NewKubectl function returned an error! %e", err)
 	}
 	t.Logf("k (%T) %#v", k, k)
 	fType := &kubectl.CommandFactory{}
@@ -63,7 +63,7 @@ func TestNewKustomize(t *testing.T) {
 	logger := testlogr.NewTestLogger(t)
 	k, err := kubectl.NewKustomize(logger)
 	if err != nil {
-		t.Errorf("The NewKustomize function returned an error! %w", err)
+		t.Errorf("The NewKustomize function returned an error! %e", err)
 	}
 	t.Logf("k (%T) %#v", k, k)
 	fType := &kubectl.CommandFactory{}
@@ -96,7 +96,7 @@ func TestKubectlCommandFoundInPath(t *testing.T) {
 	f, err := kubectl.NewCommandFactory(s.testLogr, s.execProvider, kubectl.KubectlCmd)
 	t.Logf("Kubectl (%T) %#v", f, f)
 	if err != nil {
-		t.Errorf("Error returned from the execLookPath function : %w", err)
+		t.Errorf("Error returned from the execLookPath function : %e", err)
 	} else {
 		t.Logf("Kubectl command path '%s'", kubectl.GetFactoryPath(*f))
 	}
@@ -161,7 +161,7 @@ func TestKubectlApplyRunReturnsOutput(t *testing.T) {
 
 	gotOutput, err := s.Apply().Run()
 	if err != nil {
-		t.Errorf("Error returned from ApplyCommand.Run: %w", err)
+		t.Errorf("Error returned from ApplyCommand.Run: %e", err)
 		t.Fatalf("Error returned from ApplyCommand.Run")
 	}
 
@@ -178,7 +178,7 @@ func TestKubectlApplyDryRunReturnsOutput(t *testing.T) {
 
 	gotOutput, err := s.Apply().DryRun()
 	if err != nil {
-		t.Errorf("Error returned from ApplyCommand.DryRun: %w", err)
+		t.Errorf("Error returned from ApplyCommand.DryRun: %e", err)
 		t.Fatalf("Error returned from ApplyCommand.DryRun")
 	}
 
@@ -205,7 +205,7 @@ func TestKubectlRunUsesFactoryLogger(t *testing.T) {
 
 	_, err := s.Apply().Run()
 	if err != nil {
-		t.Errorf("Error returned from ApplyCommand.DryRun: %w", err)
+		t.Errorf("Error returned from ApplyCommand.DryRun: %e", err)
 		t.Fatalf("Error returned from ApplyCommand.DryRun")
 	}
 }
@@ -218,7 +218,7 @@ func TestKubectlCommandWithLoggerPassedNil(t *testing.T) {
 	_, err := s.Apply().Run()
 	// No error, and the message should be logged to the CommandFactory's logger as expected
 	if err != nil {
-		t.Errorf("Error returned from ApplyCommand.Run: %w", err)
+		t.Errorf("Error returned from ApplyCommand.Run: %e", err)
 		t.Fatalf("Error returned from ApplyCommand.Run")
 	}
 }
@@ -229,7 +229,7 @@ func TestKubectlApplyRunLogsKubectlCommand(t *testing.T) {
 
 	_, err := s.Apply().Run()
 	if err != nil {
-		t.Errorf("Error returned from ApplyCommand.Run: %w", err)
+		t.Errorf("Error returned from ApplyCommand.Run: %e", err)
 		t.Fatalf("Error returned from ApplyCommand.Run")
 	}
 }
@@ -240,7 +240,7 @@ func TestKubectlApplyDryRunLogsKubectlCommand(t *testing.T) {
 
 	_, err := s.Apply().DryRun()
 	if err != nil {
-		t.Errorf("Error returned from ApplyCommand.Run: %w", err)
+		t.Errorf("Error returned from ApplyCommand.Run: %e", err)
 		t.Fatalf("Error returned from ApplyCommand.Run")
 	}
 }
@@ -252,7 +252,7 @@ func TestKubectlCommandWithLoggerUsesPassedLogger(t *testing.T) {
 	// Create the ApplyCommand from the Kubectl factory, and swap in the rightLogger with the WithLogger function
 	_, err := s.Apply().WithLogger(s.testLogr).Run()
 	if err != nil {
-		t.Errorf("Error returned from ApplyCommand.Run: %w", err)
+		t.Errorf("Error returned from ApplyCommand.Run: %e", err)
 		t.Fatalf("Error returned from ApplyCommand.Run")
 	}
 }
@@ -382,7 +382,7 @@ func (s *Setup) withKustomizeFactoryLogr(logger logr.Logger) *Setup {
 	factory, err := kubectl.NewCommandFactory(logger, s.execProvider, kubectl.KustomizeCmd)
 	s.t.Logf("kustomize (%T) %#v", factory, factory)
 	if err != nil {
-		s.t.Errorf("Error returned from the execLookPath function : %w", err)
+		s.t.Errorf("Error returned from the execLookPath function : %e", err)
 	}
 	s.factory = factory
 	return s
@@ -396,7 +396,7 @@ func (s *Setup) withFactoryLogr(logger logr.Logger) *Setup {
 	factory, err := kubectl.NewCommandFactory(logger, s.execProvider, kubectl.KubectlCmd)
 	s.t.Logf("Kubectl (%T) %#v", factory, factory)
 	if err != nil {
-		s.t.Errorf("Error returned from the execLookPath function : %w", err)
+		s.t.Errorf("Error returned from the execLookPath function : %e", err)
 	}
 	s.factory = factory
 	return s

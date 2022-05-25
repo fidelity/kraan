@@ -706,7 +706,7 @@ func (r *AddonsLayerReconciler) updateRequeue(l layers.Layer) (res ctrl.Result, 
 // Reconcile process AddonsLayers custom resources.
 // +kubebuilder:rbac:groups=kraan.io,resources=addons,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kraan.io,resources=addons/status,verbs=get;update;patch
-func (r *AddonsLayerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) { // nolint:funlen,gocyclo,gocognit // ok
+func (r *AddonsLayerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) { // nolint:funlen,gocyclo // ok
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
 

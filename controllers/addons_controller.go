@@ -24,7 +24,7 @@ import (
 	"time"
 
 	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta1"
-	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
@@ -706,7 +706,7 @@ func (r *AddonsLayerReconciler) updateRequeue(l layers.Layer) (res ctrl.Result, 
 // Reconcile process AddonsLayers custom resources.
 // +kubebuilder:rbac:groups=kraan.io,resources=addons,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kraan.io,resources=addons/status,verbs=get;update;patch
-func (r *AddonsLayerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) { // nolint:funlen,gocyclo,gocognit // ok
+func (r *AddonsLayerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) { // nolint:funlen,gocyclo // ok
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
 

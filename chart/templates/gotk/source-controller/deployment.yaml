@@ -39,9 +39,9 @@ spec:
 {{ toYaml .Values.global.prometheusAnnotations | indent 8 }}
         {{- end }}
     spec:
-      # Required for AWS IAM Role bindings
-      # https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts-technical-overview.html
       securityContext:
+        # Required for AWS IAM Role bindings
+        # https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts-technical-overview.html
         fsGroup: 1337
       serviceAccountName: fluxcd
       containers:
@@ -74,10 +74,13 @@ spec:
         ports:
         - containerPort: 9090
           name: http
+          protocol: TCP
         - containerPort: 8080
           name: http-prom
+          protocol: TCP
         - containerPort: 9440
           name: healthz
+          protocol: TCP
         readinessProbe:
           httpGet:
             path: /
@@ -85,6 +88,11 @@ spec:
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          capabilities:
+            drop: [ "ALL" ]
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /data
           name: data

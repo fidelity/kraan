@@ -2,7 +2,7 @@
     "apiVersion": "v1",
     "items": [
         {
-            "apiVersion": "source.toolkit.fluxcd.io/v1beta1",
+            "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
             "kind": "GitRepository",
             "metadata": {
                 "generation": 1,
@@ -40,7 +40,7 @@
                 "url": "http://source-controller.gotk-system/gitrepository/gotk-system/addons-config/latest.tar.gz"
             }
         },{
-            "apiVersion": "source.toolkit.fluxcd.io/v1beta1",
+            "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
             "kind": "GitRepository",
             "metadata": {
                 "generation": 2,
@@ -78,7 +78,7 @@
                 "url": "http://source-controller.gotk-system/gitrepository/gotk-system/addons-config/latest.tar.gz"
             }
         },{
-            "apiVersion": "source.toolkit.fluxcd.io/v1beta1",
+            "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
             "kind": "GitRepository",
             "metadata": {
                 "generation": 2,
@@ -116,7 +116,7 @@
                 "url": "http://source-controller.gotk-system/gitrepository/gotk-system/addons-config/latest.tar.gz"
             }
         }, {
-            "apiVersion": "source.toolkit.fluxcd.io/v1beta1",
+            "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
             "kind": "GitRepository",
             "metadata": {
                 "generation": 2,

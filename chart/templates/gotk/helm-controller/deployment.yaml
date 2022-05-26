@@ -38,6 +38,10 @@ spec:
         {{- end }}
     spec:
       serviceAccountName: fluxcd
+      securityContext:
+        # Required for AWS IAM Role bindings
+        # https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts-technical-overview.html
+        fsGroup: 1337
       containers:
       - name: manager
         args:
@@ -66,6 +70,7 @@ spec:
         ports:
         - containerPort: 8080
           name: http-prom
+          protocol: TCP
         - containerPort: 9440
           name: healthz
           protocol: TCP
@@ -76,6 +81,11 @@ spec:
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          capabilities:
+            drop: ["ALL"]
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /tmp
           name: temp

@@ -8,7 +8,7 @@ import (
 	context "context"
 	tarconsumer "github.com/fidelity/kraan/pkg/internal/tarconsumer"
 	repos "github.com/fidelity/kraan/pkg/repos"
-	v1beta1 "github.com/fluxcd/source-controller/api/v1beta1"
+	v1beta1 "github.com/fluxcd/source-controller/api/v1beta2"
 	gomock "github.com/golang/mock/gomock"
 	http "net/http"
 	reflect "reflect"

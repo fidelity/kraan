@@ -38,7 +38,7 @@ jobs:
         uses: actions/setup-go@v2
         with:
           # The Go version to download (if necessary) and use. Supports semver spec and ranges.
-          go-version: 1.16.5
+          go-version: 1.17.3
       - name: Setup dependencies
         run: |
           [ -z "${GOPATH}" ] && export GOPATH=$HOME/go

@@ -263,7 +263,7 @@ func fakeAddonsLayer(sourcePath, layerName string, layerUID types.UID) *kraanv1a
 }
 
 func TestNewApplier(t *testing.T) {
-	logger := testlogr.TestLogger{T: t}
+	logger := testlogr.NewTestLogger(t)
 	client := fake.NewClientBuilder().WithScheme(testScheme).Build()
 	applier, err := apply.NewApplier(client, logger, testScheme)
 	if err != nil {
@@ -282,7 +282,7 @@ func TestNewApplierWithMockKubectl(t *testing.T) {
 	}
 	apply.SetNewKubectlFunc(newKFunc)
 
-	logger := testlogr.TestLogger{T: t}
+	logger := testlogr.NewTestLogger(t)
 	client := fake.NewClientBuilder().WithScheme(testScheme).Build()
 	applier, err := apply.NewApplier(client, logger, testScheme)
 	if err != nil {
@@ -422,13 +422,6 @@ func checkOwnerAndLabels(u testutils.TestUtil, name string, results, exepcted in
 
 	key := client.ObjectKeyFromObject(hr)
 
-	e := c.Get(context.Background(), key, hr)
-	if e != nil {
-		t.Fatalf("failed to get an HelmRelease, %s", e)
-
-		return false
-	}
-
 	obj, ok := hr.(metav1.Object)
 	if !ok {
 		t.Fatalf("failed to cast HelmRelase to metav1.Object")
@@ -446,6 +439,13 @@ func checkOwnerAndLabels(u testutils.TestUtil, name string, results, exepcted in
 		ownerLabel = ""
 	}
 	owningLayer := apply.LayerOwner(obj)
+
+	e := c.Get(context.Background(), key, hr)
+	if e != nil {
+		t.Fatalf("failed to get an HelmRelease, %s", e)
+
+		return false
+	}
 
 	testData.Results = append(testData.Results, orphaned, ownerLabel, owningLayer)
 	return testData.Results[0] == nil &&

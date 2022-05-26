@@ -399,6 +399,7 @@ fi
 
 if [ -n "${kraan_dev}" ] ; then
   helm_args="${helm_args} --set kraan.kraanController.readOnly=false"
+  helm_args="${helm_args} --set kraan.kraanController.runAsNonRoot=true"
 fi
 
 if [ -n "${values_files}" ] ; then

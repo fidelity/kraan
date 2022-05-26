@@ -44,6 +44,8 @@ kraan:
 
     readOnly: true
 
+    runAsNonRoot: false
+
     resources:
       limits:
         cpu: 1000m

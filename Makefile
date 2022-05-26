@@ -74,7 +74,7 @@ NC:=\033[0m
 
 all: go-generate ${PROJECT}-check ${PROJECT}-build
 build: gomod ${PROJECT}-check ${PROJECT}-build
-dev-build: gomod ${PROJECT}-check ${PROJECT}-build
+dev-build: gomod ${PROJECT}-check integration ${PROJECT}-build
 integration: gomod ${PROJECT}-integration
 clean-integration: clean-${PROJECT}-integration
 clean: clean-gomod clean-${PROJECT}-check \

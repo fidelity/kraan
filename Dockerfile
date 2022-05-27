@@ -33,5 +33,5 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH="${TARGETARCH}" GO111MODULE=on go buil
 FROM gcr.io/distroless/static:latest
 WORKDIR /
 COPY --from=builder /workspace/bin/ /usr/local/bin/
-USER nobody
+USER 1000
 ENTRYPOINT ["/usr/local/bin/kraan-controller"]

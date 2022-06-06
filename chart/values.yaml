@@ -157,7 +157,7 @@ gotk:
     image:
       repository: ghcr.io/fluxcd
       name: helm-controller
-      tag: v0.21.0
+      tag: v0.22.0
       imagePullPolicy:
 
     proxy: true

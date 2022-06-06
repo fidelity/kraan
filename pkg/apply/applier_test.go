@@ -234,7 +234,6 @@ func fakeAddonsLayer(sourcePath, layerName string, layerUID types.UID) *kraanv1a
 		ResourceVersion:   version,
 		Generation:        1,
 		CreationTimestamp: now,
-		ClusterName:       "TestingCluster",
 	}
 	sourceSpec := kraanv1alpha1.SourceSpec{
 		Name: "TestingSource",

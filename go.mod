@@ -12,7 +12,7 @@ require (
 	github.com/google/go-cmp v0.5.6
 	github.com/paulcarlton-ww/goutils/pkg/testutils v0.1.42
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.12.1
+	github.com/prometheus/client_golang v1.12.2
 	go.uber.org/zap v1.21.0
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3
 	k8s.io/api v0.24.1

@@ -4,9 +4,9 @@ go 1.17
 
 require (
 	github.com/fluxcd/helm-controller/api v0.22.0
-	github.com/fluxcd/pkg/apis/meta v0.14.1
+	github.com/fluxcd/pkg/apis/meta v0.14.2
 	github.com/fluxcd/pkg/untar v0.1.0
-	github.com/fluxcd/source-controller/api v0.24.4
+	github.com/fluxcd/source-controller/api v0.25.5
 	github.com/go-logr/logr v1.2.3
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.6

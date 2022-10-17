@@ -38,14 +38,12 @@ spec:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
               of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: 
-              https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
           kind:
             description: 'Kind is a string value representing the REST resource this
               object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: 
-              https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
             type: string
           metadata:
             type: object
@@ -424,28 +422,24 @@ spec:
                                 properties:
                                   annotationSelector:
                                     description: AnnotationSelector is a string that
-                                      follows the label selection expression 
-                                      https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#api
+                                      follows the label selection expression https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#api
                                       It matches with the resource annotations.
                                     type: string
                                   group:
                                     description: Group is the API group to select
                                       resources from. Together with Version and Kind
                                       it is capable of unambiguously identifying and/or
-                                      selecting resources. 
-                                      https://github.com/kubernetes/community/blob/master/contributors/design-proposals/api-machinery/api-group.md
+                                      selecting resources. https://github.com/kubernetes/community/blob/master/contributors/design-proposals/api-machinery/api-group.md
                                     type: string
                                   kind:
                                     description: Kind of the API Group to select resources
                                       from. Together with Group and Version it is
                                       capable of unambiguously identifying and/or
-                                      selecting resources. 
-                                      https://github.com/kubernetes/community/blob/master/contributors/design-proposals/api-machinery/api-group.md
+                                      selecting resources. https://github.com/kubernetes/community/blob/master/contributors/design-proposals/api-machinery/api-group.md
                                     type: string
                                   labelSelector:
                                     description: LabelSelector is a string that follows
-                                      the label selection expression 
-                                      https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#api
+                                      the label selection expression https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#api
                                       It matches with the resource labels.
                                     type: string
                                   name:
@@ -458,8 +452,7 @@ spec:
                                     description: Version of the API Group to select
                                       resources from. Together with Group and Kind
                                       it is capable of unambiguously identifying and/or
-                                      selecting resources. 
-                                      https://github.com/kubernetes/community/blob/master/contributors/design-proposals/api-machinery/api-group.md
+                                      selecting resources. https://github.com/kubernetes/community/blob/master/contributors/design-proposals/api-machinery/api-group.md
                                     type: string
                                 type: object
                             required:
@@ -706,10 +699,16 @@ spec:
                         should be merged at. When set, the ValuesKey is expected to
                         be a single flat value. Defaults to 'None', which results
                         in the values getting merged at the root.
+                      maxLength: 250
+                      pattern: ^([a-zA-Z0-9_\-.\\\/]|\[[0-9]{1,5}\])+$
                       type: string
                     valuesKey:
                       description: ValuesKey is the data key where the values.yaml
                         or a specific value can be found at. Defaults to 'values.yaml'.
+                        When set, must be a valid Data Key, consisting of alphanumeric
+                        characters, '-', '_' or '.'.
+                      maxLength: 253
+                      pattern: ^[\-._a-zA-Z0-9]+$
                       type: string
                   required:
                   - kind
@@ -721,6 +720,8 @@ spec:
             - interval
             type: object
           status:
+            default:
+              observedGeneration: -1
             description: HelmReleaseStatus defines the observed state of a HelmRelease.
             properties:
               conditions:

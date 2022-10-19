@@ -84,6 +84,8 @@ rules:
   - gitrepositories/status
   - helmrepositories
   - helmrepositories/status
+  - ocirepositories
+  - ocirepositories/status
   verbs:
   - watch
   - get

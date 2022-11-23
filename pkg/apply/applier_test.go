@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -76,7 +76,7 @@ func getAddonsFromFiles(t *testing.T, fileNames ...string) *kraanv1alpha1.Addons
 	}
 
 	for _, fileName := range fileNames {
-		buffer, err := ioutil.ReadFile(fileName)
+		buffer, err := os.ReadFile(fileName)
 		if err != nil {
 			t.Fatalf("failed to read AddonLayersList file: %s, %s", fileName, err)
 
@@ -110,7 +110,7 @@ func getAddonFromList(t *testing.T, name string, addonList *kraanv1alpha1.Addons
 	return nil
 }
 
-func getLayer(t *testing.T, layerName, dataFileName string) layers.Layer { // nolint: unparam // ok
+func getLayer(t *testing.T, layerName, dataFileName string) layers.Layer {
 	fakeK8sClient := fakeK8s.NewSimpleClientset()
 	data := getAddonFromList(t, layerName, getAddonsFromFiles(t, dataFileName))
 	if data == nil {
@@ -142,7 +142,7 @@ func getHelmReleasesFromFiles(t *testing.T, fileNames ...string) *helmctlv2.Helm
 	}
 
 	for _, fileName := range fileNames {
-		buffer, err := ioutil.ReadFile(fileName)
+		buffer, err := os.ReadFile(fileName)
 		if err != nil {
 			t.Fatalf("failed to read HelmReleaseList file: %s, %s", fileName, err)
 
@@ -175,7 +175,7 @@ func getHelmReleaseFromList(t *testing.T, nameSpaceSlashName string, helmRelease
 }
 
 func getApplierParams(t *testing.T, addonsFileNames, helmReleasesFileNames []string,
-	client client.Client, scheme *runtime.Scheme) []interface{} { // nolint: unparam //ok
+	client client.Client, scheme *runtime.Scheme) []interface{} {
 	addonsList := getAddonsFromFiles(t, addonsFileNames...)
 
 	if t.Failed() {

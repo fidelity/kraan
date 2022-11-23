@@ -14,13 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-//Package kubectl executes various kubectl sub-commands in a forked shell
+// Package kubectl executes various kubectl sub-commands in a forked shell
+//
 //go:generate mockgen -destination=../mocks/kubectl/mockKubectl.go -package=mocks . Kubectl,Command
 package kubectl
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -171,7 +172,7 @@ func (c *abstractCommand) Run() (output []byte, err error) {
 
 // createTempDir creates a temporary directory.
 func createTempDir() (buildDir string, err error) {
-	buildDir, err = ioutil.TempDir("", "build-*")
+	buildDir, err = os.MkdirTemp("", "build-*")
 	if err != nil {
 		return "", errors.WithMessagef(err, "%s - failed to create temporary directory", logging.CallerStr(logging.Me))
 	}

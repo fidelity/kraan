@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
@@ -76,7 +76,7 @@ func TestCreateLayer(t *testing.T) {
 }
 
 func getGitReposFromFile(fileName string) (*sourcev1.GitRepositoryList, error) {
-	buffer, err := ioutil.ReadFile(fileName)
+	buffer, err := os.ReadFile(fileName)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func getGitReposFromFile(fileName string) (*sourcev1.GitRepositoryList, error) {
 }
 
 func getLayersFromFile(fileName string) (*kraanv1alpha1.AddonsLayerList, error) {
-	buffer, err := ioutil.ReadFile(fileName)
+	buffer, err := os.ReadFile(fileName)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func getFromList(name string, layerList *kraanv1alpha1.AddonsLayerList) *kraanv1
 	return nil
 }
 
-func getLayer(layerName, testDataFileName, reposDataFileName string) (layers.Layer, error) { // nolint: unparam // ok
+func getLayer(layerName, testDataFileName, reposDataFileName string) (layers.Layer, error) {
 	logger := logr.Discard()
 	layerList, err := getLayersFromFile(testDataFileName)
 	if err != nil {

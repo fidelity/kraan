@@ -113,7 +113,7 @@ mockgen -version 2>&1 | grep ${mockgen_version} >/dev/null
 ret_code="${?}"
 if [[ "${ret_code}" != "0" ]] ; then
     echo "installing mockgen version: ${mockgen_version}"
-    GO111MODULE=on go get github.com/golang/mock/mockgen@${mockgen_version}
+    go install github.com/golang/mock/mockgen@${mockgen_version}
     mockgen -version 2>&1 | grep ${mockgen_version} >/dev/null
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then

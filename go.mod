@@ -1,6 +1,6 @@
 module github.com/fidelity/kraan
 
-go 1.17
+go 1.19
 
 require (
 	github.com/fluxcd/helm-controller/api v0.23.0

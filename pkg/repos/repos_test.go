@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"strings"
@@ -42,7 +41,7 @@ func newRepoTest(t *testing.T, name, repoYAML string, repoStore repos.Repos, exp
 }
 
 func getTestSourceRepo(t *testing.T, repoYAML string) *sourcev1.GitRepository {
-	buffer, err := ioutil.ReadFile(repoYAML)
+	buffer, err := os.ReadFile(repoYAML)
 	if err != nil {
 		t.Fatalf("error reading file from path '%s': %#v", repoYAML, err)
 	}
@@ -55,7 +54,7 @@ func getTestSourceRepo(t *testing.T, repoYAML string) *sourcev1.GitRepository {
 }
 
 func makeTempRootDir(t *testing.T) string {
-	rootPath, err := ioutil.TempDir("", "test-*")
+	rootPath, err := os.MkdirTemp("", "test-*")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -63,7 +62,7 @@ func makeTempRootDir(t *testing.T) string {
 }
 
 func (r *repoTest) createTempRootDir(t *testing.T) {
-	rootPath, err := ioutil.TempDir("", "test-*")
+	rootPath, err := os.MkdirTemp("", "test-*")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

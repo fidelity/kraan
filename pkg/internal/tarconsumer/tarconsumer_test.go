@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
 
@@ -89,7 +89,7 @@ func TestTarUpack(t *testing.T) {
 			return
 		}
 
-		dir, err := ioutil.TempDir("", "test-*")
+		dir, err := os.MkdirTemp("", "test-*")
 		if err != nil {
 			t.Fatalf(err.Error())
 			return

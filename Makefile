@@ -125,7 +125,7 @@ clean-gomod:
 	rm -rf ${GOMOD_ARTIFACT}
 
 go.mod:
-	go mod tidy -go=1.16 && go mod tidy -go=1.17
+	go mod tidy
 
 gomod: go.sum
 go.sum:  ${GOMOD_ARTIFACT}
@@ -134,8 +134,8 @@ go.sum:  ${GOMOD_ARTIFACT}
 
 ${GOMOD_ARTIFACT}: gomod-update
 gomod-update: go.mod ${PROJECT_SOURCES}
-	echo "${YELLOW}go mod tidy -go=1.16 && go mod tidy -go=1.17${NC}" && \
-	go mod tidy -go=1.16 && go mod tidy -go=1.17 && \
+	echo "${YELLOW}go mod tidy${NC}" && \
+	go mod tidy && \
 	go build ./... 
 
 clean-${PROJECT}-check:

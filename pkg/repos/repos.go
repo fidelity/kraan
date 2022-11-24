@@ -1,11 +1,11 @@
-//Package repos provides an interface for processing repositories.
+// Package repos provides an interface for processing repositories.
+//
 //go:generate mockgen -destination=../mocks/repos/mockRepos.go -package=mocks -source=repos.go . Repo,Repos
 package repos
 
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -316,7 +316,7 @@ func (r *repoData) AddUser(name string) {
 func (r *repoData) removeDirs(path, exclude string) error {
 	r.log.V(2).Info("processing directory",
 		append(logging.GetGitRepoInfo(r.repo), append(logging.GetFunctionAndSource(logging.MyCaller), "path", path, "exclude", exclude)...)...)
-	files, err := ioutil.ReadDir(path)
+	files, err := os.ReadDir(path)
 	if err != nil {
 		return errors.Wrapf(err, "%s -failed to read directory", logging.CallerStr(logging.Me))
 	}

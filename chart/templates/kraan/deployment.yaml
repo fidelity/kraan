@@ -39,6 +39,7 @@ spec:
         imagePullPolicy: {{ .Values.kraan.kraanController.image.imagePullPolicy | default "IfNotPresent" }}
         securityContext:
           allowPrivilegeEscalation: false
+          fsGroup: 2000
           runAsNonRoot: {{ .Values.kraan.kraanController.runAsNonRoot }}
           readOnlyRootFilesystem: {{ .Values.kraan.kraanController.readOnly }}
         volumeMounts:

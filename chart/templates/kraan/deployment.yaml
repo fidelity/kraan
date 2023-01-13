@@ -33,13 +33,14 @@ spec:
         {{- end }}
     spec:
       serviceAccountName: kraan
+      securityContext:
+        fsGroup: 2000
       containers:
       - name: manager
         image: {{ .Values.kraan.kraanController.image.repository }}/{{ .Values.kraan.kraanController.image.name }}:{{ .Values.kraan.kraanController.image.tag  | default .Chart.AppVersion }}
         imagePullPolicy: {{ .Values.kraan.kraanController.image.imagePullPolicy | default "IfNotPresent" }}
         securityContext:
           allowPrivilegeEscalation: false
-          fsGroup: 2000
           runAsNonRoot: {{ .Values.kraan.kraanController.runAsNonRoot }}
           readOnlyRootFilesystem: {{ .Values.kraan.kraanController.readOnly }}
         volumeMounts:

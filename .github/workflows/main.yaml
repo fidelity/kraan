@@ -90,7 +90,6 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/arm64,linux/amd64
-          push: true
           tags: ${{ steps.prep.outputs.tags }}
           outputs: type=docker,oci-mediatypes=false
 

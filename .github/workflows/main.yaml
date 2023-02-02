@@ -92,7 +92,7 @@ jobs:
           platforms: linux/arm64,linux/amd64
           push: true
           tags: ${{ steps.prep.outputs.tags }}
-          output: type=docker,oci-mediatypes=false
+          outputs: type=docker,oci-mediatypes=false
 
   integration-test:
     needs: docker-build

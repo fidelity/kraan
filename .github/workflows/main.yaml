@@ -103,15 +103,15 @@ jobs:
           file: ./Dockerfile
           platforms: linux/arm64
           tags: kraan/kraan-controller:v0.3.25
-          outputs: type=docker,oci-mediatypes=false
+          outputs: type=docker,oci-mediatypes=false,push=true
 
-      - name: push
-        id: push
-        if: github.event_name == 'pull_request'
-        run: |
-          docker images
-          docker inspect -f "{{json .Config.Labels }}" kraan/kraan-controller:v0.3.25
-          docker push kraan/kraan-controller:v0.3.25
+      # - name: push
+      #   id: push
+      #   if: github.event_name == 'pull_request'
+      #   run: |
+      #     docker images
+      #     docker inspect -f "{{json .Config.Labels }}" kraan/kraan-controller:v0.3.25
+      #     docker push kraan/kraan-controller:v0.3.25
 
 #docker push kraan/arm/kraan-controller:v0.3.25
           

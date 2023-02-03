@@ -94,7 +94,7 @@ jobs:
       #     tags: kraan/amd/kraan-controller:v0.3.25
       #     outputs: type=image,oci-mediatypes=false,push=false
 
-      - name: Build arm image and Push
+      - name: Build arm image
         if: github.event_name == 'pull_request'
         uses: docker/build-push-action@v4
         with:
@@ -102,16 +102,33 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/arm64
-          tags: kraan/kraan-controller:v0.3.25
-          outputs: type=docker,oci-mediatypes=false,push=true
+          tags: kraan/arm/kraan-controller:v0.3.25
+          outputs: type=docker,oci-mediatypes=false
 
-      # - name: push
-      #   id: push
-      #   if: github.event_name == 'pull_request'
-      #   run: |
-      #     docker images
-      #     docker inspect -f "{{json .Config.Labels }}" kraan/kraan-controller:v0.3.25
-      #     docker push kraan/kraan-controller:v0.3.25
+      - name: push arm
+        id: push arm
+        if: github.event_name == 'pull_request'
+        run: |
+          docker images
+          docker push kraan/arm/kraan-controller:v0.3.25
+
+      - name: Build amd image
+        if: github.event_name == 'pull_request'
+        uses: docker/build-push-action@v4
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          tags: kraan/amd/kraan-controller:v0.3.25
+          outputs: type=docker,oci-mediatypes=false
+
+      - name: push amd
+        id: push
+        if: github.event_name == 'pull_request'
+        run: |
+          docker images
+          docker push kraan/amd/kraan-controller:v0.3.25
 
 #docker push kraan/arm/kraan-controller:v0.3.25
           

@@ -106,7 +106,7 @@ jobs:
       #     outputs: type=image,oci-mediatypes=false,push=false
 
       - name: push
-        id: prep
+        id: push
         if: github.event_name == 'pull_request'
         run: |
           docker push kraan/amd/kraan-controller:v0.3.25

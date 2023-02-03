@@ -106,7 +106,7 @@ jobs:
           outputs: type=docker,oci-mediatypes=false
 
       - name: push arm
-        id: push arm
+        id: push-arm
         if: github.event_name == 'pull_request'
         run: |
           docker images
@@ -124,7 +124,7 @@ jobs:
           outputs: type=docker,oci-mediatypes=false
 
       - name: push amd
-        id: push
+        id: push-amd
         if: github.event_name == 'pull_request'
         run: |
           docker images

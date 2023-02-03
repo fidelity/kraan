@@ -102,7 +102,7 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/arm64
-          tags: kraan/arm/kraan-controller:v0.3.25
+          tags: kraan/kraan-controller:v0.3.25-arm
           outputs: type=docker,oci-mediatypes=false
 
       - name: push arm
@@ -110,7 +110,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           docker images
-          docker push kraan/arm/kraan-controller:v0.3.25
+          docker push kraan/kraan-controller:v0.3.25-arm
 
       - name: Build amd image
         if: github.event_name == 'pull_request'
@@ -120,7 +120,7 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64
-          tags: kraan/amd/kraan-controller:v0.3.25
+          tags: kraan/kraan-controller:v0.3.25-amd
           outputs: type=docker,oci-mediatypes=false
 
       - name: push amd
@@ -128,7 +128,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           docker images
-          docker push kraan/amd/kraan-controller:v0.3.25
+          docker push kraan/kraan-controller:v0.3.25-amd
 
 #docker push kraan/arm/kraan-controller:v0.3.25
           

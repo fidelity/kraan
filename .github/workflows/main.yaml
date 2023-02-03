@@ -91,7 +91,7 @@ jobs:
           file: ./Dockerfile
           platforms: linux/arm64,linux/amd64
           tags: ${{ steps.prep.outputs.tags }}
-          outputs: type=registry,oci-mediatypes=false
+          outputs: type=image,oci-mediatypes=false,push=false
 
   integration-test:
     needs: docker-build

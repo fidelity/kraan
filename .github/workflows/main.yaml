@@ -94,23 +94,25 @@ jobs:
           tags: kraan/amd/kraan-controller:v0.3.25
           outputs: type=image,oci-mediatypes=false,push=false
 
-      - name: Build arm image and Push
-        if: github.event_name == 'pull_request'
-        uses: docker/build-push-action@v4
-        with:
-          builder: ${{ steps.buildx.outputs.name }}
-          context: .
-          file: ./Dockerfile
-          platforms: linux/arm64
-          tags: kraan/arm/kraan-controller:v0.3.25
-          outputs: type=image,oci-mediatypes=false,push=false
+      # - name: Build arm image and Push
+      #   if: github.event_name == 'pull_request'
+      #   uses: docker/build-push-action@v4
+      #   with:
+      #     builder: ${{ steps.buildx.outputs.name }}
+      #     context: .
+      #     file: ./Dockerfile
+      #     platforms: linux/arm64
+      #     tags: kraan/arm/kraan-controller:v0.3.25
+      #     outputs: type=image,oci-mediatypes=false,push=false
 
-      - name: Prepare
+      - name: push
         id: prep
         if: github.event_name == 'pull_request'
         run: |
-          docker push kraan/arm/kraan-controller:v0.3.25
           docker push kraan/amd/kraan-controller:v0.3.25
+
+#docker push kraan/arm/kraan-controller:v0.3.25
+          
 
 
   # integration-test:

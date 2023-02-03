@@ -109,7 +109,6 @@ jobs:
         id: push
         if: github.event_name == 'pull_request'
         run: |
-# docker buildx build --file ./Dockerfile --output type=image,oci-mediatypes=false,push=false --platform linux/amd64 --tag kraan/amd/kraan-controller:v0.3.25 .
           docker images
           docker inspect -f "{{json .Config.Labels }}" kraan/kraan-controller:v0.3.25
           docker push kraan/kraan-controller:v0.3.25

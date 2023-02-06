@@ -82,16 +82,38 @@ jobs:
         id: buildx
         if: github.event_name == 'push'
         uses: docker/setup-buildx-action@master
-      - name: Build image and Push
+
+      - name: Build arm image
         if: github.event_name == 'push'
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v4
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
           file: ./Dockerfile
-          platforms: linux/arm64,linux/amd64
-          push: true
-          tags: ${{ steps.prep.outputs.tags }}
+          platforms: linux/arm64
+          tags: ${{ steps.prep.outputs.tags }}-arm
+          outputs: type=docker,oci-mediatypes=false
+      - name: push arm
+        id: push-arm
+        if: github.event_name == 'push'
+        run: |
+          docker push ${{ steps.prep.outputs.tags }}-arm
+
+      - name: Build amd image
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v4
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          tags: ${{ steps.prep.outputs.tags }}-amd
+          outputs: type=docker,oci-mediatypes=false
+      - name: push amd
+        id: push-amd
+        if: github.event_name == 'push'
+        run: |
+          docker push ${{ steps.prep.outputs.tags }}-amd
 
   integration-test:
     needs: docker-build
@@ -122,7 +144,7 @@ jobs:
           GITREPO: ${{ github.event.pull_request.head.repo.full_name }}
         run: |
           [ "${{ github.event_name }}" == "pull_request" ] && export DOCKER_IMG='kraan-controller-prerelease' || export DOCKER_IMG='kraan-controller'
-          [ "${{ github.event_name }}" == "pull_request" ] && export VERSION=$(cat VERSION)-dev || export VERSION=$(cat VERSION)
+          [ "${{ github.event_name }}" == "pull_request" ] && export VERSION=$(cat VERSION)-dev || export VERSION=$(cat VERSION)-amd
           [ "${{ github.event_name }}" != "pull_request" ] && export GITREPO='fidelity/kraan'
           export CHART_VERSION=$VERSION
           export REPO=kraan

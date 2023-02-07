@@ -72,10 +72,9 @@ jobs:
         run: |
           VERSION=$(cat VERSION)
           TAGS=kraan/kraan-controller:${VERSION}
-          export BUILDAH_FORMAT=docker
           echo ::set-output name=tags::${TAGS}
       - name: Set up QEMU
-        if: github.event_name == 'push'
+        if: github.event_name == 'pull_request'
         uses: docker/setup-qemu-action@master
         with:
           platforms: all
@@ -83,16 +82,6 @@ jobs:
         id: buildx
         if: github.event_name == 'pull_request'
         uses: docker/setup-buildx-action@master
-      # - name: Build amd image and Push
-      #   if: github.event_name == 'pull_request'
-      #   uses: docker/build-push-action@v4
-      #   with:
-      #     builder: ${{ steps.buildx.outputs.name }}
-      #     context: .
-      #     file: ./Dockerfile
-      #     platforms: linux/amd64
-      #     tags: kraan/amd/kraan-controller:v0.3.25
-      #     outputs: type=image,oci-mediatypes=false,push=false
 
       - name: Build arm image
         if: github.event_name == 'pull_request'
@@ -102,37 +91,29 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/arm64
-          tags: kraan/kraan-controller:v0.3.25-arm
+          tags: ${{ steps.prep.outputs.tags }}-arm
           outputs: type=docker,oci-mediatypes=false
-
       - name: push arm
         id: push-arm
         if: github.event_name == 'pull_request'
         run: |
-          docker images
-          docker push kraan/kraan-controller:v0.3.25-arm
+          docker push ${{ steps.prep.outputs.tags }}-arm
 
-      - name: Build amd image
-        if: github.event_name == 'pull_request'
-        uses: docker/build-push-action@v4
-        with:
-          builder: ${{ steps.buildx.outputs.name }}
-          context: .
-          file: ./Dockerfile
-          platforms: linux/amd64
-          tags: kraan/kraan-controller:v0.3.25-amd
-          outputs: type=docker,oci-mediatypes=false
-
-      - name: push amd
-        id: push-amd
-        if: github.event_name == 'pull_request'
-        run: |
-          docker images
-          docker push kraan/kraan-controller:v0.3.25-amd
-
-#docker push kraan/arm/kraan-controller:v0.3.25
-          
-
+      # - name: Build amd image
+      #   if: github.event_name == 'pull_request'
+      #   uses: docker/build-push-action@v4
+      #   with:
+      #     builder: ${{ steps.buildx.outputs.name }}
+      #     context: .
+      #     file: ./Dockerfile
+      #     platforms: linux/amd64
+      #     tags: ${{ steps.prep.outputs.tags }}-amd
+      #     outputs: type=docker,oci-mediatypes=false
+      # - name: push amd
+      #   id: push-amd
+      #   if: github.event_name == 'pull_request'
+      #   run: |
+      #     docker push ${{ steps.prep.outputs.tags }}-amd
 
   # integration-test:
   #   needs: docker-build
@@ -163,7 +144,7 @@ jobs:
   #         GITREPO: ${{ github.event.pull_request.head.repo.full_name }}
   #       run: |
   #         [ "${{ github.event_name }}" == "pull_request" ] && export DOCKER_IMG='kraan-controller-prerelease' || export DOCKER_IMG='kraan-controller'
-  #         [ "${{ github.event_name }}" == "pull_request" ] && export VERSION=$(cat VERSION)-dev || export VERSION=$(cat VERSION)
+  #         [ "${{ github.event_name }}" == "pull_request" ] && export VERSION=$(cat VERSION)-dev || export VERSION=$(cat VERSION)-amd
   #         [ "${{ github.event_name }}" != "pull_request" ] && export GITREPO='fidelity/kraan'
   #         export CHART_VERSION=$VERSION
   #         export REPO=kraan

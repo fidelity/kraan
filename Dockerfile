@@ -30,7 +30,7 @@ RUN mv kustomize bin
 RUN rm ./kustomize_v3.8.7_${TARGETOS}_${TARGETARCH}.tar.gz
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH="${TARGETARCH}" GO111MODULE=on go build -a -o bin/kraan-controller main/main.go
 
-FROM gcr.io/distroless/static:latest
+FROM ubuntu:latest
 WORKDIR /
 COPY --from=builder /workspace/bin/ /usr/local/bin/
 USER 1000

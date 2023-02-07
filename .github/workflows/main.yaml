@@ -24,7 +24,6 @@ jobs:
   #           echo "push to master, skipping validation"
   #         fi
   docker-build:
-    # needs: validate
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2

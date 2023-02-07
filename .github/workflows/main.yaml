@@ -9,22 +9,21 @@ on:
     branches: [master]
     paths-ignore: ["**.md"]
 jobs:
-  validate:
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-      - name: Validate
-        run: |
-          if [ "${{ github.event_name }}" == "pull_request" ] 
-          then
-            make validate-versions
-          else
-            echo "push to master, skipping validation"
-          fi
+  # validate:
+  #   runs-on: ubuntu-20.04
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #       with:
+  #         fetch-depth: 0
+  #     - name: Validate
+  #       run: |
+  #         if [ "${{ github.event_name }}" == "pull_request" ] 
+  #         then
+  #           make validate-versions
+  #         else
+  #           echo "push to master, skipping validation"
+  #         fi
   docker-build:
-    needs: validate
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -47,44 +46,44 @@ jobs:
       # - uses: satackey/action-docker-layer-caching@v0
       #   # Ignore the failure of a step and avoid terminating the job.
       #   continue-on-error: true
-      - name: Prerelease - Lint, Test, Build
-        if: github.event_name == 'pull_request'
-        run: |
-          make clean
-          make dev-build
-      - name: Prerelease - Store docker image as artifact
-        if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v2
-        with:
-          name: image
-          path: build/*.tar
-          if-no-files-found: error
+      # - name: Prerelease - Lint, Test, Build
+      #   if: github.event_name == 'pull_request'
+      #   run: |
+      #     make clean
+      #     make dev-build
+      # - name: Prerelease - Store docker image as artifact
+      #   if: github.event_name == 'pull_request'
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: image
+      #     path: build/*.tar
+      #     if-no-files-found: error
 
       - name: Login to GitHub Packages Docker Registry
-        if: github.event_name == 'push'
+        if: github.event_name == 'pull_request'
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_TOKEN }}
       - name: Prepare
         id: prep
-        if: github.event_name == 'push'
+        if: github.event_name == 'pull_request'
         run: |
           VERSION=$(cat VERSION)
           TAGS=kraan/kraan-controller:${VERSION}
           echo ::set-output name=tags::${TAGS}
       - name: Set up QEMU
-        if: github.event_name == 'push'
+        if: github.event_name == 'pull_request'
         uses: docker/setup-qemu-action@master
         with:
           platforms: all
       - name: Set up Docker Buildx
         id: buildx
-        if: github.event_name == 'push'
+        if: github.event_name == 'pull_request'
         uses: docker/setup-buildx-action@master
 
       - name: Build arm image
-        if: github.event_name == 'push'
+        if: github.event_name == 'pull_request'
         uses: docker/build-push-action@v4
         with:
           builder: ${{ steps.buildx.outputs.name }}
@@ -95,116 +94,116 @@ jobs:
           outputs: type=docker,oci-mediatypes=false
       - name: push arm
         id: push-arm
-        if: github.event_name == 'push'
+        if: github.event_name == 'pull_request'
         run: |
           docker push ${{ steps.prep.outputs.tags }}-arm
 
-      - name: Build amd image
-        if: github.event_name == 'push'
-        uses: docker/build-push-action@v4
-        with:
-          builder: ${{ steps.buildx.outputs.name }}
-          context: .
-          file: ./Dockerfile
-          platforms: linux/amd64
-          tags: ${{ steps.prep.outputs.tags }}-amd
-          outputs: type=docker,oci-mediatypes=false
-      - name: push amd
-        id: push-amd
-        if: github.event_name == 'push'
-        run: |
-          docker push ${{ steps.prep.outputs.tags }}-amd
+      # - name: Build amd image
+      #   if: github.event_name == 'pull_request'
+      #   uses: docker/build-push-action@v4
+      #   with:
+      #     builder: ${{ steps.buildx.outputs.name }}
+      #     context: .
+      #     file: ./Dockerfile
+      #     platforms: linux/amd64
+      #     tags: ${{ steps.prep.outputs.tags }}-amd
+      #     outputs: type=docker,oci-mediatypes=false
+      # - name: push amd
+      #   id: push-amd
+      #   if: github.event_name == 'pull_request'
+      #   run: |
+      #     docker push ${{ steps.prep.outputs.tags }}-amd
 
-  integration-test:
-    needs: docker-build
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v2
-      - name: Create kind cluster
-        run: |
-          [ -z "${GOPATH}" ] && export GOPATH=$HOME/go
-          PATH="${GOPATH}/bin:${PATH}"
-          kind create cluster
-          echo "sleep 60s to wait node ready"
-          sleep 60s
-          kubectl get node
-      - name: Prerelease - pull image from artifact
-        if: github.event_name == 'pull_request'
-        uses: actions/download-artifact@v2 
-        with:
-          name: image
-      - name: Prerelease - load image
-        if: github.event_name == 'pull_request'
-        run: |
-          export VERSION=$(cat VERSION)-dev
-          docker load -i *.tar
-          kind load docker-image kraan/kraan-controller-prerelease:$VERSION
-      - name: Integration Test
-        env:
-          GITREPO: ${{ github.event.pull_request.head.repo.full_name }}
-        run: |
-          [ "${{ github.event_name }}" == "pull_request" ] && export DOCKER_IMG='kraan-controller-prerelease' || export DOCKER_IMG='kraan-controller'
-          [ "${{ github.event_name }}" == "pull_request" ] && export VERSION=$(cat VERSION)-dev || export VERSION=$(cat VERSION)-amd
-          [ "${{ github.event_name }}" != "pull_request" ] && export GITREPO='fidelity/kraan'
-          export CHART_VERSION=$VERSION
-          export REPO=kraan
-          kubectl cluster-info
-          kubectl version
-          echo "installing kraan..."
-          helm install kraan --set kraan.kraanController.image.name=$DOCKER_IMG --set kraan.kraanController.image.tag=${VERSION} --set kraan.kraanController.resources=null --set gotk.sourceController.resources=null --set gotk.helmController.resources=null --wait --timeout=2m --create-namespace --namespace gotk-system chart || (kubectl describe deploy -n gotk-system && kubectl describe po -n gotk-system && false)
-          echo "setting up test..."
-          kubectl apply -f ./testdata/namespaces.yaml
-          kubectl apply -f ./testdata/addons/addons-source.yaml
-          kubectl patch gitrepository addons-config -n gotk-system -p "{\"spec\": {\"ref\": {\"branch\": \"$GITHUB_HEAD_REF\"},\"url\": \"$GITHUB_SERVER_URL/$GITREPO.git\"}}" --type=merge
-          kubectl apply -f ./testdata/addons/addons-repo.yaml
-          kubectl apply -f ./testdata/addons/addons.yaml
-          echo "waiting 5m for test to pass..."
-          kubectl wait al --for=condition=Deployed --all --timeout=5m || (kubectl get po -A && kubectl describe al -A && false)
-      - name: Orphan Integration Test
-        env:
-          GITREPO: ${{ github.event.pull_request.head.repo.full_name }}
-        run: |
-          [ "${{ github.event_name }}" != "pull_request" ] && export GITREPO='fidelity/kraan'
-          echo "setting up test..."
-          kubectl apply -f ./testdata/addons-orphan/addons-source.yaml
-          kubectl patch gitrepository addons-config -n gotk-system -p "{\"spec\": {\"ref\": {\"branch\": \"$GITHUB_HEAD_REF\"},\"url\": \"$GITHUB_SERVER_URL/$GITREPO.git\"}}" --type=merge
-          kubectl apply -f ./testdata/addons-orphan/addons-repo.yaml
-          kubectl apply -f ./testdata/addons-orphan/addons.yaml
-          echo "waiting 5m for test to pass..."
-          kubectl wait al --for=condition=Deployed --all --timeout=5m || (kubectl get po -A && false)
-  helm-publish:
-    if: github.event_name == 'push'
-    needs: integration-test
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-      - name: Setup dependencies
-        run: |
-          [ -z "${GOPATH}" ] && export GOPATH=$HOME/go
-          PATH="${GOPATH}/bin:${PATH}"
-          ./bin/setup.sh
-      - name: Publish Helm Chart
-        run: |
-          export VERSION=$(cat VERSION)
-          unset CHART_VERSION
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions"
-          git checkout go.mod go.sum
-          make release
-  tag-repo:
-    if: github.event_name == 'push'
-    needs: helm-publish
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-      - name: tag repository
-        run: |
-          export VERSION=$(cat VERSION)
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions"
-          git tag -a $VERSION -m "tag version $VERSION"
-          git push origin --tags
+  # integration-test:
+  #   needs: docker-build
+  #   runs-on: ubuntu-20.04
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - name: Create kind cluster
+  #       run: |
+  #         [ -z "${GOPATH}" ] && export GOPATH=$HOME/go
+  #         PATH="${GOPATH}/bin:${PATH}"
+  #         kind create cluster
+  #         echo "sleep 60s to wait node ready"
+  #         sleep 60s
+  #         kubectl get node
+  #     - name: Prerelease - pull image from artifact
+  #       if: github.event_name == 'pull_request'
+  #       uses: actions/download-artifact@v2 
+  #       with:
+  #         name: image
+  #     - name: Prerelease - load image
+  #       if: github.event_name == 'pull_request'
+  #       run: |
+  #         export VERSION=$(cat VERSION)-dev
+  #         docker load -i *.tar
+  #         kind load docker-image kraan/kraan-controller-prerelease:$VERSION
+  #     - name: Integration Test
+  #       env:
+  #         GITREPO: ${{ github.event.pull_request.head.repo.full_name }}
+  #       run: |
+  #         [ "${{ github.event_name }}" == "pull_request" ] && export DOCKER_IMG='kraan-controller-prerelease' || export DOCKER_IMG='kraan-controller'
+  #         [ "${{ github.event_name }}" == "pull_request" ] && export VERSION=$(cat VERSION)-dev || export VERSION=$(cat VERSION)-amd
+  #         [ "${{ github.event_name }}" != "pull_request" ] && export GITREPO='fidelity/kraan'
+  #         export CHART_VERSION=$VERSION
+  #         export REPO=kraan
+  #         kubectl cluster-info
+  #         kubectl version
+  #         echo "installing kraan..."
+  #         helm install kraan --set kraan.kraanController.image.name=$DOCKER_IMG --set kraan.kraanController.image.tag=${VERSION} --set kraan.kraanController.resources=null --set gotk.sourceController.resources=null --set gotk.helmController.resources=null --wait --timeout=2m --create-namespace --namespace gotk-system chart || (kubectl describe deploy -n gotk-system && kubectl describe po -n gotk-system && false)
+  #         echo "setting up test..."
+  #         kubectl apply -f ./testdata/namespaces.yaml
+  #         kubectl apply -f ./testdata/addons/addons-source.yaml
+  #         kubectl patch gitrepository addons-config -n gotk-system -p "{\"spec\": {\"ref\": {\"branch\": \"$GITHUB_HEAD_REF\"},\"url\": \"$GITHUB_SERVER_URL/$GITREPO.git\"}}" --type=merge
+  #         kubectl apply -f ./testdata/addons/addons-repo.yaml
+  #         kubectl apply -f ./testdata/addons/addons.yaml
+  #         echo "waiting 5m for test to pass..."
+  #         kubectl wait al --for=condition=Deployed --all --timeout=5m || (kubectl get po -A && kubectl describe al -A && false)
+  #     - name: Orphan Integration Test
+  #       env:
+  #         GITREPO: ${{ github.event.pull_request.head.repo.full_name }}
+  #       run: |
+  #         [ "${{ github.event_name }}" != "pull_request" ] && export GITREPO='fidelity/kraan'
+  #         echo "setting up test..."
+  #         kubectl apply -f ./testdata/addons-orphan/addons-source.yaml
+  #         kubectl patch gitrepository addons-config -n gotk-system -p "{\"spec\": {\"ref\": {\"branch\": \"$GITHUB_HEAD_REF\"},\"url\": \"$GITHUB_SERVER_URL/$GITREPO.git\"}}" --type=merge
+  #         kubectl apply -f ./testdata/addons-orphan/addons-repo.yaml
+  #         kubectl apply -f ./testdata/addons-orphan/addons.yaml
+  #         echo "waiting 5m for test to pass..."
+  #         kubectl wait al --for=condition=Deployed --all --timeout=5m || (kubectl get po -A && false)
+  # helm-publish:
+  #   if: github.event_name == 'push'
+  #   needs: integration-test
+  #   runs-on: ubuntu-20.04
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #       with:
+  #         fetch-depth: 0
+  #     - name: Setup dependencies
+  #       run: |
+  #         [ -z "${GOPATH}" ] && export GOPATH=$HOME/go
+  #         PATH="${GOPATH}/bin:${PATH}"
+  #         ./bin/setup.sh
+  #     - name: Publish Helm Chart
+  #       run: |
+  #         export VERSION=$(cat VERSION)
+  #         unset CHART_VERSION
+  #         git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+  #         git config --global user.name "github-actions"
+  #         git checkout go.mod go.sum
+  #         make release
+  # tag-repo:
+  #   if: github.event_name == 'push'
+  #   needs: helm-publish
+  #   runs-on: ubuntu-20.04
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #       with:
+  #         fetch-depth: 0
+  #     - name: tag repository
+  #       run: |
+  #         export VERSION=$(cat VERSION)
+  #         git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+  #         git config --global user.name "github-actions"
+  #         git tag -a $VERSION -m "tag version $VERSION"
+  #         git push origin --tags

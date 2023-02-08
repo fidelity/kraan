@@ -62,6 +62,8 @@ spec:
               fieldPath: metadata.namespace
         - name: DATA_PATH
           value: /controller/data
+        - name: KUBECACHEDIR
+          value: /tmp/kube
         ports:
         - containerPort: 9440
           name: healthz

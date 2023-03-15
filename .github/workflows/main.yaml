@@ -124,7 +124,7 @@ jobs:
         run: |
           [ -z "${GOPATH}" ] && export GOPATH=$HOME/go
           PATH="${GOPATH}/bin:${PATH}"
-          kind create cluster
+          kind create cluster --image kindest/node:v1.23.13
           echo "sleep 60s to wait node ready"
           sleep 60s
           kubectl get node

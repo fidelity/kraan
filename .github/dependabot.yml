@@ -12,4 +12,4 @@ updates:
       - dependency-name: "k8s.io/client-go"
       - dependency-name: "k8s.io/api"
       - dependency-name: "github.com/fluxcd/helm-controller/api"
-	    - dependency-name: "github.com/fluxcd/source-controller/api"
+      - dependency-name: "github.com/fluxcd/source-controller/api"

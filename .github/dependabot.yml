@@ -4,3 +4,12 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 10
+    ignore:
+      - dependency-name: "sigs.k8s.io/controller-runtime"
+      - dependency-name: "k8s.io/apiextensions-apiserver"
+      - dependency-name: "k8s.io/apimachinery"
+      - dependency-name: "k8s.io/client-go"
+      - dependency-name: "k8s.io/api"
+      - dependency-name: "github.com/fluxcd/helm-controller/api"
+	    - dependency-name: "github.com/fluxcd/source-controller/api"

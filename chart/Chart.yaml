@@ -2,5 +2,5 @@ apiVersion: v2
 description: A Helm chart for kraan controller
 name: kraan-controller
 type: application
-appVersion: v0.3.28
-version: v0.3.28
+appVersion: v0.3.29
+version: v0.3.29

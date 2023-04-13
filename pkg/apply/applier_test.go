@@ -61,9 +61,9 @@ var (
 )
 
 func init() {
-	_ = corev1.AddToScheme(testScheme)        // nolint:errcheck // ok
-	_ = kraanv1alpha1.AddToScheme(testScheme) // nolint:errcheck // ok
-	_ = helmctlv2.AddToScheme(testScheme)     // nolint:errcheck // ok
+	_ = corev1.AddToScheme(testScheme)        //nolint:errcheck // ok
+	_ = kraanv1alpha1.AddToScheme(testScheme) //nolint:errcheck // ok
+	_ = helmctlv2.AddToScheme(testScheme)     //nolint:errcheck // ok
 }
 
 func getAddonsFromFiles(t *testing.T, fileNames ...string) *kraanv1alpha1.AddonsLayerList {
@@ -110,7 +110,7 @@ func getAddonFromList(t *testing.T, name string, addonList *kraanv1alpha1.Addons
 	return nil
 }
 
-func getLayer(t *testing.T, layerName, dataFileName string) layers.Layer {
+func getLayer(t *testing.T, layerName, dataFileName string) layers.Layer { //nolint:unparam //ok
 	fakeK8sClient := fakeK8s.NewSimpleClientset()
 	data := getAddonFromList(t, layerName, getAddonsFromFiles(t, dataFileName))
 	if data == nil {
@@ -175,7 +175,7 @@ func getHelmReleaseFromList(t *testing.T, nameSpaceSlashName string, helmRelease
 }
 
 func getApplierParams(t *testing.T, addonsFileNames, helmReleasesFileNames []string,
-	client client.Client, scheme *runtime.Scheme) []interface{} {
+	client client.Client, scheme *runtime.Scheme) []interface{} { //nolint:unparam //ok
 	addonsList := getAddonsFromFiles(t, addonsFileNames...)
 
 	if t.Failed() {
@@ -290,7 +290,7 @@ func TestNewApplierWithMockKubectl(t *testing.T) {
 	t.Logf("NewApplier returned (%T) %#v", applier, applier)
 }
 
-func TestGetOrphanedHelmReleases(t *testing.T) { // nolint: funlen //ok
+func TestGetOrphanedHelmReleases(t *testing.T) { //nolint: funlen //ok
 	tests := []*testutils.DefTest{
 		{
 			Number:      1,
@@ -453,7 +453,7 @@ func checkOwnerAndLabels(u testutils.TestUtil, name string, results, exepcted in
 		owningLayer == testData.Expected[3].(string)
 }
 
-func TestAddOwner(t *testing.T) { // nolint: funlen // ok
+func TestAddOwner(t *testing.T) { //nolint: funlen // ok
 	tests := []*testutils.DefTest{
 		{
 			Number:      1,
@@ -611,7 +611,7 @@ func getUID(text types.UID) types.UID {
 	return uid
 }
 
-func TestChangeOwner(t *testing.T) { // nolint: funlen //ok
+func TestChangeOwner(t *testing.T) { //nolint: funlen //ok
 	tests := []*testutils.DefTest{
 		{
 			Number:      1,
@@ -845,7 +845,7 @@ func checkOrphanLabel(u testutils.TestUtil, name string, actual, expected interf
 	return actualTS.Add(time.Second).After(expectedTS.Time) && actual.([]interface{})[1] == nil
 }
 
-func TestOrphanLabel(t *testing.T) { // nolint: funlen //ok
+func TestOrphanLabel(t *testing.T) { //nolint: funlen //ok
 	orphanedTS, err := apply.GetTimestamp("2021-03-01T00:00:00-05:00")
 	if err != nil {
 		t.Fatalf("failed to create timestamp, %s", err)
@@ -978,7 +978,7 @@ func checkAdoption(u testutils.TestUtil, name string, results, exepcted interfac
 		owningLayer == testData.Expected[3].(string)
 }
 
-func TestAdopt(t *testing.T) { // nolint: funlen // ok
+func TestAdopt(t *testing.T) { //nolint: funlen // ok
 	tests := []*testutils.DefTest{
 		{
 			Number:      1,
@@ -1056,7 +1056,7 @@ func TestAdopt(t *testing.T) { // nolint: funlen // ok
 	}
 }
 
-func checkOrphaning(u testutils.TestUtil, name string, results, exepcted interface{}) bool { // nolint: gocyclo // ok
+func checkOrphaning(u testutils.TestUtil, name string, results, exepcted interface{}) bool { //nolint: gocyclo // ok
 	t := u.Testing()
 	testData := u.TestData()
 	a := castToApplier(t, testData.Config)
@@ -1144,7 +1144,7 @@ func setOrphanLabelTS(u testutils.TestUtil) {
 	}
 }
 
-func TestOrphan(t *testing.T) { // nolint: funlen // ok
+func TestOrphan(t *testing.T) { //nolint: funlen // ok
 	tests := []*testutils.DefTest{
 		{
 			Number:      1,

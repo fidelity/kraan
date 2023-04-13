@@ -34,10 +34,10 @@ func Compress(t *testing.T, srcDir string) []byte {
 	zr := gzip.NewWriter(&buf)
 	tw := tar.NewWriter(zr)
 
-	walkFunc := func(file string, fi os.FileInfo, err error) error { // nolint:staticcheck // ok
+	walkFunc := func(file string, fi os.FileInfo, err error) error { //nolint:staticcheck // ok
 		// generate tar header
 		var header *tar.Header
-		header, err = tar.FileInfoHeader(fi, file) // nolint:staticcheck // ok
+		header, err = tar.FileInfoHeader(fi, file) //nolint:staticcheck // ok
 		if err != nil {
 			return err
 		}

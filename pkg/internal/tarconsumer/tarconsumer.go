@@ -1,4 +1,5 @@
-//Package tarconsumer provides an interface for processing repositories.
+// Package tarconsumer provides an interface for processing repositories.
+//
 //go:generate mockgen -destination=../mocks/tarconsumer/mockTarconsumer.go -package=mocks -source=tarconsumer.go . TarConsumer
 package tarconsumer
 

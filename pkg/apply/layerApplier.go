@@ -1,4 +1,5 @@
-//Package apply applies Hel Releases
+// Package apply applies Hel Releases
+//
 //go:generate mockgen -destination=../mocks/apply/mockLayerApplier.go -package=mocks -source=layerApplier.go . LayerApplier
 package apply
 
@@ -112,11 +113,11 @@ func (a KubectlLayerApplier) logTrace(msg string, layer layers.Layer, keysAndVal
 }
 
 /*
-func (a KubectlLayerApplier) logErrors(errz []error, layer layers.Layer) {
-	for _, err := range errz {
-		a.logError(err, "error while applying layer", layer)
+	func (a KubectlLayerApplier) logErrors(errz []error, layer layers.Layer) {
+		for _, err := range errz {
+			a.logError(err, "error while applying layer", layer)
+		}
 	}
-}
 */
 func getLabel(hr metav1.ObjectMeta) string {
 	return fmt.Sprintf("%s/%s", hr.GetNamespace(), hr.GetName())
@@ -156,7 +157,7 @@ func (a KubectlLayerApplier) GetOrphanedHelmReleases(ctx context.Context, layer 
 
 	foundHrs = map[string]*helmctlv2.HelmRelease{}
 	for _, hr := range hrList.Items {
-		if layer.GetName() != layerOwner(&hr) { // nolint: scopelint // ok
+		if layer.GetName() != layerOwner(&hr) { //nolint: scopelint // ok
 			foundHrs[getLabel(hr.ObjectMeta)] = hr.DeepCopy()
 		}
 	}

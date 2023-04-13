@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Set versions of software required
-linter_version=1.46.2
+linter_version=1.52.2
 mockgen_version=v1.6.0
 helm_version=v3.6.1
 kind_version=v0.11.1
-kubectl_version=v1.23.15
+kubectl_version=v1.26.0
 kustomize_version=v3.8.7
 
 function usage()

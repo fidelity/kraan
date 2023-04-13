@@ -136,7 +136,7 @@ func (r *reposData) Delete(name string) {
 	r.Lock()
 	defer r.Unlock()
 	if repo, found := r.repos[name]; found {
-		_ = repo.TidyAll() // nolint:errcheck // ok
+		_ = repo.TidyAll() //nolint:errcheck // ok
 		delete(r.repos, name)
 	}
 }

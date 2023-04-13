@@ -1,4 +1,5 @@
-//Package layers provides an interface for processing AddonsLayers.
+// Package layers provides an interface for processing AddonsLayers.
+//
 //go:generate mockgen -destination=../mocks/layers/mockLayers.go -package=mocks -source=layers.go . Layer
 package layers
 
@@ -297,7 +298,7 @@ func (l *KraanLayer) RevisionReady(conditions []metav1.Condition, revision strin
 	return false, "GitRepository not yet reconciled"
 }
 
-func (l *KraanLayer) isOtherDeployed(otherVersion string, otherLayer *kraanv1alpha1.AddonsLayer) bool { // nolint: funlen // ok
+func (l *KraanLayer) isOtherDeployed(otherVersion string, otherLayer *kraanv1alpha1.AddonsLayer) bool { //nolint: funlen // ok
 	logging.TraceCall(l.GetLogger())
 	defer logging.TraceExit(l.GetLogger())
 	l.GetLogger().V(1).Info("checking dependency", append(logging.GetFunctionAndSource(logging.MyCaller), "dependson", otherLayer.Name, "layer", l.GetName())...)

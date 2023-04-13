@@ -35,11 +35,11 @@ var (
 )
 
 func init() {
-	_ = corev1.AddToScheme(scheme) // nolint:errcheck // ok
-	//_ = helmctlv2.AddToScheme(scheme)     // nolint:errcheck // ok
-	_ = kraanv1alpha1.AddToScheme(scheme) // nolint:errcheck // ok
-	_ = sourcev1.AddToScheme(scheme)      // nolint:errcheck // ok
-	_ = extv1b1.AddToScheme(scheme)       // nolint:errcheck // ok
+	_ = corev1.AddToScheme(scheme) //nolint:errcheck // ok
+	//_ = helmctlv2.AddToScheme(scheme)     //nolint:errcheck // ok
+	_ = kraanv1alpha1.AddToScheme(scheme) //nolint:errcheck // ok
+	_ = sourcev1.AddToScheme(scheme)      //nolint:errcheck // ok
+	_ = extv1b1.AddToScheme(scheme)       //nolint:errcheck // ok
 }
 
 const (
@@ -66,9 +66,9 @@ const (
 )
 
 func init() {
-	_ = corev1.AddToScheme(testScheme)        // nolint:errcheck // ok
-	_ = sourcev1.AddToScheme(testScheme)      // nolint:errcheck // ok
-	_ = kraanv1alpha1.AddToScheme(testScheme) // nolint:errcheck // ok
+	_ = corev1.AddToScheme(testScheme)        //nolint:errcheck // ok
+	_ = sourcev1.AddToScheme(testScheme)      //nolint:errcheck // ok
+	_ = kraanv1alpha1.AddToScheme(testScheme) //nolint:errcheck // ok
 }
 
 func TestCreateLayer(t *testing.T) {
@@ -110,7 +110,7 @@ func getFromList(name string, layerList *kraanv1alpha1.AddonsLayerList) *kraanv1
 	return nil
 }
 
-func getLayer(layerName, testDataFileName, reposDataFileName string) (layers.Layer, error) {
+func getLayer(layerName, testDataFileName, reposDataFileName string) (layers.Layer, error) { //nolint: unparam //ok
 	logger := logr.Discard()
 	layerList, err := getLayersFromFile(testDataFileName)
 	if err != nil {
@@ -284,7 +284,7 @@ func compareStatus(actual, expected *kraanv1alpha1.AddonsLayerStatus) error {
 	return nil
 }
 
-func TestSetStatusSetting(t *testing.T) { // nolint:funlen // ok
+func TestSetStatusSetting(t *testing.T) { //nolint:funlen // ok
 	type testsData struct {
 		name     string
 		setFunc  func()
@@ -435,7 +435,7 @@ func TestHold(t *testing.T) {
 	}
 }
 
-/*func TestSetStatus(t *testing.T) { // nolint:funlen // ok
+/*func TestSetStatus(t *testing.T) { //nolint:funlen // ok
 	type testsData struct {
 		name      string
 		layerName string
@@ -514,7 +514,7 @@ func TestHold(t *testing.T) {
 	}
 }*/
 
-func TestCheckK8sVersion(t *testing.T) { // nolint:funlen // ok
+func TestCheckK8sVersion(t *testing.T) { //nolint:funlen // ok
 	type testsData struct {
 		name       string
 		layerName  string
@@ -581,7 +581,7 @@ func TestCheckK8sVersion(t *testing.T) { // nolint:funlen // ok
 	}
 }
 
-func TestDependenciesDeployed(t *testing.T) { // nolint: funlen // ok
+func TestDependenciesDeployed(t *testing.T) { //nolint: funlen // ok
 	type testsData struct {
 		name       string
 		layerName  string

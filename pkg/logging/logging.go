@@ -1,4 +1,4 @@
-//Package logging contains logging related functions used by multiple packages
+// Package logging contains logging related functions used by multiple packages
 package logging
 
 import (

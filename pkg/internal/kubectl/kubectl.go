@@ -186,14 +186,14 @@ func (c *abstractCommand) Build() (buildDir string) {
 	var err error
 	buildDir, err = tempDirProviderFunc()
 	if err != nil {
-		c.logError(err) // nolint:errcheck //ok
+		c.logError(err) //nolint:errcheck //ok
 		return buildDir
 	}
 	c.args = append(c.args, "-o", buildDir)
 	c.logDebug("executing kustomize build")
 	c.output, err = c.factory.getExecProvider().ExecCmd(c.getPath(), c.getArgs()...)
 	if err != nil {
-		c.logError(err) // nolint:errcheck //ok
+		c.logError(err) //nolint:errcheck //ok
 	}
 	return buildDir
 }

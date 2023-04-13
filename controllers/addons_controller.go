@@ -71,7 +71,7 @@ type AddonsLayerReconcilerOptions struct {
 }
 
 // SetupWithManagerAndOptions setup manager with supplied options
-func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opts AddonsLayerReconcilerOptions) error { // nolint: funlen,gocyclo,gocognit // ok
+func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opts AddonsLayerReconcilerOptions) error { //nolint: funlen,gocyclo,gocognit // ok
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
 
@@ -518,7 +518,7 @@ func (r *AddonsLayerReconciler) checkData(l layers.Layer) (bool, error) {
 		}
 		r.Log.Info("waiting for layer data",
 			append(logging.GetFunctionAndSource(logging.MyCaller), "requestName", l.GetName(), "kind", logging.GitRepoSourceKind(), "source", l.GetSpec().Source)...)
-		time.Sleep(time.Duration(time.Second * time.Duration(try))) // nolint: unconvert // ignore
+		time.Sleep(time.Duration(time.Second * time.Duration(try))) //nolint: unconvert // ignore
 	}
 	l.SetDelayedRequeue()
 	l.SetStatusPending()
@@ -620,7 +620,7 @@ func (r *AddonsLayerReconciler) adopt(l layers.Layer) error {
 	return nil
 }
 
-func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error) { // nolint: gocyclo // ok
+func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error) { //nolint: gocyclo // ok
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
 
@@ -706,7 +706,7 @@ func (r *AddonsLayerReconciler) updateRequeue(l layers.Layer) (res ctrl.Result, 
 // Reconcile process AddonsLayers custom resources.
 // +kubebuilder:rbac:groups=kraan.io,resources=addons,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kraan.io,resources=addons/status,verbs=get;update;patch
-func (r *AddonsLayerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) { // nolint:funlen,gocyclo // ok
+func (r *AddonsLayerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) { //nolint:funlen,gocyclo // ok
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
 
@@ -747,7 +747,7 @@ func (r *AddonsLayerReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return res, err
 	}
 
-	if addonsLayer.ObjectMeta.DeletionTimestamp.IsZero() { // nolint: nestif // ok
+	if addonsLayer.ObjectMeta.DeletionTimestamp.IsZero() { //nolint: nestif // ok
 		if !common.ContainsString(addonsLayer.ObjectMeta.Finalizers, kraanv1alpha1.AddonsFinalizer) {
 			r.Log.V(1).Info("adding finalizer to addonsLayer", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
 			addonsLayer.ObjectMeta.Finalizers = append(l.GetAddonsLayer().ObjectMeta.Finalizers, kraanv1alpha1.AddonsFinalizer)
@@ -886,7 +886,7 @@ func (r *AddonsLayerReconciler) update(ctx context.Context, a *kraanv1alpha1.Add
 	return nil
 }
 
-func (r *AddonsLayerReconciler) repoMapperFunc(o client.Object) []reconcile.Request { // nolint:gocyclo //ok
+func (r *AddonsLayerReconciler) repoMapperFunc(o client.Object) []reconcile.Request { //nolint:gocyclo //ok
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
 

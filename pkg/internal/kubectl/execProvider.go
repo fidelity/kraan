@@ -1,4 +1,5 @@
-//Package kubectl executes various kubectl sub-commands in a forked shell
+// Package kubectl executes various kubectl sub-commands in a forked shell
+//
 //go:generate mockgen -destination=../mocks/kubectl/mockExecProvider.go -package=mocks -source=execProvider.go . ExecProvider
 package kubectl
 

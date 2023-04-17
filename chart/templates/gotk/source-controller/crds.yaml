@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.11.1
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: {{.Release.Namespace}}
@@ -380,7 +380,12 @@ spec:
                 description: Artifact represents the last successful Bucket reconciliation.
                 properties:
                   checksum:
-                    description: Checksum is the SHA256 checksum of the Artifact file.
+                    description: 'Checksum is the SHA256 checksum of the Artifact
+                      file. Deprecated: use Artifact.Digest instead.'
+                    type: string
+                  digest:
+                    description: Digest is the digest of the file in the form of '<algorithm>:<checksum>'.
+                    pattern: ^[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[a-zA-Z0-9=_-]+$
                     type: string
                   lastUpdateTime:
                     description: LastUpdateTime is the timestamp corresponding to
@@ -510,18 +515,12 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.11.1
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: {{.Release.Namespace}}
@@ -983,24 +982,27 @@ spec:
               recurseSubmodules:
                 description: RecurseSubmodules enables the initialization of all submodules
                   within the GitRepository as cloned from the URL, using their default
-                  settings. This option is available only when using the 'go-git'
-                  GitImplementation.
+                  settings.
                 type: boolean
               ref:
                 description: Reference specifies the Git reference to resolve and
                   monitor for changes, defaults to the 'master' branch.
                 properties:
                   branch:
-                    description: "Branch to check out, defaults to 'master' if no
-                      other field is defined. \n When GitRepositorySpec.GitImplementation
-                      is set to 'go-git', a shallow clone of the specified branch
-                      is performed."
+                    description: Branch to check out, defaults to 'master' if no other
+                      field is defined.
                     type: string
                   commit:
                     description: "Commit SHA to check out, takes precedence over all
-                      reference fields. \n When GitRepositorySpec.GitImplementation
-                      is set to 'go-git', this can be combined with Branch to shallow
+                      reference fields. \n This can be combined with Branch to shallow
                       clone the branch, in which the commit is expected to exist."
+                    type: string
+                  name:
+                    description: "Name of the reference to check out; takes precedence
+                      over Branch, Tag and SemVer. \n It must be a valid Git reference:
+                      https://git-scm.com/docs/git-check-ref-format#_description Examples:
+                      \"refs/heads/main\", \"refs/tags/v0.1.0\", \"refs/pull/420/head\",
+                      \"refs/merge-requests/1/head\""
                     type: string
                   semver:
                     description: SemVer tag expression to check out, takes precedence
@@ -1013,8 +1015,9 @@ spec:
               secretRef:
                 description: SecretRef specifies the Secret containing authentication
                   credentials for the GitRepository. For HTTPS repositories the Secret
-                  must contain 'username' and 'password' fields. For SSH repositories
-                  the Secret must contain 'identity' and 'known_hosts' fields.
+                  must contain 'username' and 'password' fields for basic auth or
+                  'bearerToken' field for token auth. For SSH repositories the Secret
+                  must contain 'identity' and 'known_hosts' fields.
                 properties:
                   name:
                     description: Name of the referent.
@@ -1074,7 +1077,12 @@ spec:
                   reconciliation.
                 properties:
                   checksum:
-                    description: Checksum is the SHA256 checksum of the Artifact file.
+                    description: 'Checksum is the SHA256 checksum of the Artifact
+                      file. Deprecated: use Artifact.Digest instead.'
+                    type: string
+                  digest:
+                    description: Digest is the digest of the file in the form of '<algorithm>:<checksum>'.
+                    pattern: ^[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[a-zA-Z0-9=_-]+$
                     type: string
                   lastUpdateTime:
                     description: LastUpdateTime is the timestamp corresponding to
@@ -1196,8 +1204,13 @@ spec:
                   description: Artifact represents the output of a Source reconciliation.
                   properties:
                     checksum:
-                      description: Checksum is the SHA256 checksum of the Artifact
-                        file.
+                      description: 'Checksum is the SHA256 checksum of the Artifact
+                        file. Deprecated: use Artifact.Digest instead.'
+                      type: string
+                    digest:
+                      description: Digest is the digest of the file in the form of
+                        '<algorithm>:<checksum>'.
+                      pattern: ^[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[a-zA-Z0-9=_-]+$
                       type: string
                     lastUpdateTime:
                       description: LastUpdateTime is the timestamp corresponding to
@@ -1295,18 +1308,12 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.11.1
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: {{.Release.Namespace}}
@@ -1758,7 +1765,12 @@ spec:
                   reconciliation.
                 properties:
                   checksum:
-                    description: Checksum is the SHA256 checksum of the Artifact file.
+                    description: 'Checksum is the SHA256 checksum of the Artifact
+                      file. Deprecated: use Artifact.Digest instead.'
+                    type: string
+                  digest:
+                    description: Digest is the digest of the file in the form of '<algorithm>:<checksum>'.
+                    pattern: ^[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[a-zA-Z0-9=_-]+$
                     type: string
                   lastUpdateTime:
                     description: LastUpdateTime is the timestamp corresponding to
@@ -1892,18 +1904,12 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.11.1
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: {{.Release.Namespace}}
@@ -1995,7 +2001,7 @@ spec:
                 description: The name of the secret containing authentication credentials
                   for the Helm repository. For HTTP/S basic auth the secret must contain
                   username and password fields. For TLS the secret must contain a
-                  certFile and keyFile, and/or caCert fields.
+                  certFile and keyFile, and/or caFile fields.
                 properties:
                   name:
                     description: Name of the referent.
@@ -2228,7 +2234,7 @@ spec:
                 description: SecretRef specifies the Secret containing authentication
                   credentials for the HelmRepository. For HTTP/S basic auth the secret
                   must contain 'username' and 'password' fields. For TLS the secret
-                  must contain a 'certFile' and 'keyFile', and/or 'caCert' fields.
+                  must contain a 'certFile' and 'keyFile', and/or 'caFile' fields.
                 properties:
                   name:
                     description: Name of the referent.
@@ -2272,7 +2278,12 @@ spec:
                   reconciliation.
                 properties:
                   checksum:
-                    description: Checksum is the SHA256 checksum of the Artifact file.
+                    description: 'Checksum is the SHA256 checksum of the Artifact
+                      file. Deprecated: use Artifact.Digest instead.'
+                    type: string
+                  digest:
+                    description: Digest is the digest of the file in the form of '<algorithm>:<checksum>'.
+                    pattern: ^[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[a-zA-Z0-9=_-]+$
                     type: string
                   lastUpdateTime:
                     description: LastUpdateTime is the timestamp corresponding to
@@ -2398,18 +2409,12 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.11.1
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: {{.Release.Namespace}}
@@ -2604,7 +2609,12 @@ spec:
                   OCI Repository sync.
                 properties:
                   checksum:
-                    description: Checksum is the SHA256 checksum of the Artifact file.
+                    description: 'Checksum is the SHA256 checksum of the Artifact
+                      file. Deprecated: use Artifact.Digest instead.'
+                    type: string
+                  digest:
+                    description: Digest is the digest of the file in the form of '<algorithm>:<checksum>'.
+                    pattern: ^[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[a-zA-Z0-9=_-]+$
                     type: string
                   lastUpdateTime:
                     description: LastUpdateTime is the timestamp corresponding to
@@ -2761,10 +2771,4 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
 {{- end }}

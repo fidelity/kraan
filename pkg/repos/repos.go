@@ -275,12 +275,6 @@ func (r *repoData) TidyRepo() error {
 		return errors.WithMessagef(err, "%s - failed to remove previous revisions", logging.CallerStr(logging.Me))
 	}
 
-	dataPathDir = strings.Join(dataPathParts[:len(dataPathParts)-2], "/")
-	branch := dataPathParts[len(dataPathParts)-2]
-
-	if err := r.removeDirs(dataPathDir, branch); err != nil {
-		return errors.WithMessagef(err, "%s - failed to remove previous branches/tags", logging.CallerStr(logging.Me))
-	}
 	return nil
 }
 

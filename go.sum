@@ -13,6 +13,8 @@ github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj
 github.com/cespare/xxhash/v2 v2.2.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
+github.com/cyphar/filepath-securejoin v0.2.3 h1:YX6ebbZCZP7VkM3scTTokDgBL2TY741X51MTk3ycuNI=
+github.com/cyphar/filepath-securejoin v0.2.3/go.mod h1:aPGpWjXOXUn2NCNjFvBE6aRxGGx79pTxQpKOJNYHHl4=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -38,8 +40,10 @@ github.com/fluxcd/pkg/apis/kustomize v1.0.0 h1:5T2b/mRZiGWtP7fvSU8gZOApIc06H6SdL
 github.com/fluxcd/pkg/apis/kustomize v1.0.0/go.mod h1:XaDYlKxrf9D2zZWcZ0BnSIqGtcm8mdNtJGzZWYjCnQo=
 github.com/fluxcd/pkg/apis/meta v1.0.0 h1:i9IGHd/VNEZELX7mepkiYFbJxs2J5znaB4cN9z2nPm8=
 github.com/fluxcd/pkg/apis/meta v1.0.0/go.mod h1:04ZdpZYm1x+aL93K4daNHW1UX6E8K7Gyf5za9OhrE+U=
-github.com/fluxcd/pkg/untar v0.2.0 h1:sJXU+FbJcNUb2ffLJNjeR3hwt3X2loVpOMlCUjyFw6E=
-github.com/fluxcd/pkg/untar v0.2.0/go.mod h1:33AyoWaPpjX/xXpczcfhQh2AkB63TFwiR2YwROtv23E=
+github.com/fluxcd/pkg/tar v0.2.0 h1:HEUHgONQYsJGeZZ4x6h5nQU9Aox1I4T3bOp1faWTqf8=
+github.com/fluxcd/pkg/tar v0.2.0/go.mod h1:w0/TOC7kwBJhnSJn7TCABkc/I7ib1f2Yz6vOsbLBnhw=
+github.com/fluxcd/pkg/untar v0.3.0 h1:FOGc69nBvasLjFu5Imdc7Kl/U/gRdIyyF2ZkD9gKuXI=
+github.com/fluxcd/pkg/untar v0.3.0/go.mod h1:ClGpWYeDidYETkl048vCgHlsNtn5BHYHvMmQdadRGKs=
 github.com/fluxcd/source-controller/api v0.36.1 h1:/ul69kJNEwrFG1Cwk2P/GwgraIxOETCL+tP+zMtxTu8=
 github.com/fluxcd/source-controller/api v0.36.1/go.mod h1:GktZmd5Dfxo84vPFBdLDl0bBtiJRODfd47uugK0romU=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=

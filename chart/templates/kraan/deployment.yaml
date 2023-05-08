@@ -55,6 +55,11 @@ spec:
         {{ end }}
         - --zap-encoder=json
         - --sync-period={{ .Values.kraan.kraanController.args.syncPeriod }}
+        {{- if .Values.kraan.kraanController.extraArgs }}
+        {{- range .Values.kraan.kraanController.extraArgs }}
+        {{ cat "-" . }}
+        {{- end }}
+        {{- end }}
         env:
         - name: RUNTIME_NAMESPACE
           valueFrom:

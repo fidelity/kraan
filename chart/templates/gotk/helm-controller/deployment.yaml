@@ -50,6 +50,11 @@ spec:
         - --log-level=info
         - --log-encoding=json
         - --enable-leader-election
+        {{- if .Values.gotk.helmController.extraArgs }}
+        {{- range .Values.gotk.helmController.extraArgs }}
+        {{ cat "-" . }}
+        {{- end }}
+        {{- end }}
         env:
         - name: RUNTIME_NAMESPACE
           valueFrom:

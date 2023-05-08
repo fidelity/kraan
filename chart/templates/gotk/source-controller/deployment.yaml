@@ -54,6 +54,11 @@ spec:
         - --enable-leader-election
         - --storage-path=/data
         - --storage-adv-addr=source-controller.$(RUNTIME_NAMESPACE).svc.cluster.local.
+        {{- if .Values.gotk.sourceController.extraArgs }}
+        {{- range .Values.gotk.sourceController.extraArgs }}
+        {{ cat "-" . }}
+        {{- end }}
+        {{- end }}
         env:
         - name: RUNTIME_NAMESPACE
           valueFrom:

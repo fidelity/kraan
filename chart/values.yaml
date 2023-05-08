@@ -26,6 +26,8 @@ kraan:
 
     extraLabels: {}
 
+    extraArgs: []
+
     prometheus:
       enabled: true
 
@@ -93,6 +95,8 @@ gotk:
 
     extraLabels: {}
 
+    extraArgs: []
+
     prometheus:
       enabled: true
 
@@ -147,6 +151,8 @@ gotk:
     extraPodAnnotations: {}
 
     extraLabels: {}
+
+    extraArgs: []
 
     prometheus:
       enabled: true

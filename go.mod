@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/fluxcd/helm-controller/api v0.32.2
-	github.com/fluxcd/pkg/apis/meta v1.1.1
+	github.com/fluxcd/pkg/apis/meta v1.1.2
 	github.com/fluxcd/pkg/untar v0.3.0
 	github.com/fluxcd/source-controller/api v0.36.1
 	github.com/go-logr/logr v1.2.4
@@ -17,7 +17,7 @@ require (
 	golang.org/x/mod v0.11.0
 	k8s.io/api v0.26.3
 	k8s.io/apiextensions-apiserver v0.26.3
-	k8s.io/apimachinery v0.27.3
+	k8s.io/apimachinery v0.27.4
 	k8s.io/client-go v0.26.3
 	sigs.k8s.io/controller-runtime v0.14.6
 )

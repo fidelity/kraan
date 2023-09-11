@@ -1,5 +1,5 @@
 {
-    "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
+    "apiVersion": "source.toolkit.fluxcd.io/v1",
     "kind": "GitRepository",
     "metadata": {
         "creationTimestamp": "2020-09-04T09:30:06Z",
@@ -10,7 +10,7 @@
         "name": "addons-config",
         "namespace": "gotk-system",
         "resourceVersion": "2355954",
-        "selfLink": "/apis/source.toolkit.fluxcd.io/v1beta2/namespaces/gotk-system/gitrepositories/addons-config",
+        "selfLink": "/apis/source.toolkit.fluxcd.io/v1/namespaces/gotk-system/gitrepositories/addons-config",
         "uid": "f261fb8e-f8bf-4f45-bc1a-45fc6e6b2e8d"
     },
     "spec": {

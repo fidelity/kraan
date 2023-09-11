@@ -8,7 +8,7 @@ import (
 	context "context"
 	tarconsumer "github.com/fidelity/kraan/pkg/internal/tarconsumer"
 	repos "github.com/fidelity/kraan/pkg/repos"
-	v1beta1 "github.com/fluxcd/source-controller/api/v1beta2"
+	v1 "github.com/fluxcd/source-controller/api/v1"
 	gomock "github.com/golang/mock/gomock"
 	http "net/http"
 	reflect "reflect"
@@ -39,7 +39,7 @@ func (m *MockRepos) EXPECT() *MockReposMockRecorder {
 }
 
 // Add mocks base method
-func (m *MockRepos) Add(srcRepo *v1beta1.GitRepository) repos.Repo {
+func (m *MockRepos) Add(srcRepo *v1.GitRepository) repos.Repo {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Add", srcRepo)
 	ret0, _ := ret[0].(repos.Repo)
@@ -302,10 +302,10 @@ func (mr *MockRepoMockRecorder) LinkData(layerPath, sourcePath interface{}) *gom
 }
 
 // GetGitRepo mocks base method
-func (m *MockRepo) GetGitRepo() *v1beta1.GitRepository {
+func (m *MockRepo) GetGitRepo() *v1.GitRepository {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetGitRepo")
-	ret0, _ := ret[0].(*v1beta1.GitRepository)
+	ret0, _ := ret[0].(*v1.GitRepository)
 	return ret0
 }
 
@@ -370,7 +370,7 @@ func (mr *MockRepoMockRecorder) SetHostName(hostName interface{}) *gomock.Call {
 }
 
 // SetGitRepo mocks base method
-func (m *MockRepo) SetGitRepo(src *v1beta1.GitRepository, rootPath string) {
+func (m *MockRepo) SetGitRepo(src *v1.GitRepository, rootPath string) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "SetGitRepo", src, rootPath)
 }

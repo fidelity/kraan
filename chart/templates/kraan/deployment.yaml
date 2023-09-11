@@ -43,6 +43,10 @@ spec:
           allowPrivilegeEscalation: false
           runAsNonRoot: {{ .Values.kraan.kraanController.runAsNonRoot }}
           readOnlyRootFilesystem: {{ .Values.kraan.kraanController.readOnly }}
+          capabilities:
+            drop: [ "ALL" ]
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /controller/data
           name: data

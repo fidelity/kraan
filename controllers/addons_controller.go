@@ -24,7 +24,8 @@ import (
 	"time"
 
 	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta1"
-	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1"
+	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
@@ -77,13 +78,13 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 
 	addonsLayer := &kraanv1alpha1.AddonsLayer{}
 	hr := &helmctlv2.HelmRelease{}
-	hrepo := &sourcev1.HelmRepository{}
+	hrepo := &sourcev1beta2.HelmRepository{}
 
 	if err := mgr.GetFieldIndexer().IndexField(r.Context, &helmctlv2.HelmRelease{}, hrOwnerKey, r.indexHelmReleaseByOwner); err != nil {
 		return errors.Wrap(err, "failed setting up FieldIndexer for HelmRelease owner")
 	}
 
-	if err := mgr.GetFieldIndexer().IndexField(r.Context, &sourcev1.HelmRepository{}, hrOwnerKey, r.indexHelmRepoByOwner); err != nil {
+	if err := mgr.GetFieldIndexer().IndexField(r.Context, &sourcev1beta2.HelmRepository{}, hrOwnerKey, r.indexHelmRepoByOwner); err != nil {
 		return errors.Wrap(err, "failed setting up FieldIndexer for HelmRepository owner")
 	}
 
@@ -98,7 +99,7 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 		return errors.Wrap(err, "error creating controller")
 	}
 	err = ctl.Watch(
-		&source.Kind{Type: &sourcev1.GitRepository{}},
+		source.Kind(mgr.GetCache(), &sourcev1.GitRepository{}),
 		handler.EnqueueRequestsFromMapFunc(r.repoMapperFunc),
 		predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
@@ -176,7 +177,7 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 		return errors.Wrap(err, "error creating controller")
 	}
 	err = ctl.Watch(
-		&source.Kind{Type: &kraanv1alpha1.AddonsLayer{}},
+		source.Kind(mgr.GetCache(), &kraanv1alpha1.AddonsLayer{}),
 		handler.EnqueueRequestsFromMapFunc(r.layerMapperFunc),
 		predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
@@ -886,7 +887,7 @@ func (r *AddonsLayerReconciler) update(ctx context.Context, a *kraanv1alpha1.Add
 	return nil
 }
 
-func (r *AddonsLayerReconciler) repoMapperFunc(o client.Object) []reconcile.Request { //nolint:gocyclo //ok
+func (r *AddonsLayerReconciler) repoMapperFunc(ctx context.Context, o client.Object) []reconcile.Request { //nolint:gocyclo //ok
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
 
@@ -937,7 +938,7 @@ func (r *AddonsLayerReconciler) repoMapperFunc(o client.Object) []reconcile.Requ
 	return addons
 }
 
-func (r *AddonsLayerReconciler) layerMapperFunc(o client.Object) []reconcile.Request {
+func (r *AddonsLayerReconciler) layerMapperFunc(ctx context.Context, o client.Object) []reconcile.Request {
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
 
@@ -1000,7 +1001,7 @@ func (r *AddonsLayerReconciler) indexHelmRepoByOwner(o client.Object) []string {
 	defer logging.TraceExit(r.Log)
 
 	r.Log.V(2).Info("indexing", logging.GetObjKindNamespaceName(o)...)
-	hr, ok := o.(*sourcev1.HelmRepository)
+	hr, ok := o.(*sourcev1beta2.HelmRepository)
 	if !ok {
 		r.Log.Error(fmt.Errorf("failed to cast to helmrepository"), "unable cast object to expected kind",
 			logging.GetObjKindNamespaceName(o)...)

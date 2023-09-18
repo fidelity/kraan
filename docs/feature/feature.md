@@ -91,4 +91,4 @@ spec:
 ```
 
 ## Workflow
-![layers](Kraan.png)
+![layers](kraan.png)

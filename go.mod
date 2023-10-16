@@ -9,7 +9,7 @@ require (
 	github.com/fluxcd/source-controller/api v1.1.0
 	github.com/go-logr/logr v1.2.4
 	github.com/golang/mock v1.6.0
-	github.com/google/go-cmp v0.5.9
+	github.com/google/go-cmp v0.6.0
 	github.com/paulcarlton-ww/goutils/pkg/testutils v0.1.42
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.16.0

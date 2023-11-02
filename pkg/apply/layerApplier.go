@@ -294,6 +294,10 @@ func (a KubectlLayerApplier) applyHelmReleaseObjects(ctx context.Context, layer 
 	a.logTrace("helm release resources be applied", layer, "objects", logging.LogJSON(objs))
 	for _, obj := range objs {
 		a.logTrace("applying helm release resource", layer, "object", logging.LogJSON(obj))
+		labels := obj.GetLabels()
+		delete(labels, orphanedLabel)
+		obj.SetLabels(labels)
+
 		err := a.applyObject(ctx, layer, obj)
 		if err != nil {
 			return errors.Wrapf(err, "%s - failed to apply layer helm release resource", logging.CallerStr(logging.Me))

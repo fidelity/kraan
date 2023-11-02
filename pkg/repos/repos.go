@@ -476,8 +476,9 @@ func (r *repoData) fetchArtifact(ctx context.Context) error {
 
 	url := repo.Status.Artifact.URL
 
-	if r.hostName != "" {
-		url = fmt.Sprintf("http://%s/gitrepository/%s/%s/latest.tar.gz", r.hostName, repo.Namespace, repo.Name)
+	tarName := getTarName(url)
+	if r.hostName != "" && tarName != "" {
+		url = fmt.Sprintf("http://%s/gitrepository/%s/%s/%s", r.hostName, repo.Namespace, repo.Name, tarName)
 	}
 
 	r.tarConsumer.SetURL(url)
@@ -494,4 +495,15 @@ func (r *repoData) fetchArtifact(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func getTarName(url string) string {
+	paths := strings.Split(url, "/")
+	if len(paths) > 0 {
+		tarFile := paths[len(paths)-1]
+		if strings.HasSuffix(tarFile, ".tar.gz") {
+			return tarFile
+		}
+	}
+	return ""
 }

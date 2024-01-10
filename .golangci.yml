@@ -175,7 +175,6 @@ linters:
     - asciicheck
     - bodyclose
     - deadcode
-    - depguard
     - dogsled
     - dupl
     - exhaustive

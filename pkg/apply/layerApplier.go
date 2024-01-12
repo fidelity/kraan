@@ -180,21 +180,15 @@ func (a KubectlLayerApplier) decodeHelmReleases(layer layers.Layer, objs []runti
 				a.logError(err, err.Error(), layer, logging.GetObjNamespaceName(obj)...)
 			}
 		case *helmctlv1.HelmRelease:
-			hr, ok := obj.(*helmctlv1.HelmRelease)
+			v1Hr, ok := obj.(*helmctlv1.HelmRelease)
 			if ok {
-				a.logDebug("found v1HelmRelease in Object list", layer, append(logging.GetObjKindNamespaceName(obj), "helmRelease", hr)...)
-				b, err := json.Marshal(&hr)
-				if err != nil {
-					a.logError(err, err.Error(), layer, logging.GetObjNamespaceName(obj)...)
+				a.logDebug("found v1HelmRelease in Object list", layer, append(logging.GetObjKindNamespaceName(obj), "helmRelease", v1Hr)...)
+				hr, convertErr := convertV1Hr(v1Hr)
+				if convertErr != nil {
+					err = convertErr
+					a.logError(err, "v1HelmRelease conversion error. "+convertErr.Error(), layer, logging.GetObjNamespaceName(obj)...)
 				} else {
-					var v2Hr *helmctlv2.HelmRelease
-					err = json.Unmarshal(b, &v2Hr)
-					if err != nil {
-						a.logError(err, err.Error(), layer, logging.GetObjNamespaceName(obj)...)
-					} else {
-						v2Hr.APIVersion = "helm.toolkit.fluxcd.io/v2beta2"
-						hrs = append(hrs, v2Hr)
-					}
+					hrs = append(hrs, hr)
 				}
 			} else {
 				err = fmt.Errorf("failed to convert runtime.Object to HelmRelease")
@@ -205,6 +199,17 @@ func (a KubectlLayerApplier) decodeHelmReleases(layer layers.Layer, objs []runti
 		}
 	}
 	return hrs, err
+}
+
+func convertV1Hr(v1Hr *helmctlv1.HelmRelease) (hr *helmctlv2.HelmRelease, err error) {
+	js, err := json.Marshal(&v1Hr)
+	if err == nil {
+		err = json.Unmarshal(js, &hr)
+		if err == nil {
+			hr.APIVersion = "helm.toolkit.fluxcd.io/v2beta2"
+		}
+	}
+	return
 }
 
 func (a KubectlLayerApplier) decodeHelmRepos(layer layers.Layer, objs []runtime.Object) (hrs []*sourcev1.HelmRepository, err error) {

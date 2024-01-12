@@ -24,7 +24,7 @@ import (
 
 	// +kubebuilder:scaffold:imports
 
-	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta1"
+	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta2"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/go-logr/logr"
@@ -35,10 +35,12 @@ import (
 	extv1b1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	_ "sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	kraanv1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 	"github.com/fidelity/kraan/controllers"
@@ -202,13 +204,12 @@ func createManager(metricsAddr string, healthAddr string, enableLeaderElection b
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Logger:                  logger.WithName("manager"),
 		Scheme:                  scheme,
-		MetricsBindAddress:      metricsAddr,
+		Metrics:                 server.Options{BindAddress: metricsAddr},
 		HealthProbeBindAddress:  healthAddr,
 		LeaderElection:          enableLeaderElection,
 		LeaderElectionNamespace: leaderElectionNamespace,
 		LeaderElectionID:        "925331a6.kraan.io",
-		Namespace:               "",
-		SyncPeriod:              &syncPeriod,
+		Cache:                   cache.Options{SyncPeriod: &syncPeriod},
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to start manager")

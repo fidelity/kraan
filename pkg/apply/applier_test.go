@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta1"
+	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta2"
 	"github.com/go-logr/logr"
 	testlogr "github.com/go-logr/logr/testing"
 	gomock "github.com/golang/mock/gomock"

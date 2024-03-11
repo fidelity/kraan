@@ -14,7 +14,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.18.0
 	go.uber.org/zap v1.26.0
-	golang.org/x/mod v0.14.0
+	golang.org/x/mod v0.16.0
 	k8s.io/api v0.28.4
 	k8s.io/apiextensions-apiserver v0.28.4
 	k8s.io/apimachinery v0.28.4

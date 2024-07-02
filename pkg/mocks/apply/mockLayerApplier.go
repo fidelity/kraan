@@ -8,7 +8,7 @@ import (
 	context "context"
 	v1alpha1 "github.com/fidelity/kraan/api/v1alpha1"
 	layers "github.com/fidelity/kraan/pkg/layers"
-	v2beta2 "github.com/fluxcd/helm-controller/api/v2beta2"
+	v2 "github.com/fluxcd/helm-controller/api/v2"
 	gomock "github.com/golang/mock/gomock"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -53,7 +53,7 @@ func (mr *MockLayerApplierMockRecorder) Apply(ctx, layer interface{}) *gomock.Ca
 }
 
 // Prune mocks base method
-func (m *MockLayerApplier) Prune(ctx context.Context, layer layers.Layer, pruneHrs []*v2beta2.HelmRelease) error {
+func (m *MockLayerApplier) Prune(ctx context.Context, layer layers.Layer, pruneHrs []*v2.HelmRelease) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Prune", ctx, layer, pruneHrs)
 	ret0, _ := ret[0].(error)
@@ -67,11 +67,11 @@ func (mr *MockLayerApplierMockRecorder) Prune(ctx, layer, pruneHrs interface{}) 
 }
 
 // PruneIsRequired mocks base method
-func (m *MockLayerApplier) PruneIsRequired(ctx context.Context, layer layers.Layer) (bool, []*v2beta2.HelmRelease, error) {
+func (m *MockLayerApplier) PruneIsRequired(ctx context.Context, layer layers.Layer) (bool, []*v2.HelmRelease, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PruneIsRequired", ctx, layer)
 	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].([]*v2beta2.HelmRelease)
+	ret1, _ := ret[1].([]*v2.HelmRelease)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
@@ -129,11 +129,11 @@ func (mr *MockLayerApplierMockRecorder) GetResources(ctx, layer interface{}) *go
 }
 
 // GetSourceAndClusterHelmReleases mocks base method
-func (m *MockLayerApplier) GetSourceAndClusterHelmReleases(ctx context.Context, layer layers.Layer) (map[string]*v2beta2.HelmRelease, map[string]*v2beta2.HelmRelease, error) {
+func (m *MockLayerApplier) GetSourceAndClusterHelmReleases(ctx context.Context, layer layers.Layer) (map[string]*v2.HelmRelease, map[string]*v2.HelmRelease, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSourceAndClusterHelmReleases", ctx, layer)
-	ret0, _ := ret[0].(map[string]*v2beta2.HelmRelease)
-	ret1, _ := ret[1].(map[string]*v2beta2.HelmRelease)
+	ret0, _ := ret[0].(map[string]*v2.HelmRelease)
+	ret1, _ := ret[1].(map[string]*v2.HelmRelease)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
@@ -145,7 +145,7 @@ func (mr *MockLayerApplierMockRecorder) GetSourceAndClusterHelmReleases(ctx, lay
 }
 
 // Orphan mocks base method
-func (m *MockLayerApplier) Orphan(ctx context.Context, layer layers.Layer, hr *v2beta2.HelmRelease) (bool, error) {
+func (m *MockLayerApplier) Orphan(ctx context.Context, layer layers.Layer, hr *v2.HelmRelease) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Orphan", ctx, layer, hr)
 	ret0, _ := ret[0].(bool)
@@ -160,10 +160,10 @@ func (mr *MockLayerApplierMockRecorder) Orphan(ctx, layer, hr interface{}) *gomo
 }
 
 // GetOrphanedHelmReleases mocks base method
-func (m *MockLayerApplier) GetOrphanedHelmReleases(ctx context.Context, layer layers.Layer) (map[string]*v2beta2.HelmRelease, error) {
+func (m *MockLayerApplier) GetOrphanedHelmReleases(ctx context.Context, layer layers.Layer) (map[string]*v2.HelmRelease, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetOrphanedHelmReleases", ctx, layer)
-	ret0, _ := ret[0].(map[string]*v2beta2.HelmRelease)
+	ret0, _ := ret[0].(map[string]*v2.HelmRelease)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -175,7 +175,7 @@ func (mr *MockLayerApplierMockRecorder) GetOrphanedHelmReleases(ctx, layer inter
 }
 
 // Adopt mocks base method
-func (m *MockLayerApplier) Adopt(ctx context.Context, layer layers.Layer, hr *v2beta2.HelmRelease) error {
+func (m *MockLayerApplier) Adopt(ctx context.Context, layer layers.Layer, hr *v2.HelmRelease) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Adopt", ctx, layer, hr)
 	ret0, _ := ret[0].(error)
@@ -203,7 +203,7 @@ func (mr *MockLayerApplierMockRecorder) addOwnerRefs(layer, objs interface{}) *g
 }
 
 // orphanLabel mocks base method
-func (m *MockLayerApplier) orphanLabel(ctx context.Context, hr *v2beta2.HelmRelease) (*v1.Time, error) {
+func (m *MockLayerApplier) orphanLabel(ctx context.Context, hr *v2.HelmRelease) (*v1.Time, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "orphanLabel", ctx, hr)
 	ret0, _ := ret[0].(*v1.Time)
@@ -218,10 +218,10 @@ func (mr *MockLayerApplierMockRecorder) orphanLabel(ctx, hr interface{}) *gomock
 }
 
 // GetHelmReleases mocks base method
-func (m *MockLayerApplier) GetHelmReleases(ctx context.Context, layer layers.Layer) (map[string]*v2beta2.HelmRelease, error) {
+func (m *MockLayerApplier) GetHelmReleases(ctx context.Context, layer layers.Layer) (map[string]*v2.HelmRelease, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetHelmReleases", ctx, layer)
-	ret0, _ := ret[0].(map[string]*v2beta2.HelmRelease)
+	ret0, _ := ret[0].(map[string]*v2.HelmRelease)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

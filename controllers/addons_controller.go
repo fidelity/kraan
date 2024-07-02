@@ -23,9 +23,8 @@ import (
 	"sort"
 	"time"
 
-	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta2"
+	helmctlv2 "github.com/fluxcd/helm-controller/api/v2"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
-	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
@@ -78,13 +77,13 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 
 	addonsLayer := &kraanv1alpha1.AddonsLayer{}
 	hr := &helmctlv2.HelmRelease{}
-	hrepo := &sourcev1beta2.HelmRepository{}
+	hrepo := &sourcev1.HelmRepository{}
 
 	if err := mgr.GetFieldIndexer().IndexField(r.Context, &helmctlv2.HelmRelease{}, hrOwnerKey, r.indexHelmReleaseByOwner); err != nil {
 		return errors.Wrap(err, "failed setting up FieldIndexer for HelmRelease owner")
 	}
 
-	if err := mgr.GetFieldIndexer().IndexField(r.Context, &sourcev1beta2.HelmRepository{}, hrOwnerKey, r.indexHelmRepoByOwner); err != nil {
+	if err := mgr.GetFieldIndexer().IndexField(r.Context, &sourcev1.HelmRepository{}, hrOwnerKey, r.indexHelmRepoByOwner); err != nil {
 		return errors.Wrap(err, "failed setting up FieldIndexer for HelmRepository owner")
 	}
 
@@ -99,151 +98,123 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 		return errors.Wrap(err, "error creating controller")
 	}
 	err = ctl.Watch(
-		source.Kind(mgr.GetCache(), &sourcev1.GitRepository{}),
-		handler.EnqueueRequestsFromMapFunc(r.repoMapperFunc),
-		predicate.Funcs{
-			CreateFunc: func(e event.CreateEvent) bool {
-				r.Log.V(1).Info("create event for GitRepository", append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object)...)...)
-				return true
-			},
-			UpdateFunc: func(e event.UpdateEvent) bool {
-				r.Log.V(1).Info("update event", append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.ObjectNew)...)...)
+		source.Kind(mgr.GetCache(), &sourcev1.GitRepository{},
+			handler.TypedEnqueueRequestsFromMapFunc(r.repoMapperFunc),
+			predicate.TypedFuncs[*sourcev1.GitRepository]{
+				CreateFunc: func(e event.TypedCreateEvent[*sourcev1.GitRepository]) bool {
+					r.Log.V(1).Info("create event for GitRepository", append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object)...)...)
+					return true
+				},
+				UpdateFunc: func(e event.TypedUpdateEvent[*sourcev1.GitRepository]) bool {
+					r.Log.V(1).Info("update event", append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.ObjectNew)...)...)
 
-				if diff := cmp.Diff(e.ObjectOld, e.ObjectNew); len(diff) > 0 {
-					r.Log.V(1).Info("update event object change", append(logging.GetFunctionAndSource(logging.MyCaller), append(logging.GetObjKindNamespaceName(e.ObjectNew), "diff", diff)...)...)
-				}
-				if e.ObjectOld == nil || e.ObjectNew == nil {
-					r.Log.Error(fmt.Errorf("nill object passed to watcher"), "skipping processing",
-						append(logging.GetFunctionAndSource(logging.MyCaller), "data", logging.LogJSON(e))...)
-					return false
-				}
+					if diff := cmp.Diff(e.ObjectOld, e.ObjectNew); len(diff) > 0 {
+						r.Log.V(1).Info("update event object change", append(logging.GetFunctionAndSource(logging.MyCaller), append(logging.GetObjKindNamespaceName(e.ObjectNew), "diff", diff)...)...)
+					}
+					if e.ObjectOld == nil || e.ObjectNew == nil {
+						r.Log.Error(fmt.Errorf("nill object passed to watcher"), "skipping processing",
+							append(logging.GetFunctionAndSource(logging.MyCaller), "data", logging.LogJSON(e))...)
+						return false
+					}
 
-				oldRepo, ok := e.ObjectOld.(*sourcev1.GitRepository)
-				if !ok {
-					r.Log.Error(fmt.Errorf("unable to cast old object to GitRepository"), "skipping processing",
-						append(logging.GetFunctionAndSource(logging.MyCaller), "data", logging.LogJSON(e))...)
-					return false
-				}
+					oldRepo := e.ObjectOld
+					newRepo := e.ObjectNew
+					if oldRepo.GetArtifact() == nil && newRepo.GetArtifact() != nil {
+						r.Log.V(1).Info("new revision to process",
+							append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetGitRepoInfo(newRepo)...)...)
+						return true
+					}
 
-				newRepo, ok := e.ObjectNew.(*sourcev1.GitRepository)
-				if !ok {
-					r.Log.Error(fmt.Errorf("unable to cast new object to GitRepository"), "skipping processing",
-						append(logging.GetFunctionAndSource(logging.MyCaller), "data", logging.LogJSON(e))...)
-					return false
-				}
+					if oldRepo.GetArtifact() != nil && newRepo.GetArtifact() != nil &&
+						oldRepo.GetArtifact().Revision != newRepo.GetArtifact().Revision {
+						r.Log.V(1).Info("changed revision to process", logging.GetGitRepoInfo(newRepo)...)
+						r.Log.V(1).Info("old revision", logging.GetGitRepoInfo(oldRepo)...)
+						return true
+					}
+					repo := r.Repos.Add(newRepo)
+					if repo.IsSynced() {
+						r.Log.V(1).Info("no change to revision, but not yet synced",
+							append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetGitRepoInfo(newRepo)...)...)
+						return true
+					}
 
-				if oldRepo.GetArtifact() == nil && newRepo.GetArtifact() != nil {
-					r.Log.V(1).Info("new revision to process",
+					r.Log.V(1).Info("no change to revision, not processing",
 						append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetGitRepoInfo(newRepo)...)...)
-					return true
-				}
-
-				if oldRepo.GetArtifact() != nil && newRepo.GetArtifact() != nil &&
-					oldRepo.GetArtifact().Revision != newRepo.GetArtifact().Revision {
-					r.Log.V(1).Info("changed revision to process", logging.GetGitRepoInfo(newRepo)...)
-					r.Log.V(1).Info("old revision", logging.GetGitRepoInfo(oldRepo)...)
-					return true
-				}
-				repo := r.Repos.Add(newRepo)
-				if repo.IsSynced() {
-					r.Log.V(1).Info("no change to revision, but not yet synced",
-						append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetGitRepoInfo(newRepo)...)...)
-					return true
-				}
-
-				r.Log.V(1).Info("no change to revision, not processing",
-					append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetGitRepoInfo(newRepo)...)...)
-				return false
-			},
-			DeleteFunc: func(e event.DeleteEvent) bool {
-				r.Log.V(1).Info("delete event for GitRepository", append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object))...)
-				srcRepo, ok := e.Object.(*sourcev1.GitRepository)
-				if !ok {
-					r.Log.Error(fmt.Errorf("unable to cast deleted object to GitRepository"), "skipping processing",
-						append(logging.GetFunctionAndSource(logging.MyCaller), "data", logging.LogJSON(e))...)
 					return false
-				}
-				r.Repos.Delete(repos.PathKey(srcRepo))
-				r.Log.V(1).Info("delete repo object", logging.GetGitRepoInfo(srcRepo)...)
-				return false
+				},
+				DeleteFunc: func(e event.TypedDeleteEvent[*sourcev1.GitRepository]) bool {
+					r.Log.V(1).Info("delete event for GitRepository", append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object))...)
+					srcRepo := e.Object
+					r.Repos.Delete(repos.PathKey(srcRepo))
+					r.Log.V(1).Info("delete repo object", logging.GetGitRepoInfo(srcRepo)...)
+					return false
+				},
+				GenericFunc: func(e event.TypedGenericEvent[*sourcev1.GitRepository]) bool {
+					r.Log.V(1).Info("generic event for GitRepository", append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object))...)
+					return true
+				},
 			},
-			GenericFunc: func(e event.GenericEvent) bool {
-				r.Log.V(1).Info("generic event for GitRepository", append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object))...)
-				return true
-			},
-		},
-	)
+		))
 	if err != nil {
 		return errors.Wrap(err, "error creating controller")
 	}
 	err = ctl.Watch(
-		source.Kind(mgr.GetCache(), &kraanv1alpha1.AddonsLayer{}),
-		handler.EnqueueRequestsFromMapFunc(r.layerMapperFunc),
-		predicate.Funcs{
-			CreateFunc: func(e event.CreateEvent) bool {
-				r.Log.V(1).Info("create event for AddonsLayer, not processing will be processed by controller reconciler",
-					append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object)...)...)
-				return false
-			},
-			UpdateFunc: func(e event.UpdateEvent) bool {
-				r.Log.V(1).Info("update event for AddonsLayer", append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.ObjectNew)...)...)
-				if diff := cmp.Diff(e.ObjectOld, e.ObjectNew); len(diff) > 0 {
-					r.Log.V(1).Info("update event object change for AddonsLayer",
-						append(logging.GetFunctionAndSource(logging.MyCaller), append(logging.GetObjKindNamespaceName(e.ObjectNew), "diff", diff)...)...)
-				}
-				if e.ObjectOld == nil || e.ObjectNew == nil {
-					r.Log.Error(fmt.Errorf("nill object passed to watcher for AddonsLayer"), "skipping processing",
-						append(logging.GetFunctionAndSource(logging.MyCaller), "data", logging.LogJSON(e))...)
+		source.Kind(mgr.GetCache(), &kraanv1alpha1.AddonsLayer{},
+			handler.TypedEnqueueRequestsFromMapFunc(r.layerMapperFunc),
+			predicate.TypedFuncs[*kraanv1alpha1.AddonsLayer]{
+				CreateFunc: func(e event.TypedCreateEvent[*kraanv1alpha1.AddonsLayer]) bool {
+					r.Log.V(1).Info("create event for AddonsLayer, not processing will be processed by controller reconciler",
+						append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object)...)...)
 					return false
-				}
+				},
+				UpdateFunc: func(e event.TypedUpdateEvent[*kraanv1alpha1.AddonsLayer]) bool {
+					r.Log.V(1).Info("update event for AddonsLayer", append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.ObjectNew)...)...)
+					if diff := cmp.Diff(e.ObjectOld, e.ObjectNew); len(diff) > 0 {
+						r.Log.V(1).Info("update event object change for AddonsLayer",
+							append(logging.GetFunctionAndSource(logging.MyCaller), append(logging.GetObjKindNamespaceName(e.ObjectNew), "diff", diff)...)...)
+					}
+					if e.ObjectOld == nil || e.ObjectNew == nil {
+						r.Log.Error(fmt.Errorf("nill object passed to watcher for AddonsLayer"), "skipping processing",
+							append(logging.GetFunctionAndSource(logging.MyCaller), "data", logging.LogJSON(e))...)
+						return false
+					}
 
-				old, ok := e.ObjectOld.(*kraanv1alpha1.AddonsLayer)
-				if !ok {
-					r.Log.Error(fmt.Errorf("unable to cast old object to AddonsLayer"), "skipping processing",
-						append(logging.GetFunctionAndSource(logging.MyCaller), "data", logging.LogJSON(e))...)
-					return false
-				}
-				new, ok := e.ObjectNew.(*kraanv1alpha1.AddonsLayer)
-				if !ok {
-					r.Log.Error(fmt.Errorf("unable to cast new object to AddonsLayer"), "skipping processing",
-						append(logging.GetFunctionAndSource(logging.MyCaller), "data", logging.LogJSON(e))...)
-					return false
-				}
-
-				if common.GetSourceNamespace(old.Spec.Source.NameSpace) != common.GetSourceNamespace(new.Spec.Source.NameSpace) || old.Spec.Source.Name != new.Spec.Source.Name {
-					r.Log.V(1).Info("layer source changed, remove from users list for previous source",
-						append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetLayerInfo(new)...)...)
-					repoName := fmt.Sprintf("%s/%s", common.GetSourceNamespace(old.Spec.Source.NameSpace), old.Spec.Source.Name)
-					repo := r.Repos.Get(repoName)
-					if repo != nil {
-						if repo.RemoveUser(old.Name) {
-							// Last user
-							r.Repos.Delete(repoName)
+					old := e.ObjectOld
+					new := e.ObjectNew
+					if common.GetSourceNamespace(old.Spec.Source.NameSpace) != common.GetSourceNamespace(new.Spec.Source.NameSpace) || old.Spec.Source.Name != new.Spec.Source.Name {
+						r.Log.V(1).Info("layer source changed, remove from users list for previous source",
+							append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetLayerInfo(new)...)...)
+						repoName := fmt.Sprintf("%s/%s", common.GetSourceNamespace(old.Spec.Source.NameSpace), old.Spec.Source.Name)
+						repo := r.Repos.Get(repoName)
+						if repo != nil {
+							if repo.RemoveUser(old.Name) {
+								// Last user
+								r.Repos.Delete(repoName)
+							}
 						}
 					}
-				}
 
-				if new.Status.State == kraanv1alpha1.DeployedCondition {
-					r.Log.V(1).Info("layer deployed, process dependent layers",
+					if new.Status.State == kraanv1alpha1.DeployedCondition {
+						r.Log.V(1).Info("layer deployed, process dependent layers",
+							append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetLayerInfo(new)...)...)
+						return true
+					}
+					r.Log.V(1).Info("layer status not yet deployed, not processing",
 						append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetLayerInfo(new)...)...)
-					return true
-				}
-				r.Log.V(1).Info("layer status not yet deployed, not processing",
-					append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetLayerInfo(new)...)...)
-				return false
+					return false
+				},
+				DeleteFunc: func(e event.TypedDeleteEvent[*kraanv1alpha1.AddonsLayer]) bool {
+					r.Log.V(1).Info("delete event for AddonsLayer, not processing will be processed by controller reconciler",
+						append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object)...)...)
+					return false
+				},
+				GenericFunc: func(e event.TypedGenericEvent[*kraanv1alpha1.AddonsLayer]) bool {
+					r.Log.V(1).Info("generic event for AddonsLayer, not processing will be processed by controller reconciler",
+						append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object)...)...)
+					return false
+				},
 			},
-			DeleteFunc: func(e event.DeleteEvent) bool {
-				r.Log.V(1).Info("delete event for AddonsLayer, not processing will be processed by controller reconciler",
-					append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object)...)...)
-				return false
-			},
-			GenericFunc: func(e event.GenericEvent) bool {
-				r.Log.V(1).Info("generic event for AddonsLayer, not processing will be processed by controller reconciler",
-					append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.Object)...)...)
-				return false
-			},
-		},
-	)
+		))
 	return err
 }
 
@@ -887,15 +858,11 @@ func (r *AddonsLayerReconciler) update(ctx context.Context, a *kraanv1alpha1.Add
 	return nil
 }
 
-func (r *AddonsLayerReconciler) repoMapperFunc(ctx context.Context, o client.Object) []reconcile.Request { //nolint:gocyclo //ok
+func (r *AddonsLayerReconciler) repoMapperFunc(ctx context.Context, o *sourcev1.GitRepository) []reconcile.Request { //nolint:gocyclo //ok
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
 
-	srcRepo, ok := o.(*sourcev1.GitRepository)
-	if !ok {
-		r.Log.Error(fmt.Errorf("unable to cast object to GitRepository"), "skipping processing", logging.GetObjKindNamespaceName(o))
-		return []reconcile.Request{}
-	}
+	srcRepo := o
 
 	r.Log.V(1).Info("monitoring", append(logging.GetGitRepoInfo(srcRepo), logging.GetFunctionAndSource(logging.MyCaller)...)...)
 	addonsList := &kraanv1alpha1.AddonsLayerList{}
@@ -938,15 +905,11 @@ func (r *AddonsLayerReconciler) repoMapperFunc(ctx context.Context, o client.Obj
 	return addons
 }
 
-func (r *AddonsLayerReconciler) layerMapperFunc(ctx context.Context, o client.Object) []reconcile.Request {
+func (r *AddonsLayerReconciler) layerMapperFunc(ctx context.Context, o *kraanv1alpha1.AddonsLayer) []reconcile.Request {
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
 
-	src, ok := o.(*kraanv1alpha1.AddonsLayer)
-	if !ok {
-		r.Log.Error(fmt.Errorf("unable to cast object to AddonsLayer"), "skipping processing", logging.GetObjKindNamespaceName(o))
-		return []reconcile.Request{}
-	}
+	src := o
 
 	r.Log.V(1).Info("monitoring", append(logging.GetLayerInfo(src), logging.GetFunctionAndSource(logging.MyCaller)...)...)
 	addonsList := &kraanv1alpha1.AddonsLayerList{}
@@ -1001,7 +964,7 @@ func (r *AddonsLayerReconciler) indexHelmRepoByOwner(o client.Object) []string {
 	defer logging.TraceExit(r.Log)
 
 	r.Log.V(2).Info("indexing", logging.GetObjKindNamespaceName(o)...)
-	hr, ok := o.(*sourcev1beta2.HelmRepository)
+	hr, ok := o.(*sourcev1.HelmRepository)
 	if !ok {
 		r.Log.Error(fmt.Errorf("failed to cast to helmrepository"), "unable cast object to expected kind",
 			logging.GetObjKindNamespaceName(o)...)

@@ -24,8 +24,9 @@ import (
 
 	// +kubebuilder:scaffold:imports
 
+	helmctlv2 "github.com/fluxcd/helm-controller/api/v2"
 	helmctlv1 "github.com/fluxcd/helm-controller/api/v2beta1"
-	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta2"
+	helmctlv2beta2 "github.com/fluxcd/helm-controller/api/v2beta2"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/go-logr/logr"
@@ -56,13 +57,14 @@ var (
 
 func init() {
 	log.SetLogger(zap.New())
-	_ = corev1.AddToScheme(scheme)        //nolint:errcheck // ok
-	_ = helmctlv1.AddToScheme(scheme)     //nolint:errcheck // ok
-	_ = helmctlv2.AddToScheme(scheme)     //nolint:errcheck // ok
-	_ = kraanv1alpha1.AddToScheme(scheme) //nolint:errcheck // ok
-	_ = sourcev1.AddToScheme(scheme)      //nolint:errcheck // ok
-	_ = sourcev1beta2.AddToScheme(scheme) //nolint:errcheck // ok
-	_ = extv1b1.AddToScheme(scheme)       //nolint:errcheck // ok
+	_ = corev1.AddToScheme(scheme)         //nolint:errcheck // ok
+	_ = helmctlv1.AddToScheme(scheme)      //nolint:errcheck // ok
+	_ = helmctlv2beta2.AddToScheme(scheme) //nolint:errcheck // ok
+	_ = helmctlv2.AddToScheme(scheme)      //nolint:errcheck // ok
+	_ = kraanv1alpha1.AddToScheme(scheme)  //nolint:errcheck // ok
+	_ = sourcev1.AddToScheme(scheme)       //nolint:errcheck // ok
+	_ = sourcev1beta2.AddToScheme(scheme)  //nolint:errcheck // ok
+	_ = extv1b1.AddToScheme(scheme)        //nolint:errcheck // ok
 	// +kubebuilder:scaffold:scheme
 
 	if path, set := os.LookupEnv("DATA_PATH"); set {

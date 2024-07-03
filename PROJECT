@@ -1,7 +1,7 @@
 domain: io
 projectName: kraan-controller
 layout:
-- go.kubebuilder.io/v2
+- go.kubebuilder.io/v4
 repo: github.com/fidelity/kraan
 resources:
 - api:

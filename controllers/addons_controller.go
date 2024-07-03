@@ -109,7 +109,8 @@ func (r *AddonsLayerReconciler) SetupWithManagerAndOptions(mgr ctrl.Manager, opt
 					r.Log.V(1).Info("update event", append(logging.GetFunctionAndSource(logging.MyCaller), logging.GetObjKindNamespaceName(e.ObjectNew)...)...)
 
 					if diff := cmp.Diff(e.ObjectOld, e.ObjectNew); len(diff) > 0 {
-						r.Log.V(1).Info("update event object change", append(logging.GetFunctionAndSource(logging.MyCaller), append(logging.GetObjKindNamespaceName(e.ObjectNew), "diff", diff)...)...)
+						r.Log.V(1).Info("update event object change", append(logging.GetFunctionAndSource(logging.MyCaller),
+							append(logging.GetObjKindNamespaceName(e.ObjectNew), "diff", diff)...)...)
 					}
 					if e.ObjectOld == nil || e.ObjectNew == nil {
 						r.Log.Error(fmt.Errorf("nill object passed to watcher"), "skipping processing",
@@ -858,7 +859,7 @@ func (r *AddonsLayerReconciler) update(ctx context.Context, a *kraanv1alpha1.Add
 	return nil
 }
 
-func (r *AddonsLayerReconciler) repoMapperFunc(ctx context.Context, o *sourcev1.GitRepository) []reconcile.Request { //nolint:gocyclo //ok
+func (r *AddonsLayerReconciler) repoMapperFunc(ctx context.Context, o *sourcev1.GitRepository) []reconcile.Request {
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
 

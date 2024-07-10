@@ -1,7 +1,13 @@
 domain: io
+projectName: kraan-controller
+layout:
+- go.kubebuilder.io/v4
 repo: github.com/fidelity/kraan
 resources:
-- group: kraan
+- api:
+    crdVersion: v1alpha1
+    namespaced: false
+  group: kraan
   kind: AddonsLayer
   version: v1alpha1
-version: "2"
+version: "3"

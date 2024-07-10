@@ -16,10 +16,11 @@ import (
 	"strings"
 	"time"
 
-	helmctlv1 "github.com/fluxcd/helm-controller/api/v2beta1"
-	helmctlv2 "github.com/fluxcd/helm-controller/api/v2beta2"
+	helmctlv2 "github.com/fluxcd/helm-controller/api/v2"
+	helmctlv2beta1 "github.com/fluxcd/helm-controller/api/v2beta1"
+	helmctlv2beta2 "github.com/fluxcd/helm-controller/api/v2beta2"
 	fluxmeta "github.com/fluxcd/pkg/apis/meta"
-	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
@@ -179,14 +180,29 @@ func (a KubectlLayerApplier) decodeHelmReleases(layer layers.Layer, objs []runti
 				err = fmt.Errorf("failed to convert runtime.Object to HelmRelease")
 				a.logError(err, err.Error(), layer, logging.GetObjNamespaceName(obj)...)
 			}
-		case *helmctlv1.HelmRelease:
-			v1Hr, ok := obj.(*helmctlv1.HelmRelease)
+		case *helmctlv2beta1.HelmRelease:
+			v1Hr, ok := obj.(*helmctlv2beta1.HelmRelease)
 			if ok {
-				a.logDebug("found v1HelmRelease in Object list", layer, append(logging.GetObjKindNamespaceName(obj), "helmRelease", v1Hr)...)
-				hr, convertErr := convertV1Hr(v1Hr)
+				a.logDebug("found v2beta1.HelmRelease in Object list", layer, append(logging.GetObjKindNamespaceName(obj), "helmRelease", v1Hr)...)
+				hr, convertErr := convertBetaHr(v1Hr)
 				if convertErr != nil {
 					err = convertErr
-					a.logError(err, "v1HelmRelease conversion error. "+convertErr.Error(), layer, logging.GetObjNamespaceName(obj)...)
+					a.logError(err, "v2HelmRelease conversion error. "+convertErr.Error(), layer, logging.GetObjNamespaceName(obj)...)
+				} else {
+					hrs = append(hrs, hr)
+				}
+			} else {
+				err = fmt.Errorf("failed to convert runtime.Object to HelmRelease")
+				a.logError(err, err.Error(), layer, logging.GetObjNamespaceName(obj)...)
+			}
+		case *helmctlv2beta2.HelmRelease:
+			v1Hr, ok := obj.(*helmctlv2beta2.HelmRelease)
+			if ok {
+				a.logDebug("found v2beta2.HelmRelease in Object list", layer, append(logging.GetObjKindNamespaceName(obj), "helmRelease", v1Hr)...)
+				hr, convertErr := convertBetaHr(v1Hr)
+				if convertErr != nil {
+					err = convertErr
+					a.logError(err, "v2HelmRelease conversion error. "+convertErr.Error(), layer, logging.GetObjNamespaceName(obj)...)
 				} else {
 					hrs = append(hrs, hr)
 				}
@@ -201,12 +217,12 @@ func (a KubectlLayerApplier) decodeHelmReleases(layer layers.Layer, objs []runti
 	return hrs, err
 }
 
-func convertV1Hr(v1Hr *helmctlv1.HelmRelease) (hr *helmctlv2.HelmRelease, err error) {
+func convertBetaHr(v1Hr any) (hr *helmctlv2.HelmRelease, err error) {
 	js, err := json.Marshal(&v1Hr)
 	if err == nil {
 		err = json.Unmarshal(js, &hr)
 		if err == nil {
-			hr.APIVersion = "helm.toolkit.fluxcd.io/v2beta2"
+			hr.APIVersion = "helm.toolkit.fluxcd.io/v2"
 		}
 	}
 	return

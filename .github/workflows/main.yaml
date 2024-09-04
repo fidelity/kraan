@@ -109,7 +109,7 @@ jobs:
           kubectl get node
       - name: Prerelease - pull image from artifact
         if: github.event_name == 'pull_request'
-        uses: actions/download-artifact@v2 
+        uses: actions/download-artifact@v4.1.7
         with:
           name: image
       - name: Prerelease - load image

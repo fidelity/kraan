@@ -54,7 +54,7 @@ jobs:
           make dev-build
       - name: Prerelease - Store docker image as artifact
         if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4.1.0
         with:
           name: image
           path: build/*.tar
@@ -109,7 +109,7 @@ jobs:
           kubectl get node
       - name: Prerelease - pull image from artifact
         if: github.event_name == 'pull_request'
-        uses: actions/download-artifact@v2 
+        uses: actions/download-artifact@v4.1.7
         with:
           name: image
       - name: Prerelease - load image

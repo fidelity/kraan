@@ -4,7 +4,7 @@ linter_version=1.55.2
 mockgen_version=v1.6.0
 helm_version=v3.6.1
 kind_version=v0.11.1
-kubectl_version=v1.29.7
+kubectl_version=v1.30.5
 kustomize_version=v3.8.7
 
 function usage()

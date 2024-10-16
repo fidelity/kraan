@@ -20,7 +20,7 @@ COPY bin/ bin/
 RUN apt install -y curl
 RUN bin/setup.sh
 # Temporary fix see https://github.com/fidelity/kraan/issues/114
-RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.29.7/bin/linux/amd64/kubectl
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.30.5/bin/linux/amd64/kubectl
 RUN chmod +x ./kubectl
 RUN mv kubectl bin
 RUN cp bin/* /usr/local/bin

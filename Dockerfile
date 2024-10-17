@@ -20,7 +20,7 @@ ARG TARGETOS
 # Build
 RUN mkdir bin
 RUN apt install -y curl tar
-RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.29.7/bin/${TARGETOS}/${TARGETARCH}/kubectl
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.31.0/bin/${TARGETOS}/${TARGETARCH}/kubectl
 RUN chmod +x ./kubectl
 RUN mv kubectl bin
 RUN curl -LO https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v3.8.7/kustomize_v3.8.7_${TARGETOS}_${TARGETARCH}.tar.gz

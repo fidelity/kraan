@@ -16,6 +16,12 @@ kraan:
     enabled: true
   rbac:
     enabled: true
+    adminClusterRole:
+      # admin ClusterRole to be used by the controller, default is cluster-admin
+      name: "cluster-admin"
+      # specify rules to create a ClusterRole
+      # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.31/#policyrule-v1-rbac-authorization-k8s-io
+      # rules: []
   netpolicy:
     enabled: true
   kraanController:
@@ -79,6 +85,12 @@ kraan:
 gotk:
   rbac:
     enabled: true
+    adminClusterRole:
+      # admin ClusterRole to be used by the controller, default is cluster-admin
+      name: "cluster-admin"
+      # specify rules to create a ClusterRole
+      # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.31/#policyrule-v1-rbac-authorization-k8s-io
+      # rules: []
   netpolicy:
     enabled: true
 

@@ -153,8 +153,17 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: cluster-admin
+  name: {{ .Values.gotk.rbac.adminClusterRole.name }}
 subjects:
   - kind: ServiceAccount
     name: fluxcd
     namespace: "{{ .Release.Namespace }}"
+{{ if .Values.gotk.rbac.adminClusterRole.rules }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.gotk.rbac.adminClusterRole.name }}
+rules:
+{{ .Values.gotk.rbac.adminClusterRole.rules | toYaml }}
+{{- end }}

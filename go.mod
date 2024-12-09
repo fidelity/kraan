@@ -1,12 +1,11 @@
 module github.com/fidelity/kraan
 
 go 1.22.0
-
-toolchain go1.22.4
+toolchain go1.22.10
 
 require (
 	github.com/fluxcd/helm-controller/api v1.1.0
-	github.com/fluxcd/pkg/apis/meta v1.6.1
+	github.com/fluxcd/pkg/apis/meta v1.7.0
 	github.com/fluxcd/pkg/untar v0.3.0
 	github.com/fluxcd/source-controller/api v1.4.1
 	github.com/go-logr/logr v1.4.2
@@ -19,7 +18,7 @@ require (
 	golang.org/x/mod v0.21.0
 	k8s.io/api v0.31.1
 	k8s.io/apiextensions-apiserver v0.31.1
-	k8s.io/apimachinery v0.31.1
+	k8s.io/apimachinery v0.31.3
 	k8s.io/client-go v0.31.1
 	sigs.k8s.io/controller-runtime v0.19.0
 )

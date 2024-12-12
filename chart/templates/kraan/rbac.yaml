@@ -156,9 +156,18 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: cluster-admin
+  name: {{ .Values.kraan.rbac.adminClusterRole.name }}
 subjects:
 - kind: ServiceAccount
   name: kraan
   namespace: {{.Release.Namespace}}
+{{ if .Values.kraan.rbac.adminClusterRole.rules }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.kraan.rbac.adminClusterRole.name }}
+rules:
+{{ .Values.kraan.rbac.adminClusterRole.rules | toYaml }}
+{{- end }}
 {{- end }}

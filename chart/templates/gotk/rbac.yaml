@@ -149,7 +149,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: "{{ .Release.Namespace }}"
     app.kubernetes.io/version: latest
-  name: cluster-reconciler-{{.Release.Namespace}}
+  name: {{ template "kraan-controller.gotk.adminClusterRoleBinding.name" . }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

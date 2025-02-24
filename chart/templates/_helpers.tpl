@@ -30,3 +30,12 @@ Create chart name and version as used by the chart label.
 {{- define "kraan-controller.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
+
+{{- define "kraan-controller.gotk.adminClusterRoleBinding.name" -}}
+{{ $crbName := .Values.gotk.rbac.adminClusterRoleBinding.name }}
+{{- if eq $crbName "cluster-reconciler" -}}
+{{ $crbName }}-{{ .Release.Namespace }}
+{{- else -}}
+{{ $crbName }}
+{{- end -}}
+{{- end -}}

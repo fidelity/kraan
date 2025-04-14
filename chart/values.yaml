@@ -213,3 +213,6 @@ gotk:
     priorityClassName: {}
     preemptionPolicy: {}
     priority: {}
+
+  networkPolicy:
+    enabled: true

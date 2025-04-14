@@ -1,3 +1,4 @@
+{{- if eq .Values.gotk.networkPolicy.enabled true -}}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -35,3 +36,4 @@ spec:
   policyTypes:
     - Ingress
     - Egress
+{{- end -}}

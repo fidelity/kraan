@@ -216,3 +216,4 @@ gotk:
 
   networkPolicy:
     enabled: true
+    namespaceSelector: {}

@@ -10,7 +10,11 @@ metadata:
 spec:
   ingress:
     - from:
+        {{- if .Values.gotk.networkPolicy.namespaceSelector }}
+        - namespaceSelector: {{ toYaml .Values.gotk.networkPolicy.namespaceSelector | trim | nindent 12 }}
+        {{- else }}
         - namespaceSelector: {}
+        {{- end }}
       ports:
         - port: 8080
           protocol: TCP
@@ -32,6 +36,9 @@ spec:
   ingress:
     - from:
         - podSelector: {}
+        {{- if .Values.gotk.networkPolicy.namespaceSelector }}
+        - namespaceSelector: {{ toYaml .Values.gotk.networkPolicy.namespaceSelector | trim | nindent 12 }}
+        {{- end }}
   podSelector: {}
   policyTypes:
     - Ingress

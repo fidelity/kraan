@@ -10,7 +10,7 @@ on:
     paths-ignore: ["**.md"]
 jobs:
   validate:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v2
         with:
@@ -25,7 +25,7 @@ jobs:
           fi
   docker-build:
     needs: validate
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v2
       - name: Determine Tag
@@ -96,7 +96,7 @@ jobs:
 
   integration-test:
     needs: docker-build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v2
       - name: Create kind cluster
@@ -154,7 +154,7 @@ jobs:
   helm-publish:
     if: github.event_name == 'push'
     needs: integration-test
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v2
         with:
@@ -175,7 +175,7 @@ jobs:
   tag-repo:
     if: github.event_name == 'push'
     needs: helm-publish
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v2
         with:

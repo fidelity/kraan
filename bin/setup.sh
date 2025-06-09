@@ -52,7 +52,7 @@ function install_kind() {
 }
 
 function install_kubectl() {
-    curl -LO https://storage.googleapis.com/kubernetes-release/release/${kubectl_version}/bin/linux/amd64/kubectl
+    curl -LO https://dl.k8s.io/release/${kubectl_version}/bin/linux/amd64/kubectl
     chmod +x ./kubectl
     $sudo mv kubectl /usr/local/bin
 }

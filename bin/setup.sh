@@ -4,7 +4,7 @@ linter_version=1.55.2
 mockgen_version=v1.6.0
 helm_version=v3.6.1
 kind_version=v0.11.1
-kubectl_version=v1.31.0
+kubectl_version=v1.32.0
 kustomize_version=v3.8.7
 
 function usage()
@@ -52,7 +52,7 @@ function install_kind() {
 }
 
 function install_kubectl() {
-    curl -LO https://storage.googleapis.com/kubernetes-release/release/${kubectl_version}/bin/linux/amd64/kubectl
+    curl -LO https://dl.k8s.io/release/${kubectl_version}/bin/linux/amd64/kubectl
     chmod +x ./kubectl
     $sudo mv kubectl /usr/local/bin
 }

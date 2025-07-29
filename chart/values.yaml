@@ -119,7 +119,7 @@ gotk:
     image:
       repository: ghcr.io/fluxcd
       name: source-controller
-      tag: v1.6.0
+      tag: v1.6.2
       imagePullPolicy:
 
     imagePullSecrets:

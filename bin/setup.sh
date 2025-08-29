@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Set versions of software required
-linter_version=1.55.2
-mockgen_version=v1.6.0
-helm_version=v3.6.1
-kind_version=v0.11.1
+linter_version=2.4.0
+mockgen_version=v0.6.0
+helm_version=v3.17.4
+kind_version=v0.30.0
 kubectl_version=v1.32.0
-kustomize_version=v3.8.7
+kustomize_version=v5.5.0
 
 function usage()
 {
@@ -113,7 +113,7 @@ mockgen -version 2>&1 | grep ${mockgen_version} >/dev/null
 ret_code="${?}"
 if [[ "${ret_code}" != "0" ]] ; then
     echo "installing mockgen version: ${mockgen_version}"
-    go install github.com/golang/mock/mockgen@${mockgen_version}
+    go install go.uber.org/mock/mockgen@${mockgen_version}
     mockgen -version 2>&1 | grep ${mockgen_version} >/dev/null
     ret_code="${?}"
     if [ "${ret_code}" != "0" ] ; then

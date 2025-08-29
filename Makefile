@@ -83,7 +83,7 @@ clean: clean-gomod clean-${PROJECT}-check \
 	clean-integration
 
 lint:
-	golangci-lint run --concurrency=1 -v --print-resources-usage
+	golangci-lint run --concurrency=1 -v --verbose
 
 test:
 	go test ./...

@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/instance: {{.Release.Namespace}}
     app.kubernetes.io/version: latest
     control-plane: controller
-  name: source-controller
+  name: {{ .Values.gotk.sourceController.name }}
   namespace: {{.Release.Namespace}}
 spec:
   replicas: 1
@@ -45,7 +45,7 @@ spec:
         fsGroup: 1337
       serviceAccountName: fluxcd
       containers:
-      - name: manager
+      - name: {{ .Values.gotk.sourceController.container.name }}
         args:
         - --events-addr=
         - --watch-all-namespaces=true

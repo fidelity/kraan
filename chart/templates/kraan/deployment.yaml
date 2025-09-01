@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kraan-controller
+  name: {{ .Values.kraan.kraanController.name }}
   namespace: {{.Release.Namespace}}
   labels:
     control-plane: controller
@@ -36,7 +36,7 @@ spec:
       securityContext:
         fsGroup: 2000
       containers:
-      - name: manager
+      - name: {{ .Values.kraan.kraanController.container.name }}
         image: {{ .Values.kraan.kraanController.image.repository }}/{{ .Values.kraan.kraanController.image.name }}:{{ .Values.kraan.kraanController.image.tag  | default .Chart.AppVersion }}
         imagePullPolicy: {{ .Values.kraan.kraanController.image.imagePullPolicy | default "IfNotPresent" }}
         securityContext:

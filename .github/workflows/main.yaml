@@ -1,4 +1,7 @@
 name: CI
+permissions:
+  contents: read
+  packages: write
 
 on:
   # Triggers the workflow on push or pull request events but only for the master branch
@@ -155,6 +158,8 @@ jobs:
     if: github.event_name == 'push'
     needs: integration-test
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v2
         with:
@@ -176,6 +181,8 @@ jobs:
     if: github.event_name == 'push'
     needs: helm-publish
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v2
         with:

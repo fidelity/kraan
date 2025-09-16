@@ -85,13 +85,13 @@ func TestTarUpack(t *testing.T) {
 
 		data, err := tarConsumer.GetTar(context.Background())
 		if err != nil {
-			t.Fatalf(err.Error())
+			t.Fatalf("GetTar failed: %v", err)
 			return
 		}
 
 		dir, err := os.MkdirTemp("", "test-*")
 		if err != nil {
-			t.Fatalf(err.Error())
+			t.Fatalf("MkdirTemp failed: %v", err)
 			return
 		}
 		err = tarconsumer.UnpackTar(data, dir)

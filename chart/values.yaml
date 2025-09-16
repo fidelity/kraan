@@ -29,6 +29,8 @@ kraan:
   kraanController:
     enabled: true
     name: kraan-controller
+    container:
+      name: kraan-manager
 
     extraPodAnnotations: {}
 
@@ -107,6 +109,9 @@ gotk:
 
     name: source-controller
 
+    container:
+      name: source-manager
+
     extraPodAnnotations: {}
 
     extraLabels: {}
@@ -163,6 +168,9 @@ gotk:
     enabled: true
 
     name: helm-controller
+
+    container:
+      name: helm-manager
 
     extraPodAnnotations: {}
 

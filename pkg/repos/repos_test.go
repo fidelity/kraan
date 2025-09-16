@@ -56,7 +56,7 @@ func getTestSourceRepo(t *testing.T, repoYAML string) *sourcev1.GitRepository {
 func makeTempRootDir(t *testing.T) string {
 	rootPath, err := os.MkdirTemp("", "test-*")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatalf("MkdirTemp failed: %v", err)
 	}
 	return rootPath
 }
@@ -64,7 +64,7 @@ func makeTempRootDir(t *testing.T) string {
 func (r *repoTest) createTempRootDir(t *testing.T) {
 	rootPath, err := os.MkdirTemp("", "test-*")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatalf("MkdirTemp failed: %v", err)
 	}
 	r.repoStore.SetRootPath(rootPath)
 }
@@ -183,7 +183,7 @@ func (l linkDataTest) checkExpected(t *testing.T, repo repos.Repo, err error) {
 		if err != nil {
 			errStr := err.Error()
 			if !strings.Contains(errStr, expected) {
-				t.Fatalf("expected error containing: '%s'\nGot: '%s'", expected, err.Error())
+				t.Fatalf("expected error containing: '%s'\nGot: '%s'", expected, errStr)
 			}
 		} else {
 			t.Fatalf("expected error was not returned from %T.LinkData function: containing '%s'", repo, expected)
@@ -243,7 +243,7 @@ func TestLinkData(t *testing.T) {
 		test.checkExpected(t, r, err)
 
 		if e := os.RemoveAll(rootPath); e != nil {
-			t.Fatalf("error removing test '%s' temp directory '%s': %#v", test.name, rootPath, e.Error())
+			t.Fatalf("error removing test '%s' temp directory '%s': %v", test.name, rootPath, e)
 		}
 		repoStore.Delete(r.GetPath())
 		t.Logf("test: %s, successful", test.name)

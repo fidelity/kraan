@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/instance: {{.Release.Namespace}}
     app.kubernetes.io/version: latest
     control-plane: controller
-  name: helm-controller
+  name: {{ .Values.gotk.helmController.name }}
   namespace: {{.Release.Namespace}}
 spec:
   replicas: 1
@@ -43,7 +43,7 @@ spec:
         # https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts-technical-overview.html
         fsGroup: 1337
       containers:
-      - name: manager
+      - name: {{ .Values.gotk.helmController.container.name }}
         args:
         - --events-addr=
         - --watch-all-namespaces=true

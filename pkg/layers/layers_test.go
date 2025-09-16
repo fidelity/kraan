@@ -351,7 +351,7 @@ func TestSetStatusSetting(t *testing.T) { //nolint:funlen // ok
 		resetConditions(l)
 		test.setFunc()
 		if err := compareStatus(l.GetFullStatus(), test.expected); err != nil {
-			t.Fatalf("test: %s, failed, error: %s", test.name, err.Error())
+			t.Fatalf("test: %s, failed, error: %v", test.name, err)
 		}
 	}
 }
@@ -391,7 +391,7 @@ func TestSetStatusUpdate(t *testing.T) {
 		resetConditions(l)
 		l.StatusUpdate(test.status, test.message)
 		if err := compareStatus(l.GetFullStatus(), test.expected); err != nil {
-			t.Fatalf("test: %d, failed, error: %s", number+1, err.Error())
+			t.Fatalf("test: %d, failed, error: %v", number+1, err)
 		}
 	}
 }
@@ -504,11 +504,11 @@ func TestHold(t *testing.T) {
 	for _, test := range tests {
 		l, e := getLayer(test.layerName, layersData, reposData)
 		if e != nil {
-			t.Fatalf("test: %s, failed to create layer, error: %s", test.name, e.Error())
+			t.Fatalf("test: %s, failed to create layer, error: %v", test.name, e)
 		}
 		l.setStatus(test.status, test.reason, test.message)
 		if err := compareStatus(l.GetFullStatus(), test.expected); err != nil {
-			t.Fatalf("test: %s, failed, error: %s", test.name, err.Error())
+			t.Fatalf("test: %s, failed, error: %v", test.name, err)
 		}
 		t.Logf("test: %s, successful", test.name)
 	}

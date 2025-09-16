@@ -52,6 +52,7 @@ Parameter | Description | Default
 `kraan.netpolicy.enabled` | install/update Kraan network policies | `true`
 `kraan.kraanController.enabled` | install/update Kraan Controller | `true`
 `kraan.kraanController.name` | name of Kraan Controller | `kraan-controller`
+`kraan.kraanController.container.name` | name of Kraan Controller container | `kraan-manager`
 `kraan.kraanController.extraPodAnnotations` | list of annotations to add to `kraan-controller` | `{}`
 `kraan.kraanController.extraLabels` | list of labels to add to `kraan-controller` | `{}`
 `kraan.kraanController.prometheus.enabled` | apply prometheus annotations to  `kraan-controller` | `true`
@@ -72,6 +73,7 @@ Parameter | Description | Default
 `gotk.sourceController.crd.enabled` | install/update Source Controller CRDs | `true`
 `gotk.sourceController.enabled` | install/update Source Controller | `true`
 `gotk.sourceController.name` | name of Source Controller | `source-controller`
+`gotk.sourceController.container.name` | name of Source Controller container | `source-manager`
 `gotk.sourceController.extraPodAnnotations` | list of annotations to add to `source-controller` | `{}`
 `gotk.sourceController.extraLabels` | list of labels to add to `source-controller` | `{}`
 `gotk.sourceController.prometheus.enabled` | apply prometheus annotations to  `source-controller` | `true`
@@ -87,6 +89,7 @@ Parameter | Description | Default
 `gotk.helmController.crd.enabled` | install/update Helm Controller CRDs | `true`
 `gotk.helmController.enabled` | install/update Helm Controller | `true`
 `gotk.helmController.name` | name of Helm Controller | `helm-controller`
+`gotk.helmController.container.name` | name of Helm Controller container | `helm-manager`
 `gotk.helmController.extraPodAnnotations` | list of annotations to add to `helm-controller` | `{}`
 `gotk.helmController.extraLabels` | list of labels to add to `helm-controller` | `{}`
 `gotk.helmController.prometheus.enabled` | apply prometheus annotations to  `helm-controller` | `true`
@@ -99,6 +102,8 @@ Parameter | Description | Default
 `gotk.helmController.tolerations` | tolerations for `helm-controller` | `{}`
 `gotk.helmController.nodeSelector` | nodeSelector settings for `helm-controller` | `{}`
 `gotk.helmController.affinity` | affinity settings for `helm-controller` | `{}`
+`gotk.networkPolicy.enabled` | enable/disable creation of NetworkPolicy resources | `true`
+`gotk.networkPolicy.namespaceSelector` | namespace selector added to ingress from section of NetworkPolicy resources | `{}`
 
 Specify each parameter using the `--set key=value[,key=value]` argument to `helm install` or use the `--values` to specify a comma seperated list of values files. The `samples` directory contains some example values files.
 

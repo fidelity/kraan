@@ -298,6 +298,8 @@ func (a KubectlLayerApplier) addOwnerRefs(layer layers.Layer, objs []runtime.Obj
 				return nil
 			}
 			return fmt.Errorf("%s - HelmRelease: %s, also included in layer: %s", logging.CallerStr(logging.Me), getObjLabel(robj), labelValue(ownerLabel, &obj))
+		} else {
+			a.logDebug("layer is already owned, current owner: '"+owningLayer+"' current layer is '"+layer.GetName()+"'", layer, logging.GetObjKindNamespaceName(robj)...)
 		}
 
 		a.logDebug("Adding owner ref to resource for AddonsLayer", layer, logging.GetObjKindNamespaceName(robj)...)
@@ -554,6 +556,15 @@ func (a KubectlLayerApplier) getSourceHelmReleases(layer layers.Layer) (hrs map[
 		if err := a.processUpdateVersionAnnotation(layer, source); err != nil {
 			return nil, errors.WithMessagef(err, "%s - failed to process updateVersion annotation", logging.CallerStr(logging.Me))
 		}
+	}
+
+	// remove suspend attribute on source HelmReleases to ensure they are not suspended when applied
+	for _, hr := range sourceHrs {
+		if hr.Spec.Suspend {
+			a.logDebug("removing suspend field from source HelmRelease", layer, 
+				append(logging.GetObjKindNamespaceName(hr), "wasSuspended", true)...)
+		}
+		hr.Spec.Suspend = false
 	}
 
 	hrs = map[string]*helmctlv2.HelmRelease{}

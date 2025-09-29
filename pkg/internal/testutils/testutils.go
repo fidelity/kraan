@@ -66,17 +66,17 @@ func Compress(t *testing.T, srcDir string) []byte {
 	// walk through every file in the folder
 	e := filepath.Walk(srcDir, walkFunc)
 	if e != nil {
-		t.Fatalf(e.Error())
+		t.Fatalf("failed to walk directory: %s", e.Error())
 		return nil
 	}
 	// produce tar
 	if err := tw.Close(); err != nil {
-		t.Fatalf(err.Error())
+		t.Fatalf("failed to close tar writer: %s", err.Error())
 		return nil
 	}
 	// produce gzip
 	if err := zr.Close(); err != nil {
-		t.Fatalf(err.Error())
+		t.Fatalf("failed to close gzip writer: %s", err.Error())
 		return nil
 	}
 	//

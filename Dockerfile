@@ -2,22 +2,10 @@
 FROM golang:1.24 as builder
 
 WORKDIR /workspace
-# Copy the Go Modules manifests
-COPY go.mod go.mod
-COPY go.sum go.sum
-# Copy the go source
-COPY pkg/ pkg
-COPY main/ main
-COPY controllers/ controllers
-COPY api/ api
-# cache deps before building and copying source so that we don't need to re-download as much
-# and so that source changes don't invalidate our downloaded layer
-RUN go mod download
+
 
 ARG TARGETARCH
 ARG TARGETOS
-
-# Build
 RUN mkdir bin
 RUN apt install -y curl tar
 RUN curl -LO https://dl.k8s.io/release/v1.32.0/bin/${TARGETOS}/${TARGETARCH}/kubectl
@@ -28,6 +16,21 @@ RUN tar xzvf ./kustomize_v3.8.7_${TARGETOS}_${TARGETARCH}.tar.gz
 RUN chmod +x ./kustomize
 RUN mv kustomize bin
 RUN rm ./kustomize_v3.8.7_${TARGETOS}_${TARGETARCH}.tar.gz
+
+# Copy the Go Modules manifests
+COPY go.mod go.mod
+COPY go.sum go.sum
+# cache deps before building and copying source so that we don't need to re-download as much
+# and so that source changes don't invalidate our downloaded layer
+RUN go mod download
+# Copy the go source
+COPY pkg/ pkg
+COPY main/ main
+COPY controllers/ controllers
+COPY api/ api
+
+
+# Build
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH="${TARGETARCH}" GO111MODULE=on go build -a -o bin/kraan-controller main/main.go
 
 FROM gcr.io/distroless/static:latest

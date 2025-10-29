@@ -614,34 +614,18 @@ func (r *AddonsLayerReconciler) suspendHelmReleases(l layers.Layer) error {
 			"name", hr.Name,
 			"currentSuspend", hr.Spec.Suspend,
 			"hasHoldAnnotation", hr.GetAnnotations()[suspendedByHoldAnnotation] == "true")...)
-		updatedThis := false
-		// Retry on conflict to handle concurrent updates
-		if rerr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			current := &helmctlv2.HelmRelease{}
-			if gerr := r.Client.Get(r.Context, types.NamespacedName{Namespace: hr.Namespace, Name: hr.Name}, current); gerr != nil {
-				return gerr
-			}
-			// Skip if already suspended
-			if current.Spec.Suspend {
-				return nil
-			}
-			current.Spec.Suspend = true
-			ann := current.GetAnnotations()
-			if ann == nil {
-				ann = map[string]string{}
-			}
-			ann[suspendedByHoldAnnotation] = "true"
-			current.SetAnnotations(ann)
-			if uerr := r.Client.Update(r.Context, current); uerr != nil {
-				return uerr
-			}
-			updatedThis = true
-			return nil
-		}); rerr != nil {
-			return errors.WithMessagef(rerr, "%s - failed to update HelmRelease '%s/%s' to suspended", logging.CallerStr(logging.Me), hr.Namespace, hr.Name)
+
+		updated, err := r.suspendSingleHelmRelease(hr)
+		if err != nil {
+			return err
 		}
-		if updatedThis {
-			r.Log.Info("suspended HelmRelease due to layer hold", append(logging.GetFunctionAndSource(logging.MyCaller), "namespace", hr.Namespace, "name", hr.Name, "layer", l.GetName())...)
+		if updated {
+			r.Log.Info(
+				"suspended HelmRelease due to layer hold",
+				append(logging.GetFunctionAndSource(logging.MyCaller),
+					"namespace", hr.Namespace,
+					"name", hr.Name,
+					"layer", l.GetName())...)
 			suspended++
 		}
 	}
@@ -651,9 +635,41 @@ func (r *AddonsLayerReconciler) suspendHelmReleases(l layers.Layer) error {
 	return nil
 }
 
+// suspendSingleHelmRelease suspends a single HelmRelease if not already suspended
+func (r *AddonsLayerReconciler) suspendSingleHelmRelease(hr *helmctlv2.HelmRelease) (bool, error) {
+	updatedThis := false
+	// Retry on conflict to handle concurrent updates
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		current := &helmctlv2.HelmRelease{}
+		if gerr := r.Client.Get(r.Context, types.NamespacedName{Namespace: hr.Namespace, Name: hr.Name}, current); gerr != nil {
+			return gerr
+		}
+		// Skip if already suspended
+		if current.Spec.Suspend {
+			return nil
+		}
+		current.Spec.Suspend = true
+		ann := current.GetAnnotations()
+		if ann == nil {
+			ann = map[string]string{}
+		}
+		ann[suspendedByHoldAnnotation] = "true"
+		current.SetAnnotations(ann)
+		if uerr := r.Client.Update(r.Context, current); uerr != nil {
+			return uerr
+		}
+		updatedThis = true
+		return nil
+	})
+	if err != nil {
+		return false, errors.WithMessagef(err, "%s - failed to update HelmRelease '%s/%s' to suspended", logging.CallerStr(logging.Me), hr.Namespace, hr.Name)
+	}
+	return updatedThis, nil
+}
+
 // unsuspendHelmReleases intentionally removed per request.
 
-func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error) { //nolint: gocyclo // ok
+func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error) { //nolint: gocyclo,funlen // ok
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
 

@@ -38,6 +38,7 @@ import (
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -62,7 +63,8 @@ var (
 )
 
 const (
-	reasonRegex = "^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$" // Regex for k8s 1.19 conditions reason field
+	reasonRegex               = "^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$" // Regex for k8s 1.19 conditions reason field
+	suspendedByHoldAnnotation = "kraan/suspended-by-hold"
 )
 
 // AddonsLayerReconcilerOptions are the reconciller options
@@ -383,9 +385,11 @@ func (r *AddonsLayerReconciler) processApply(l layers.Layer) (statusReconciled b
 	applier := r.Applier
 
 	if !l.DependenciesDeployed() {
+		r.Log.Info("layer dependencies are not deployed, requeuing", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", l.GetName())...)
 		l.SetRequeue()
 		return true, nil
 	}
+	r.Log.Info("checking if apply is required", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", l.GetName())...)
 
 	applyIsRequired, err := applier.ApplyIsRequired(ctx, l)
 	if err != nil {
@@ -593,7 +597,79 @@ func (r *AddonsLayerReconciler) adopt(l layers.Layer) error {
 	return nil
 }
 
-func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error) { //nolint: gocyclo // ok
+// suspendHelmReleases sets spec.suspend=true on all HelmReleases owned by the given layer.
+func (r *AddonsLayerReconciler) suspendHelmReleases(l layers.Layer) error {
+	logging.TraceCall(r.Log)
+	defer logging.TraceExit(r.Log)
+
+	hrs, err := r.Applier.GetHelmReleases(r.Context, l)
+	if err != nil {
+		return errors.WithMessagef(err, "%s - failed to list HelmReleases for layer", logging.CallerStr(logging.Me))
+	}
+
+	suspended := 0
+	for _, hr := range hrs {
+		r.Log.Info("checking HelmRelease suspend status", append(logging.GetFunctionAndSource(logging.MyCaller),
+			"namespace", hr.Namespace,
+			"name", hr.Name,
+			"currentSuspend", hr.Spec.Suspend,
+			"hasHoldAnnotation", hr.GetAnnotations()[suspendedByHoldAnnotation] == "true")...)
+
+		updated, err := r.suspendSingleHelmRelease(hr)
+		if err != nil {
+			return err
+		}
+		if updated {
+			r.Log.Info(
+				"suspended HelmRelease due to layer hold",
+				append(logging.GetFunctionAndSource(logging.MyCaller),
+					"namespace", hr.Namespace,
+					"name", hr.Name,
+					"layer", l.GetName())...)
+			suspended++
+		}
+	}
+	if suspended > 0 && r.Recorder != nil {
+		r.Recorder.Event(l.GetAddonsLayer(), corev1.EventTypeNormal, "Suspended", fmt.Sprintf("Suspended %d HelmRelease(s) due to hold", suspended))
+	}
+	return nil
+}
+
+// suspendSingleHelmRelease suspends a single HelmRelease if not already suspended
+func (r *AddonsLayerReconciler) suspendSingleHelmRelease(hr *helmctlv2.HelmRelease) (bool, error) {
+	updatedThis := false
+	// Retry on conflict to handle concurrent updates
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		current := &helmctlv2.HelmRelease{}
+		if gerr := r.Client.Get(r.Context, types.NamespacedName{Namespace: hr.Namespace, Name: hr.Name}, current); gerr != nil {
+			return gerr
+		}
+		// Skip if already suspended
+		if current.Spec.Suspend {
+			return nil
+		}
+		current.Spec.Suspend = true
+		ann := current.GetAnnotations()
+		if ann == nil {
+			ann = map[string]string{}
+		}
+		ann[suspendedByHoldAnnotation] = "true"
+		current.SetAnnotations(ann)
+		if uerr := r.Client.Update(r.Context, current); uerr != nil {
+			return uerr
+		}
+		updatedThis = true
+		return nil
+	})
+	if err != nil {
+		return false, errors.WithMessagef(err, "%s - failed to update HelmRelease '%s/%s' to suspended", logging.CallerStr(logging.Me), hr.Namespace, hr.Name)
+	}
+	return updatedThis, nil
+}
+
+// unsuspendHelmReleases intentionally removed per request.
+
+func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error) { //nolint: gocyclo,funlen // ok
 	logging.TraceCall(r.Log)
 	defer logging.TraceExit(r.Log)
 
@@ -601,8 +677,15 @@ func (r *AddonsLayerReconciler) processAddonLayer(l layers.Layer) (string, error
 
 	if l.IsHold() {
 		l.SetHold()
+		r.Log.Info("layer is on hold, suspending HelmReleases", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", l.GetName())...)
+		// When a layer is on hold, ensure all owned HelmReleases are suspended
+		if err := r.suspendHelmReleases(l); err != nil {
+			return "", errors.WithMessagef(err, "%s - failed to suspend HelmReleases for held layer", logging.CallerStr(logging.Me))
+		}
 		return "", nil
 	}
+
+	r.Log.Info("layer hold is removed, continuing with normal reconciliation", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", l.GetName())...)
 
 	ready, err := r.isReady(l)
 	if err != nil {
@@ -768,7 +851,7 @@ func (r *AddonsLayerReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 		return ctrl.Result{}, nil
 	}
-
+	r.Log.Info("addonsLayer processAddonLayer", append(logging.GetFunctionAndSource(logging.MyCaller), "layer", req.NamespacedName.Name)...)
 	deployedRevision, err := r.processAddonLayer(l)
 	if err != nil {
 		l.StatusUpdate(kraanv1alpha1.FailedCondition, fmt.Sprintf("%s, %s", kraanv1alpha1.AddonsLayerFailedMsg, errors.Cause(err).Error()))

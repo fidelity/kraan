@@ -13,7 +13,7 @@ require (
 	github.com/paulcarlton-ww/goutils/pkg/testutils v0.1.42
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.23.2
-	go.uber.org/zap v1.27.0
+	go.uber.org/zap v1.27.1
 	golang.org/x/mod v0.29.0
 	k8s.io/api v0.34.1
 	k8s.io/apiextensions-apiserver v0.34.1

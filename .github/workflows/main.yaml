@@ -124,6 +124,7 @@ jobs:
       - name: Integration Test
         env:
           GITREPO: ${{ github.event.pull_request.head.repo.full_name }}
+          GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
         run: |
           [ "${{ github.event_name }}" == "pull_request" ] && export DOCKER_IMG='kraan-controller-prerelease' || export DOCKER_IMG='kraan-controller'
           [ "${{ github.event_name }}" == "pull_request" ] && export VERSION=$(cat VERSION)-dev || export VERSION=$(cat VERSION)
@@ -138,6 +139,10 @@ jobs:
           kubectl apply -f ./testdata/namespaces.yaml
           kubectl apply -f ./testdata/addons/addons-source.yaml
           kubectl patch gitrepository addons-config -n gotk-system -p "{\"spec\": {\"ref\": {\"branch\": \"$GITHUB_HEAD_REF\"},\"url\": \"$GITHUB_SERVER_URL/$GITREPO.git\"}}" --type=merge
+          if [ -n "$GIT_TOKEN" ]; then
+            kubectl create secret generic git-token --from-literal=username=github --from-literal=password=$GIT_TOKEN -n gotk-system --dry-run=client -o yaml | kubectl apply -f -
+            kubectl patch gitrepository addons-config -n gotk-system --type merge -p '{"spec":{"secretRef":{"name":"git-token"}}}'
+          fi
           kubectl apply -f ./testdata/addons/addons-repo.yaml
           kubectl apply -f ./testdata/addons/addons.yaml
           echo "waiting 5m for test to pass..."
@@ -145,11 +150,16 @@ jobs:
       - name: Orphan Integration Test
         env:
           GITREPO: ${{ github.event.pull_request.head.repo.full_name }}
+          GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
         run: |
           [ "${{ github.event_name }}" != "pull_request" ] && export GITREPO='fidelity/kraan'
           echo "setting up test..."
           kubectl apply -f ./testdata/addons-orphan/addons-source.yaml
           kubectl patch gitrepository addons-config -n gotk-system -p "{\"spec\": {\"ref\": {\"branch\": \"$GITHUB_HEAD_REF\"},\"url\": \"$GITHUB_SERVER_URL/$GITREPO.git\"}}" --type=merge
+          if [ -n "$GIT_TOKEN" ]; then
+            kubectl create secret generic git-token --from-literal=username=github --from-literal=password=$GIT_TOKEN -n gotk-system --dry-run=client -o yaml | kubectl apply -f -
+            kubectl patch gitrepository addons-config -n gotk-system --type merge -p '{"spec":{"secretRef":{"name":"git-token"}}}'
+          fi
           kubectl apply -f ./testdata/addons-orphan/addons-repo.yaml
           kubectl apply -f ./testdata/addons-orphan/addons.yaml
           echo "waiting 5m for test to pass..."

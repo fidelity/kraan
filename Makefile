@@ -107,14 +107,14 @@ release:
 	cp -rf docs ${RELEASE_DIR}  || exit
 	cp -f *.md ${RELEASE_DIR}  || exit
 	helm package --version ${CHART_VERSION} chart  || exit
-	mv kraan-controller-${CHART_VERSION}.tgz ${RELEASE_DIR} || exit
+	mv kraan-controller-helm-${CHART_VERSION}.tgz ${RELEASE_DIR} || exit
 	ls -la
 	git status
 	git checkout -B gh-pages --track origin/gh-pages || exit
 	cp -rf ${RELEASE_DIR}/* . || exit
 	rm -rf ${RELEASE_DIR} || exit
 	helm repo index --url https://fidelity.github.io/kraan/ .  || exit
-	git add kraan-controller-${CHART_VERSION}.tgz
+	git add kraan-controller-helm-${CHART_VERSION}.tgz
 	git status
 	git commit -a -m "release chart version ${CHART_VERSION}"  || exit
 	git push  || exit

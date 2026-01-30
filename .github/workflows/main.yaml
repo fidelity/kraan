@@ -170,6 +170,7 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: write
+      packages: write
     steps:
       - uses: actions/checkout@v2
         with:
@@ -179,6 +180,12 @@ jobs:
           [ -z "${GOPATH}" ] && export GOPATH=$HOME/go
           PATH="${GOPATH}/bin:${PATH}"
           ./bin/setup.sh
+      - name: Login to GHCR for Helm
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish Helm Chart
         run: |
           export VERSION=$(cat VERSION)

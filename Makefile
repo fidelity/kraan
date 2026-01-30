@@ -108,6 +108,7 @@ release:
 	cp -f *.md ${RELEASE_DIR}  || exit
 	helm package --version ${CHART_VERSION} chart  || exit
 	mv kraan-controller-helm-${CHART_VERSION}.tgz ${RELEASE_DIR} || exit
+	helm push ${RELEASE_DIR}/kraan-controller-helm-${CHART_VERSION}.tgz oci://ghcr.io/fidelity || exit
 	ls -la
 	git status
 	git checkout -B gh-pages --track origin/gh-pages || exit

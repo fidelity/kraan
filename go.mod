@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/fluxcd/helm-controller/api v1.1.0
-	github.com/fluxcd/pkg/apis/meta v1.22.0
+	github.com/fluxcd/pkg/apis/meta v1.24.0
 	github.com/fluxcd/pkg/untar v0.3.0
 	github.com/fluxcd/source-controller/api v1.4.1
 	github.com/go-logr/logr v1.4.3
@@ -13,11 +13,11 @@ require (
 	github.com/paulcarlton-ww/goutils/pkg/testutils v0.1.42
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.23.2
-	go.uber.org/zap v1.27.0
-	golang.org/x/mod v0.29.0
+	go.uber.org/zap v1.27.1
+	golang.org/x/mod v0.32.0
 	k8s.io/api v0.34.1
 	k8s.io/apiextensions-apiserver v0.34.1
-	k8s.io/apimachinery v0.34.1
+	k8s.io/apimachinery v0.34.2
 	k8s.io/client-go v0.34.1
 	sigs.k8s.io/controller-runtime v0.19.0
 )

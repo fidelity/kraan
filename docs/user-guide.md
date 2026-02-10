@@ -4,9 +4,13 @@ This readme contains guidance for users relating to the deployment and use of Kr
 
 ## Deployment
 
-```console
+```shell
+# legacy chart
 helm repo add kraan https://fidelity.github.io/kraan
-helm install kraan kraan/kraan-controller --namespace gotk-system
+helm install kraan kraan/kraan-controller-helm --namespace gotk-system
+
+# OCI chart
+helm install kraan oci://ghcr.io/fidelity/kraan-controller-helm:${version} --namespace gotk-system
 ```
 
 ### Introduction
@@ -21,9 +25,13 @@ This chart deploys a [Kraan](https://fidelity.github.io/kraan/) and the [Gitops 
 
 To install the chart with the release name `kraan` in namespace `gotk-system`:
 
-```console
-kubectl create namespace gotk-system
-helm install kraan kraan/kraan-controller --namespace gotk-system
+```shell
+# legacy chart
+helm repo add kraan https://fidelity.github.io/kraan
+helm install kraan kraan/kraan-controller-helm --namespace gotk-system
+
+# OCI chart
+helm install kraan oci://ghcr.io/fidelity/kraan-controller-helm:${version} --namespace gotk-system
 ```
 
 ### Uninstalling the Chart

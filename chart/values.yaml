@@ -49,6 +49,7 @@ kraan:
       name: kraan-controller
       tag:
       imagePullPolicy:
+ 
 
     args:
       logLevel: 0
@@ -161,6 +162,32 @@ gotk:
     priorityClassName: {}
     preemptionPolicy: {}
     priority: {}
+
+  crdMigration:
+    enabled: true
+    targetVersion: v2
+    annotationKey: kraan.io/storage-migration-at
+    chunkSize: 200
+    requestTimeout: 30s
+    sleepEvery: 100
+    sleepSeconds: 0
+    waitRetries: 24
+    waitIntervalSeconds: 5
+    backoffLimit: 1
+    imagePullPolicy:
+    image:
+      repository: kconnectcli
+      name: kconnect
+      tag: 0.5.21
+      imagePullPolicy:
+    preserveFailedPod: false
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 20m
+        memory: 64Mi
 
   helmController:
     crd:

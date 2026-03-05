@@ -1,0 +1,113 @@
+{{- if and .Values.gotk.helmController.crd.enabled .Values.gotk.crdMigration.enabled -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Namespace }}
+    app.kubernetes.io/version: latest
+{{- with .Values.global.extraLabels }}
+{{ toYaml . | nindent 4 }}
+{{- end }}
+{{- with .Values.gotk.helmController.extraLabels }}
+{{ toYaml . | nindent 4 }}
+{{- end }}
+  name: {{ .Values.gotk.helmController.name }}-crd-pre-upgrade-migration
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/hook: pre-upgrade
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: {{ if .Values.gotk.crdMigration.preserveFailedPod }}0{{ else }}{{ .Values.gotk.crdMigration.backoffLimit }}{{ end }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Namespace }}
+        app.kubernetes.io/version: latest
+{{- with .Values.global.extraLabels }}
+{{ toYaml . | nindent 8 }}
+{{- end }}
+{{- with .Values.gotk.helmController.extraLabels }}
+{{ toYaml . | nindent 8 }}
+{{- end }}
+    spec:
+      restartPolicy: {{ if .Values.gotk.crdMigration.preserveFailedPod }}Never{{ else }}OnFailure{{ end }}
+      serviceAccountName: {{ .Values.gotk.helmController.name }}-crd-migrator
+      securityContext:
+        fsGroup: 1337
+      {{- if .Values.kraan.kraanController.imagePullSecrets.name }}
+      imagePullSecrets:
+      - name: {{ .Values.kraan.kraanController.imagePullSecrets.name }}
+      {{- end }}
+      containers:
+      - name: crd-migration
+        {{- if ne .Values.gotk.crdMigration.image.repository "" }}
+        image: {{ printf "%s/%s:%s" .Values.gotk.crdMigration.image.repository ( .Values.gotk.crdMigration.image.name | default "kconnectcli/kconnect" ) ( .Values.gotk.crdMigration.image.tag | default "latest" ) }}
+        {{- else }}
+        image: {{ printf "%s:%s" ( .Values.gotk.crdMigration.image.name | default "kconnectcli/kconnect" ) ( .Values.gotk.crdMigration.image.tag | default "latest" ) }}
+        {{- end }}
+        imagePullPolicy: {{ .Values.gotk.crdMigration.imagePullPolicy | default "Always" }}
+        command:
+          - /bin/sh
+          - -c
+          - /scripts/migrate-stored-versions.sh
+        env:
+          - name: TARGET_VERSION
+            value: {{ .Values.gotk.crdMigration.targetVersion | default "v2" | quote }}
+          - name: MIGRATION_ANNOTATION_KEY
+            value: {{ .Values.gotk.crdMigration.annotationKey | default "kraan.io/storage-migration-at" | quote }}
+          - name: MIGRATION_CHUNK_SIZE
+            value: {{ .Values.gotk.crdMigration.chunkSize | default 200 | quote }}
+          - name: MIGRATION_REQUEST_TIMEOUT
+            value: {{ .Values.gotk.crdMigration.requestTimeout | default "30s" | quote }}
+          - name: MIGRATION_SLEEP_EVERY
+            value: {{ .Values.gotk.crdMigration.sleepEvery | default 100 | quote }}
+          - name: MIGRATION_SLEEP_SECONDS
+            value: {{ .Values.gotk.crdMigration.sleepSeconds | default 0 | quote }}
+          - name: MIGRATION_WAIT_RETRIES
+            value: {{ .Values.gotk.crdMigration.waitRetries | default 24 | quote }}
+          - name: MIGRATION_WAIT_INTERVAL_SECONDS
+            value: {{ .Values.gotk.crdMigration.waitIntervalSeconds | default 5 | quote }}
+          {{- if .Values.gotk.helmController.proxy }}
+          - name: HTTPS_PROXY
+            value: {{ .Values.global.env.httpsProxy | quote }}
+          - name: NO_PROXY
+            value: {{ .Values.global.env.noProxy | quote }}
+          {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop: ["ALL"]
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+{{ toYaml .Values.gotk.crdMigration.resources | indent 10 }}
+        volumeMounts:
+          - mountPath: /tmp
+            name: temp
+          - mountPath: /scripts
+            name: migration-script
+            readOnly: true
+    {{- if .Values.gotk.helmController.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.gotk.helmController.nodeSelector | indent 8 }}
+    {{- end }}
+    {{- if .Values.gotk.helmController.tolerations }}
+      tolerations:
+{{ toYaml .Values.gotk.helmController.tolerations | indent 8 }}
+    {{- end }}
+    {{- if .Values.gotk.helmController.affinity }}
+      affinity:
+{{ toYaml .Values.gotk.helmController.affinity | indent 8 }}
+    {{- end }}
+      volumes:
+        - emptyDir: {}
+          name: temp
+        - configMap:
+            name: {{ .Values.gotk.helmController.name }}-crd-migration-script
+            defaultMode: 0555
+          name: migration-script
+{{- end }}

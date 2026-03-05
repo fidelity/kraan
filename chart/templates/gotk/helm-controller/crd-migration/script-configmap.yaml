@@ -1,0 +1,97 @@
+{{- if and .Values.gotk.helmController.crd.enabled .Values.gotk.crdMigration.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Namespace }}
+    app.kubernetes.io/version: latest
+  name: {{ .Values.gotk.helmController.name }}-crd-migration-script
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/hook: pre-upgrade
+    helm.sh/hook-weight: "-20"
+    helm.sh/hook-delete-policy: before-hook-creation
+data:
+  migrate-stored-versions.sh: |
+    #!/usr/bin/env sh
+    set -eu
+    # Prefer explicit in-cluster access: use serviceaccount token + CA if available
+    KUBE_SA_TOKEN_FILE="/var/run/secrets/kubernetes.io/serviceaccount/token"
+    KUBE_CA_FILE="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+    if [ -r "${KUBE_SA_TOKEN_FILE}" ] && [ -r "${KUBE_CA_FILE}" ]; then
+      KUBECTL="kubectl --server=https://kubernetes.default.svc --token=$(cat ${KUBE_SA_TOKEN_FILE}) --certificate-authority=${KUBE_CA_FILE}"
+    else
+      KUBECTL="kubectl"
+    fi
+    sleep 5s
+    crd_name="helmreleases.helm.toolkit.fluxcd.io"
+    target_version="${TARGET_VERSION:-v2}"
+    annotation_key="${MIGRATION_ANNOTATION_KEY:-kraan.io/storage-migration-at}"
+    chunk_size="${MIGRATION_CHUNK_SIZE:-200}"
+    request_timeout="${MIGRATION_REQUEST_TIMEOUT:-30s}"
+    cache_dir="${MIGRATION_CACHE_DIR:-/tmp/kubectl-cache}"
+    sleep_every="${MIGRATION_SLEEP_EVERY:-100}"
+    sleep_seconds="${MIGRATION_SLEEP_SECONDS:-0}"
+    wait_retries="${MIGRATION_WAIT_RETRIES:-24}"
+    wait_interval="${MIGRATION_WAIT_INTERVAL_SECONDS:-5}"
+
+    mkdir -p "${cache_dir}"
+
+    log() {
+      printf '%s %s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$*"
+    }
+
+    get_stored_versions() {
+      ${KUBECTL} --cache-dir="${cache_dir}" get crd "${crd_name}" \
+        -o jsonpath='{.status.storedVersions[*]}' \
+        --request-timeout="${request_timeout}"
+    }
+
+    contains_legacy_versions() {
+      versions="$1"
+      case " ${versions} " in
+        *" v1beta1 "*|*" v1beta2 "*|*" v2beta1 "*|*" v2beta2 "*) return 0 ;;
+        *) return 1 ;;
+      esac
+    }
+
+    raw_output="$(get_stored_versions 2>&1)"
+    rc=$?
+    if [ $rc -ne 0 ]; then
+      # Fail on connection/server errors but allow CRD NotFound to mean skip
+      if echo "${raw_output}" | grep -qiE "connection refused|couldn't get current server api group list|unable to connect|connection timed out|no route to host"; then
+        log "kubectl error communicating with API server: ${raw_output}"
+        exit 1
+      fi
+      # treat other errors (e.g. CRD NotFound) as empty result -> skip
+      stored_versions=""
+    else
+      stored_versions="${raw_output}"
+    fi
+    if [ -z "${stored_versions}" ]; then
+      log "CRD ${crd_name} not found or has no storedVersions yet; skipping migration"
+      exit 0
+    fi
+
+    if ! contains_legacy_versions "${stored_versions}"; then
+      log "CRD ${crd_name} already migrated (storedVersions=${stored_versions}); nothing to do"
+      exit 0
+    fi
+
+    log "Starting HelmRelease storage migration, storedVersions=${stored_versions}"
+
+    # Directly patch CRD storedVersions to the target version
+    log "Patching CRD ${crd_name} storedVersions to ${target_version}"
+    ${KUBECTL} --cache-dir="${cache_dir}" patch crd "${crd_name}" \
+      --subresource=status \
+      --type=merge \
+      -p "{\"status\":{\"storedVersions\":[\"${target_version}\"]}}" \
+      --request-timeout="${request_timeout}"
+    rc=$?
+    if [ $rc -ne 0 ]; then
+      log "Failed to patch CRD ${crd_name}: exit ${rc}" 
+      exit $rc
+    fi
+    log "CRD status storedVersions patched to ${target_version}"
+    sleep 2
+{{- end }}

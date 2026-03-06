@@ -3,762 +3,772 @@ entries:
   kraan-controller:
   - apiVersion: v2
     appVersion: v0.3.52
-    created: "2026-03-06T01:54:49.661418772Z"
+    created: "2026-03-06T10:12:52.96800041Z"
+    description: A Helm chart for kraan controller
+    digest: 506052a1e1d94ad7bc8bd07d76216edfbbf71178e46b4d49b697cbf66b1b88f7
+    name: kraan-controller
+    type: application
+    urls:
+    - kraan-controller-v0.3.53.tgz
+    version: v0.3.53
+  - apiVersion: v2
+    appVersion: v0.3.52
+    created: "2026-03-06T10:12:52.965768255Z"
     description: A Helm chart for kraan controller
     digest: fe62ba7f49a272bdc50aa46ff64dbbd7dee64f90a610b74a0921d20a1ca06424
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.52.tgz
+    - kraan-controller-v0.3.52.tgz
     version: v0.3.52
   - apiVersion: v2
     appVersion: v0.3.51
-    created: "2026-03-06T01:54:49.659305294Z"
+    created: "2026-03-06T10:12:52.964256886Z"
     description: A Helm chart for kraan controller
     digest: 818e146e24d4849a184971761140b65ca127ea2b9f04cafb9dc033588d85b1fb
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.51.tgz
+    - kraan-controller-v0.3.51.tgz
     version: v0.3.51
   - apiVersion: v2
     appVersion: v0.3.50
-    created: "2026-03-06T01:54:49.657939559Z"
+    created: "2026-03-06T10:12:52.962554255Z"
     description: A Helm chart for kraan controller
     digest: 8b38db63c82f0d5251d479ab06e2a735c9c03989640167ea3e52efdc5e6d0ef4
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.50.tgz
+    - kraan-controller-v0.3.50.tgz
     version: v0.3.50
   - apiVersion: v2
     appVersion: v0.3.49
-    created: "2026-03-06T01:54:49.654888555Z"
+    created: "2026-03-06T10:12:52.95834037Z"
     description: A Helm chart for kraan controller
     digest: f9266d7956482c0669a9f3a59b728d20d48953356934890ecca8a2b333af5249
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.49.tgz
+    - kraan-controller-v0.3.49.tgz
     version: v0.3.49
   - apiVersion: v2
     appVersion: v0.3.48
-    created: "2026-03-06T01:54:49.65333574Z"
+    created: "2026-03-06T10:12:52.956654723Z"
     description: A Helm chart for kraan controller
     digest: 0efec0937270659789f398016c7424e4295a16c7f0c2bd3c2cbc0823c3f4bbe6
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.48.tgz
+    - kraan-controller-v0.3.48.tgz
     version: v0.3.48
   - apiVersion: v2
     appVersion: v0.3.47
-    created: "2026-03-06T01:54:49.651734755Z"
+    created: "2026-03-06T10:12:52.954996608Z"
     description: A Helm chart for kraan controller
     digest: 011b2ba979da6be3382bbd6011f96c64777523ac4e94241b35253cb931c5781e
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.47.tgz
+    - kraan-controller-v0.3.47.tgz
     version: v0.3.47
   - apiVersion: v2
     appVersion: v0.3.46
-    created: "2026-03-06T01:54:49.648950646Z"
+    created: "2026-03-06T10:12:52.952552688Z"
     description: A Helm chart for kraan controller
     digest: 17c18b3407cff7d885317eae8764f0a1d2be8fdbdc2243096664a3127f67e7ce
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.46.tgz
+    - kraan-controller-v0.3.46.tgz
     version: v0.3.46
   - apiVersion: v2
     appVersion: v0.3.45
-    created: "2026-03-06T01:54:49.647322209Z"
+    created: "2026-03-06T10:12:52.951121517Z"
     description: A Helm chart for kraan controller
     digest: 20330854b9be0ffb620344a4b33e985ce838c4d5f299056874126c753b311014
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.45.tgz
+    - kraan-controller-v0.3.45.tgz
     version: v0.3.45
   - apiVersion: v2
     appVersion: v0.3.44
-    created: "2026-03-06T01:54:49.645770216Z"
+    created: "2026-03-06T10:12:52.949673111Z"
     description: A Helm chart for kraan controller
     digest: 158c614898568f9f2db9a230d91ba67dbac7911f863809490754825305f8ef4d
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.44.tgz
+    - kraan-controller-v0.3.44.tgz
     version: v0.3.44
   - apiVersion: v2
     appVersion: v0.3.43
-    created: "2026-03-06T01:54:49.643444071Z"
+    created: "2026-03-06T10:12:52.946996869Z"
     description: A Helm chart for kraan controller
     digest: c1cb6f2f72d1baa44b727a6ff2abe0cbf1ce827e1b657ba7321b3d1a1d655de5
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.43.tgz
+    - kraan-controller-v0.3.43.tgz
     version: v0.3.43
   - apiVersion: v2
     appVersion: v0.3.42
-    created: "2026-03-06T01:54:49.64191448Z"
+    created: "2026-03-06T10:12:52.945462431Z"
     description: A Helm chart for kraan controller
     digest: c93c62d57caa6632c33f8be0a136421d90beffc747c547c40091b737ee3ccb04
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.42.tgz
+    - kraan-controller-v0.3.42.tgz
     version: v0.3.42
   - apiVersion: v2
     appVersion: v0.3.41
-    created: "2026-03-06T01:54:49.639745319Z"
+    created: "2026-03-06T10:12:52.944075132Z"
     description: A Helm chart for kraan controller
     digest: 39abea5360df2ab9e4567a38b2a32fd6a32a2117e6ef3b4faf840d64117b0350
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.41.tgz
+    - kraan-controller-v0.3.41.tgz
     version: v0.3.41
   - apiVersion: v2
     appVersion: v0.3.40
-    created: "2026-03-06T01:54:49.638166346Z"
+    created: "2026-03-06T10:12:52.942175204Z"
     description: A Helm chart for kraan controller
     digest: 4e561abfb749cf077fb72ca5e88590c83dc2cd2589a9f59ed2a2925a7e4e5d24
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.40.tgz
+    - kraan-controller-v0.3.40.tgz
     version: v0.3.40
   - apiVersion: v2
     appVersion: v0.3.39
-    created: "2026-03-06T01:54:49.63610031Z"
+    created: "2026-03-06T10:12:52.940171535Z"
     description: A Helm chart for kraan controller
     digest: 182e77ce3eb7af9d93c52c9167017435dd4359d43faa2542b6a1a155ac4e5724
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.39.tgz
+    - kraan-controller-v0.3.39.tgz
     version: v0.3.39
   - apiVersion: v2
     appVersion: v0.3.38
-    created: "2026-03-06T01:54:49.634098938Z"
+    created: "2026-03-06T10:12:52.939063288Z"
     description: A Helm chart for kraan controller
     digest: fca50fe5ff47d439d5b36e3b9500d3ce0989dd76f4a7b6761bf0a0c546346cab
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.38.tgz
+    - kraan-controller-v0.3.38.tgz
     version: v0.3.38
   - apiVersion: v2
     appVersion: v0.3.37
-    created: "2026-03-06T01:54:49.632838881Z"
+    created: "2026-03-06T10:12:52.937918194Z"
     description: A Helm chart for kraan controller
     digest: 12ac6da58e3a0145d7ab7d92683ca0f204b895e1bf7286a66fd731f135739131
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.37.tgz
+    - kraan-controller-v0.3.37.tgz
     version: v0.3.37
   - apiVersion: v2
     appVersion: v0.3.36
-    created: "2026-03-06T01:54:49.631562673Z"
+    created: "2026-03-06T10:12:52.93540878Z"
     description: A Helm chart for kraan controller
     digest: 0ac4f59dc7eb081bf26e478a8fdcacf8644a1cb00edad25c22245d4060e8ba9b
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.36.tgz
+    - kraan-controller-v0.3.36.tgz
     version: v0.3.36
   - apiVersion: v2
     appVersion: v0.3.35
-    created: "2026-03-06T01:54:49.629887403Z"
+    created: "2026-03-06T10:12:52.934500807Z"
     description: A Helm chart for kraan controller
     digest: cf7908e5766d6202201268c501b49e756f3c54c62986a5645d0a009fac8628da
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.35.tgz
+    - kraan-controller-v0.3.35.tgz
     version: v0.3.35
   - apiVersion: v2
     appVersion: v0.3.34
-    created: "2026-03-06T01:54:49.628825826Z"
+    created: "2026-03-06T10:12:52.93351535Z"
     description: A Helm chart for kraan controller
     digest: 5a18c5e22723bf26ffa4411bd3794b6e8d0a4e975581baecd62ffd58abd3d7a1
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.34.tgz
+    - kraan-controller-v0.3.34.tgz
     version: v0.3.34
   - apiVersion: v2
     appVersion: v0.3.33
-    created: "2026-03-06T01:54:49.627871331Z"
+    created: "2026-03-06T10:12:52.932566049Z"
     description: A Helm chart for kraan controller
     digest: 5f799f6321eb6e2873f8071be5eb6e9f3e31c0b34b46c94f9cbdc5a6d3f5cdc4
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.33.tgz
+    - kraan-controller-v0.3.33.tgz
     version: v0.3.33
   - apiVersion: v2
     appVersion: v0.3.32
-    created: "2026-03-06T01:54:49.626890235Z"
+    created: "2026-03-06T10:12:52.930476207Z"
     description: A Helm chart for kraan controller
     digest: da3ca0fdfb9e1b2a6ce1e4b224e6c3d6bc6949fb680672ae6a6e37c5d409529d
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.32.tgz
+    - kraan-controller-v0.3.32.tgz
     version: v0.3.32
   - apiVersion: v2
     appVersion: v0.3.31
-    created: "2026-03-06T01:54:49.625378953Z"
+    created: "2026-03-06T10:12:52.929450746Z"
     description: A Helm chart for kraan controller
     digest: 5ab1319fac1fbc469d01ab473efaceab260f62c345ca5b727e55b52aef70f2ff
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.31.tgz
+    - kraan-controller-v0.3.31.tgz
     version: v0.3.31
   - apiVersion: v2
     appVersion: v0.3.30
-    created: "2026-03-06T01:54:49.624357171Z"
+    created: "2026-03-06T10:12:52.928312836Z"
     description: A Helm chart for kraan controller
     digest: 175cc3b9b3cde0750a0bbabc1791cde5fd7d025f0461c39f130ea4833c7aac32
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.30.tgz
+    - kraan-controller-v0.3.30.tgz
     version: v0.3.30
   - apiVersion: v2
     appVersion: v0.3.28
-    created: "2026-03-06T01:54:49.621809545Z"
+    created: "2026-03-06T10:12:52.924306207Z"
     description: A Helm chart for kraan controller
     digest: 2213e616af665f9ce43dfb89d6affe229f898df1c7873159a1da16de5373f523
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.28.tgz
+    - kraan-controller-v0.3.28.tgz
     version: v0.3.28
   - apiVersion: v2
     appVersion: v0.3.27
-    created: "2026-03-06T01:54:49.620251462Z"
+    created: "2026-03-06T10:12:52.923418901Z"
     description: A Helm chart for kraan controller
     digest: d3cf9660141d58e87e4c8ffdb1b736a11c26e3de7c86d899c8cd91e389118571
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.27.tgz
+    - kraan-controller-v0.3.27.tgz
     version: v0.3.27
   - apiVersion: v2
     appVersion: v0.3.26
-    created: "2026-03-06T01:54:49.619375974Z"
+    created: "2026-03-06T10:12:52.922667722Z"
     description: A Helm chart for kraan controller
     digest: 6316d3097a47a69101c124a674bbff441ba698ab4c54cc8a45597c930cd71152
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.26.tgz
+    - kraan-controller-v0.3.26.tgz
     version: v0.3.26
   - apiVersion: v2
     appVersion: v0.3.25
-    created: "2026-03-06T01:54:49.618505706Z"
+    created: "2026-03-06T10:12:52.921860247Z"
     description: A Helm chart for kraan controller
     digest: b05f4a806f790632092c550eb464c4efe91c703dc738ff3c0a341b9ca855025c
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.25.tgz
+    - kraan-controller-v0.3.25.tgz
     version: v0.3.25
   - apiVersion: v2
     appVersion: v0.3.24
-    created: "2026-03-06T01:54:49.617619288Z"
+    created: "2026-03-06T10:12:52.920937677Z"
     description: A Helm chart for kraan controller
     digest: 70d2c8217de53118afb12ae1f7936a4e34dbe432a0ea73db6f909968d25f66df
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.24.tgz
+    - kraan-controller-v0.3.24.tgz
     version: v0.3.24
   - apiVersion: v2
     appVersion: v0.3.23
-    created: "2026-03-06T01:54:49.616703054Z"
+    created: "2026-03-06T10:12:52.920040794Z"
     description: A Helm chart for kraan controller
     digest: 6deeeb3835e0e7980e2498c11d2e153f7d2fa09c3475efad7277ad37f6d1319a
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.23.tgz
+    - kraan-controller-v0.3.23.tgz
     version: v0.3.23
   - apiVersion: v2
     appVersion: v0.3.22
-    created: "2026-03-06T01:54:49.615107557Z"
+    created: "2026-03-06T10:12:52.918477369Z"
     description: A Helm chart for kraan controller
     digest: 516a126e6d2f6a93bcccefb1049cf9c90578b99e3f57a0aaf235412688577494
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.22.tgz
+    - kraan-controller-v0.3.22.tgz
     version: v0.3.22
   - apiVersion: v2
     appVersion: v0.3.21
-    created: "2026-03-06T01:54:49.614216921Z"
+    created: "2026-03-06T10:12:52.917685563Z"
     description: A Helm chart for kraan controller
     digest: e778b012c871713606ddb5589df7deec63842784ad9c180fbc1a609e0059a83e
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.21.tgz
+    - kraan-controller-v0.3.21.tgz
     version: v0.3.21
   - apiVersion: v2
     appVersion: v0.3.20
-    created: "2026-03-06T01:54:49.613330062Z"
+    created: "2026-03-06T10:12:52.916881825Z"
     description: A Helm chart for kraan controller
     digest: 6df52003ba272a34f5eeb9636d6da2933753f88d8f2dcc1ed478cbe35acba6c8
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.20.tgz
+    - kraan-controller-v0.3.20.tgz
     version: v0.3.20
   - apiVersion: v2
     appVersion: v0.3.19
-    created: "2026-03-06T01:54:49.610160477Z"
+    created: "2026-03-06T10:12:52.914773241Z"
     description: A Helm chart for kraan controller
     digest: 42dd9018c118969bdceef989e5627c5ea616e7b2f83740b92e8dfaaf517f1e3c
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.19.tgz
+    - kraan-controller-v0.3.19.tgz
     version: v0.3.19
   - apiVersion: v2
     appVersion: v0.3.18
-    created: "2026-03-06T01:54:49.60929047Z"
+    created: "2026-03-06T10:12:52.913034009Z"
     description: A Helm chart for kraan controller
     digest: 49ec9d42a6eba75ce6e55d542ac10654d416f881aa79d15845da9d3fef9b7a4d
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.18.tgz
+    - kraan-controller-v0.3.18.tgz
     version: v0.3.18
   - apiVersion: v2
     appVersion: v0.3.17
-    created: "2026-03-06T01:54:49.608447262Z"
+    created: "2026-03-06T10:12:52.912274643Z"
     description: A Helm chart for kraan controller
     digest: 112f894eb5f524aa22759d95b9fc4280ec084f84368819ce84931b5dbb326b54
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.17.tgz
+    - kraan-controller-v0.3.17.tgz
     version: v0.3.17
   - apiVersion: v2
     appVersion: v0.3.16
-    created: "2026-03-06T01:54:49.607596821Z"
+    created: "2026-03-06T10:12:52.911541618Z"
     description: A Helm chart for kraan controller
     digest: 51f1d76cd7d10d513daaa83f93da8a2bd88b47a787a348b6d8f64bf2cfc6b1b9
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.16.tgz
+    - kraan-controller-v0.3.16.tgz
     version: v0.3.16
   - apiVersion: v2
     appVersion: v0.3.15
-    created: "2026-03-06T01:54:49.606726894Z"
+    created: "2026-03-06T10:12:52.910791111Z"
     description: A Helm chart for kraan controller
     digest: 7cd40024829e9c84be1666356905e6734e719ab593c0af17f648786f865fc77c
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.15.tgz
+    - kraan-controller-v0.3.15.tgz
     version: v0.3.15
   - apiVersion: v2
     appVersion: v0.3.13
-    created: "2026-03-06T01:54:49.605164408Z"
+    created: "2026-03-06T10:12:52.910040982Z"
     description: A Helm chart for kraan controller
     digest: 6b6b5e46d5a3b672582fe474390ac5a5a29bc10edd0c948d5b2050500cbdd222
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.13.tgz
+    - kraan-controller-v0.3.13.tgz
     version: v0.3.13
   - apiVersion: v2
     appVersion: v0.3.12
-    created: "2026-03-06T01:54:49.604430605Z"
+    created: "2026-03-06T10:12:52.908657892Z"
     description: A Helm chart for kraan controller
     digest: 0442345eccded482af38c52089d1731092ae71af45fbea8ad5125d379d388a9a
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.12.tgz
+    - kraan-controller-v0.3.12.tgz
     version: v0.3.12
   - apiVersion: v2
     appVersion: v0.3.11
-    created: "2026-03-06T01:54:49.603688086Z"
+    created: "2026-03-06T10:12:52.907314321Z"
     description: A Helm chart for kraan controller
     digest: af424fcb3999ef1e7cf180c816f7a7dddba61d274dd62a5955abd3e39d8a1168
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.11.tgz
+    - kraan-controller-v0.3.11.tgz
     version: v0.3.11
   - apiVersion: v2
     appVersion: v0.3.10
-    created: "2026-03-06T01:54:49.602945757Z"
+    created: "2026-03-06T10:12:52.906716802Z"
     description: A Helm chart for kraan controller
     digest: 89ba1902103af2e9a806439b5a0a2874604e5bc934ceaf3b1cfaa54e582b031f
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.10.tgz
+    - kraan-controller-v0.3.10.tgz
     version: v0.3.10
   - apiVersion: v2
     appVersion: v0.3.9
-    created: "2026-03-06T01:54:49.664370834Z"
+    created: "2026-03-06T10:12:52.971165577Z"
     description: A Helm chart for kraan controller
     digest: 82dd3d95e478e152a6c0e45a601ab42a9677120b99355010eb386bdfd1f844e2
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.9.tgz
+    - kraan-controller-v0.3.9.tgz
     version: v0.3.9
   - apiVersion: v2
     appVersion: v0.3.8
-    created: "2026-03-06T01:54:49.663638234Z"
+    created: "2026-03-06T10:12:52.970509204Z"
     description: A Helm chart for kraan controller
     digest: 8a1ec3e3eeceb159636927c4eaac3bc88f858fdd991d90958ce208a3f64e0d2b
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.8.tgz
+    - kraan-controller-v0.3.8.tgz
     version: v0.3.8
   - apiVersion: v2
     appVersion: v0.3.7
-    created: "2026-03-06T01:54:49.662900383Z"
+    created: "2026-03-06T10:12:52.969852404Z"
     description: A Helm chart for kraan controller
     digest: b8476345d0f64505da13a00ffed307ffb714d7b17e7884d6840e0328b421b9d0
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.7.tgz
+    - kraan-controller-v0.3.7.tgz
     version: v0.3.7
   - apiVersion: v2
     appVersion: v0.3.6
-    created: "2026-03-06T01:54:49.662178102Z"
+    created: "2026-03-06T10:12:52.969172325Z"
     description: A Helm chart for kraan controller
     digest: c31833df2cdd4aa37703ae403421491132af50f9837ebd600b716ffab84f9687
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.6.tgz
+    - kraan-controller-v0.3.6.tgz
     version: v0.3.6
   - apiVersion: v2
     appVersion: v0.3.5
-    created: "2026-03-06T01:54:49.656348683Z"
+    created: "2026-03-06T10:12:52.959136988Z"
     description: A Helm chart for kraan controller
     digest: 311c774a3a82776226e077551a8d027ae504adb997510430b6142c72caeb2710
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.5.tgz
+    - kraan-controller-v0.3.5.tgz
     version: v0.3.5
   - apiVersion: v2
     appVersion: v0.3.4
-    created: "2026-03-06T01:54:49.636872064Z"
+    created: "2026-03-06T10:12:52.940766115Z"
     description: A Helm chart for kraan controller
     digest: 8e334e596cd7cb983b4ba4ab4306b5f70d6553ec2fc77a7274791e7435ee70a4
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.4.tgz
+    - kraan-controller-v0.3.4.tgz
     version: v0.3.4
   - apiVersion: v2
     appVersion: v0.3.3
-    created: "2026-03-06T01:54:49.623311535Z"
+    created: "2026-03-06T10:12:52.927256579Z"
     description: A Helm chart for kraan controller
     digest: adf617d84b9d645aab65e6b65c018590f99e71f2b236018a9e04244fa87845a1
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.3.tgz
+    - kraan-controller-v0.3.3.tgz
     version: v0.3.3
   - apiVersion: v2
     appVersion: v0.3.3
-    created: "2026-03-06T01:54:49.622579856Z"
+    created: "2026-03-06T10:12:52.926277704Z"
     description: A Helm chart for kraan controller
     digest: 1edb825284b7f2447e69076855b28efa2c219c2b4b1addb7a2efc86bccd11870
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.3-dev.tgz
+    - kraan-controller-v0.3.3-dev.tgz
     version: v0.3.3-dev
   - apiVersion: v2
     appVersion: v0.3.2
-    created: "2026-03-06T01:54:49.612411784Z"
+    created: "2026-03-06T10:12:52.916117165Z"
     description: A Helm chart for kraan controller
     digest: 862743da0887d6bb2f135d1eb5c16e5b6e525b660ff24ece8fc158bb15402dfc
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.2.tgz
+    - kraan-controller-v0.3.2.tgz
     version: v0.3.2
   - apiVersion: v2
     appVersion: v0.3.2
-    created: "2026-03-06T01:54:49.611633888Z"
+    created: "2026-03-06T10:12:52.915507448Z"
     description: A Helm chart for kraan controller
     digest: 6a30d0eaef159ac07b36c211884cd4510d9f2ebc1d55c3bcc7bf8eff3530b2b8
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.2-dev.tgz
+    - kraan-controller-v0.3.2-dev.tgz
     version: v0.3.2-dev
   - apiVersion: v2
     appVersion: v0.3.1
-    created: "2026-03-06T01:54:49.60221489Z"
+    created: "2026-03-06T10:12:52.906129665Z"
     description: A Helm chart for kraan controller
     digest: 22a3b9a290d2ce0d6f1cffe0287eb9f4b4f7d72b24427d8ff90b123b87f5e193
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.1.tgz
+    - kraan-controller-v0.3.1.tgz
     version: v0.3.1
   - apiVersion: v2
     appVersion: v0.3.1
-    created: "2026-03-06T01:54:49.601439659Z"
+    created: "2026-03-06T10:12:52.905512951Z"
     description: A Helm chart for kraan controller
     digest: 6d0dc3791f757e2341507d5cc4b94de69f19b75d325d816f3011e9b7c2bac119
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.1-dev.tgz
+    - kraan-controller-v0.3.1-dev.tgz
     version: v0.3.1-dev
   - apiVersion: v2
     appVersion: v0.3.0
-    created: "2026-03-06T01:54:49.600269357Z"
+    created: "2026-03-06T10:12:52.904864485Z"
     description: A Helm chart for kraan controller
     digest: 6a95b0b1b9a69506ff6539dbd43673ccc4824be7fe14db40c004c0b82d6d3e5f
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.0.tgz
+    - kraan-controller-v0.3.0.tgz
     version: v0.3.0
   - apiVersion: v2
     appVersion: v0.3.0
-    created: "2026-03-06T01:54:49.599359676Z"
+    created: "2026-03-06T10:12:52.904306838Z"
     description: A Helm chart for kraan controller
     digest: 0ee8d25db6bd5f0489cbec3b5db661c24ca4228f546f4a9ce15e4db771763695
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.3.0-dev.tgz
+    - kraan-controller-v0.3.0-dev.tgz
     version: v0.3.0-dev
   - apiVersion: v2
     appVersion: v0.1.29
-    created: "2026-03-06T01:54:49.59865652Z"
+    created: "2026-03-06T10:12:52.903715381Z"
     description: A Helm chart for kraan controller
     digest: 534c9d6dbe1f3c7e82e9bd7074102c6dc09c67fca1c5bee7218c40c1849b5de2
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.2.8.tgz
+    - kraan-controller-v0.2.8.tgz
     version: v0.2.8
   - apiVersion: v2
     appVersion: v0.1.24
-    created: "2026-03-06T01:54:49.598023967Z"
+    created: "2026-03-06T10:12:52.902738484Z"
     description: A Helm chart for kraan controller
     digest: 5e8bd447f598bc5c492b209caa98f7a70a6d53bb0f08781a4da14eea30cdfbe6
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.2.4.tgz
+    - kraan-controller-v0.2.4.tgz
     version: v0.2.4
   - apiVersion: v2
     appVersion: v0.1.29
-    created: "2026-03-06T01:54:49.597372829Z"
+    created: "2026-03-06T10:12:52.901803672Z"
     description: A Helm chart for kraan controller
     digest: 245d4d357b0dd25b582704be5d842559f7a8133d3805fd01eac4c51884b840e6
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.1.29-dev.tgz
+    - kraan-controller-v0.1.29-dev.tgz
     version: v0.1.29-dev
   - apiVersion: v2
     appVersion: v0.1.21
-    created: "2026-03-06T01:54:49.596707564Z"
+    created: "2026-03-06T10:12:52.901257969Z"
     description: A Helm chart for kraan controller
     digest: e36a3bd6d5581318372229cefc85177df01d8a6a97617689cb204c7a8525bcc3
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.1.21-dev.tgz
+    - kraan-controller-v0.1.21-dev.tgz
     version: v0.1.21-dev
   - apiVersion: v2
     appVersion: v0.1.20
-    created: "2026-03-06T01:54:49.596029425Z"
+    created: "2026-03-06T10:12:52.900718548Z"
     description: A Helm chart for kraan controller
     digest: b3e229cf5d423920aa56ef4116b9f36e1f227df2bbc5d8f4270d7f1ba29ad5f2
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.1.20.tgz
+    - kraan-controller-v0.1.20.tgz
     version: v0.1.20
   - apiVersion: v2
     appVersion: v0.1.20
-    created: "2026-03-06T01:54:49.594343817Z"
+    created: "2026-03-06T10:12:52.900186522Z"
     description: A Helm chart for kraan controller
     digest: 5d6dfab0d6833ac5b36ddf1a1f3e4a8d80c6696104ba2a32405a82049fda2fe9
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.1.20-dev.tgz
+    - kraan-controller-v0.1.20-dev.tgz
     version: v0.1.20-dev
   - apiVersion: v2
     appVersion: v0.1.19
-    created: "2026-03-06T01:54:49.593686598Z"
+    created: "2026-03-06T10:12:52.899651967Z"
     description: A Helm chart for kraan controller
     digest: ab2cfade8abe2afd2180f7eeaa2f830342e03ef033266de002e7eb6214a5af2c
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.1.19.tgz
+    - kraan-controller-v0.1.19.tgz
     version: v0.1.19
   - apiVersion: v2
     appVersion: v0.1.18
-    created: "2026-03-06T01:54:49.593020421Z"
+    created: "2026-03-06T10:12:52.898989421Z"
     description: A Helm chart for kraan controller
     digest: 48b0db195cb7770eb350801be787c303b2f587444a625396bca02a0fe7977505
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.1.18.tgz
+    - kraan-controller-v0.1.18.tgz
     version: v0.1.18
   - apiVersion: v2
     appVersion: v0.1.17
-    created: "2026-03-06T01:54:49.592329569Z"
+    created: "2026-03-06T10:12:52.898485937Z"
     description: A Helm chart for kraan controller
     digest: a46cd33e411a96a1b87801daad8bdbcaca57c571f4ba65523cafefcd673ddca4
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.1.17.tgz
+    - kraan-controller-v0.1.17.tgz
     version: v0.1.17
   - apiVersion: v2
     appVersion: v0.1.16
-    created: "2026-03-06T01:54:49.591687999Z"
+    created: "2026-03-06T10:12:52.897918463Z"
     description: A Helm chart for kraan controller
     digest: 16c8b58372e3676c7913f3c5d1092288ce537b87f48512e73a3989e3512decd3
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.1.16.tgz
+    - kraan-controller-v0.1.16.tgz
     version: v0.1.16
   - apiVersion: v2
     appVersion: v0.1.15
-    created: "2026-03-06T01:54:49.591045697Z"
+    created: "2026-03-06T10:12:52.896527946Z"
     description: A Helm chart for kraan controller
     digest: 33cd7f9f1bba8c6b1120dc81b5df27df7a8ea8498ef1c59776fbb98b83e23135
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.1.15.tgz
+    - kraan-controller-v0.1.15.tgz
     version: v0.1.15
   - apiVersion: v2
     appVersion: v0.1.14
-    created: "2026-03-06T01:54:49.590349615Z"
+    created: "2026-03-06T10:12:52.896004455Z"
     description: A Helm chart for kraan controller
     digest: 0b66af76ebfbc49dbdcc2f9c13cded95418fabe2809f63aa62bb53f14fcd8083
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.1.14.tgz
+    - kraan-controller-v0.1.14.tgz
     version: v0.1.14
   - apiVersion: v2
     appVersion: v0.1.12
-    created: "2026-03-06T01:54:49.588960423Z"
+    created: "2026-03-06T10:12:52.895499368Z"
     description: A Helm chart for kraan controller
     digest: 99a207210d09ce9e045761ae9a3748f6738a744aba4e6b029523e5c8b9b6a13c
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.1.13.tgz
+    - kraan-controller-v0.1.13.tgz
     version: v0.1.13
   - apiVersion: v2
     appVersion: v0.1.11
-    created: "2026-03-06T01:54:49.588331737Z"
+    created: "2026-03-06T10:12:52.894914683Z"
     description: A Helm chart for kraan controller
     digest: ad0a01cd758b3429bd23d445a73e94ed15c17657faa7f6c2d25bef911d0973a8
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.1.12.tgz
+    - kraan-controller-v0.1.12.tgz
     version: v0.1.12
   - apiVersion: v2
     appVersion: v0.1.10
-    created: "2026-03-06T01:54:49.587688804Z"
+    created: "2026-03-06T10:12:52.894376273Z"
     description: A Helm chart for kraan controller
     digest: d572594a3d25e4a817a52bb103df1c13f6cc4748b004cc1859ad99d9e5259e78
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.1.11.tgz
+    - kraan-controller-v0.1.11.tgz
     version: v0.1.11
   - apiVersion: v2
     appVersion: v0.1.09
-    created: "2026-03-06T01:54:49.587038187Z"
+    created: "2026-03-06T10:12:52.893849706Z"
     description: A Helm chart for kraan controller
     digest: ef50265ffdc3806f778fe7209c115ec386e905514228bd7f3f1aa06b056b1bd5
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.1.10.tgz
+    - kraan-controller-v0.1.10.tgz
     version: v0.1.10
   - apiVersion: v2
     appVersion: v0.1.09
-    created: "2026-03-06T01:54:49.58638227Z"
+    created: "2026-03-06T10:12:52.8933001Z"
     description: A Helm chart for kraan controller
     digest: 440c0f4ade9d22062d6b459d7358f1f898a83eaa8be3dd42944a6d440196573e
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.1.09.tgz
+    - kraan-controller-v0.1.09.tgz
     version: v0.1.09
   - apiVersion: v2
     appVersion: v0.1.08
-    created: "2026-03-06T01:54:49.585761919Z"
+    created: "2026-03-06T10:12:52.892741804Z"
     description: A Helm chart for kraan controller
     digest: 74b7a5b7a9ad776be06cb2a60cbe974595f06319b862ec61f37ebc8dd8dd4892
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.1.08.tgz
+    - kraan-controller-v0.1.08.tgz
     version: v0.1.08
   - apiVersion: v2
-    created: "2026-03-06T01:54:49.585162167Z"
+    created: "2026-03-06T10:12:52.892192587Z"
     description: A Helm chart for kraan controller
     digest: 59be334168ddedce0e59d1ef492314605bc902386747e70baf8d9711add66cdc
     name: kraan-controller
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-v0.1.07.tgz
+    - kraan-controller-v0.1.07.tgz
     version: v0.1.07
   kraan-controller-helm:
   - apiVersion: v2
     appVersion: v0.3.52
-    created: "2026-03-06T01:54:49.584514195Z"
+    created: "2026-03-06T10:12:52.890521966Z"
     description: A Helm chart for kraan controller
     digest: 5803075e571645132582c0bb3a52cc0ded4738194e1e5f9f3753852888f81113
     name: kraan-controller-helm
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-helm-v0.3.53.tgz
+    - kraan-controller-helm-v0.3.53.tgz
     version: v0.3.53
   - apiVersion: v2
     appVersion: v0.3.52
-    created: "2026-03-06T01:54:49.582225737Z"
+    created: "2026-03-06T10:12:52.888454556Z"
     description: A Helm chart for kraan controller
     digest: 8dcd8095e300379748c6fd0c2efab92870a2088900a19441e7ce99258916ae0c
     name: kraan-controller-helm
     type: application
     urls:
-    - https://fidelity.github.io/kraan/kraan-controller-helm-v0.3.52.tgz
+    - kraan-controller-helm-v0.3.52.tgz
     version: v0.3.52
-generated: "2026-03-06T01:54:49.580508464Z"
+generated: "2026-03-06T10:12:52.88704644Z"

@@ -165,7 +165,31 @@ gotk:
 
   crdMigration:
     enabled: true
-    targetVersion: v2
+    crds:
+      - crdName: helmreleases.helm.toolkit.fluxcd.io
+        group: helm.toolkit.fluxcd.io
+        resource: helmreleases
+        targetVersion: v2
+      - crdName: buckets.source.toolkit.fluxcd.io
+        group: source.toolkit.fluxcd.io
+        resource: buckets
+        targetVersion: v1
+      - crdName: gitrepositories.source.toolkit.fluxcd.io
+        group: source.toolkit.fluxcd.io
+        resource: gitrepositories
+        targetVersion: v1
+      - crdName: helmcharts.source.toolkit.fluxcd.io
+        group: source.toolkit.fluxcd.io
+        resource: helmcharts
+        targetVersion: v1
+      - crdName: helmrepositories.source.toolkit.fluxcd.io
+        group: source.toolkit.fluxcd.io
+        resource: helmrepositories
+        targetVersion: v1
+      - crdName: ocirepositories.source.toolkit.fluxcd.io
+        group: source.toolkit.fluxcd.io
+        resource: ocirepositories
+        targetVersion: v1
     annotationKey: kraan.io/storage-migration-at
     chunkSize: 200
     requestTimeout: 30s

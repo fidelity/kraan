@@ -1,4 +1,4 @@
-{{- if and .Values.gotk.helmController.crd.enabled .Values.gotk.crdMigration.enabled -}}
+{{- if .Values.gotk.crdMigration.enabled -}}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -52,8 +52,6 @@ spec:
           - -c
           - /scripts/migrate-stored-versions.sh
         env:
-          - name: TARGET_VERSION
-            value: {{ .Values.gotk.crdMigration.targetVersion | default "v2" | quote }}
           - name: MIGRATION_ANNOTATION_KEY
             value: {{ .Values.gotk.crdMigration.annotationKey | default "kraan.io/storage-migration-at" | quote }}
           - name: MIGRATION_CHUNK_SIZE

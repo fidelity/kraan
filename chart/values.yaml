@@ -227,7 +227,8 @@ gotk:
 
     extraLabels: {}
 
-    extraArgs: []
+    extraArgs:
+    - --feature-gates=UseHelm3Defaults=true
 
     prometheus:
       enabled: true

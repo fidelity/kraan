@@ -198,8 +198,8 @@ spec:
   healthCheckExprs:
     - apiVersion: apps/v1
       kind: Deployment
-      current: 'self.status.availableReplicas == self.spec.replicas'
-      inProgress: 'self.status.updatedReplicas < self.spec.replicas'
+      current: 'has(self.status.readyReplicas) && has(self.status.replicas) && self.status.readyReplicas == self.status.replicas && self.status.replicas > 0'
+      inProgress: '!has(self.status.readyReplicas) || self.status.readyReplicas < self.status.replicas'
       failed: 'self.status.conditions.exists(c, c.type == "Progressing" && c.status == "False" && c.reason == "ProgressDeadlineExceeded")'
   values:
     replicaCount: 3

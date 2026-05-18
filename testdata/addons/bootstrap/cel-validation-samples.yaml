@@ -170,39 +170,3 @@ spec:
       failed: 'has(self.status.phase) && self.status.phase == "Failed"'
   values:
     replicaCount: 1
-
----
-# Sample 7: Combined with poller wait strategy
-# Health checks only work with 'poller' wait strategy and when wait is enabled
-apiVersion: helm.toolkit.fluxcd.io/v2
-kind: HelmRelease
-metadata:
-  name: health-check-with-poller
-  namespace: bootstrap
-spec:
-  interval: 10m
-  chart:
-    spec:
-      chart: podinfo
-      sourceRef:
-        kind: HelmRepository
-        name: podinfo
-        namespace: gotk-system
-      version: '>=2.0.0'
-  install:
-    disableWait: false  # Must be false for health checks to work
-  upgrade:
-    disableWait: false  # Must be false for health checks to work
-  waitStrategy:
-    name: poller  # Health checks require 'poller' strategy
-  healthCheckExprs:
-    - apiVersion: apps/v1
-      kind: Deployment
-      current: 'has(self.status.readyReplicas) && has(self.status.replicas) && self.status.readyReplicas == self.status.replicas && self.status.replicas > 0'
-      inProgress: '!has(self.status.readyReplicas) || self.status.readyReplicas < self.status.replicas'
-      failed: 'self.status.conditions.exists(c, c.type == "Progressing" && c.status == "False" && c.reason == "ProgressDeadlineExceeded")'
-  values:
-    replicaCount: 3
-    service:
-      enabled: true
-      type: ClusterIP

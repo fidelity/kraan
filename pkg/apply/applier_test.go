@@ -165,6 +165,7 @@ func getHelmReleasesFromFiles(t *testing.T, fileNames ...string) *helmctlv2.Helm
 func getHelmReleaseFromList(t *testing.T, nameSpaceSlashName string, helmReleaseList *helmctlv2.HelmReleaseList) *helmctlv2.HelmRelease {
 	for _, item := range helmReleaseList.Items {
 		if fmt.Sprintf("%s/%s", item.Namespace, item.Name) == nameSpaceSlashName {
+			item.TypeMeta = metav1.TypeMeta{}
 			return &item
 		}
 	}

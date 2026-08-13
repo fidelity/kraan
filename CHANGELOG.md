@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.3.56
+
+### Dependency Bumps
+
+**Go module updates:**
+- `github.com/fluxcd/helm-controller/api` v1.5.4 -> v1.5.5
+- `github.com/fluxcd/source-controller/api` v1.8.3 -> v1.8.5
+
+**Chart image tag updates:**
+- `gotk.helmController` image tag: v1.5.4 -> v1.5.5
+- `gotk.sourceController` image tag: v1.8.3 -> v1.8.5
+
+### Chart Artifacts
+
+- Refreshed embedded FluxCD HelmRelease and source-controller CRDs from the v1.5.5 and v1.8.5 controller modules.
+
 ## v0.3.55
 
 ### Dependency Bumps

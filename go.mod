@@ -1,6 +1,6 @@
 module github.com/fidelity/kraan
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/fluxcd/helm-controller/api v1.5.5
@@ -14,7 +14,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.23.2
 	go.uber.org/zap v1.28.0
-	golang.org/x/mod v0.35.0
+	golang.org/x/mod v0.42.0
 	k8s.io/api v0.35.2
 	k8s.io/apiextensions-apiserver v0.35.2
 	k8s.io/apimachinery v0.35.2

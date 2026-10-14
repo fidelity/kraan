@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.3.57
+
+### Dependency Bumps
+
+**Go module updates:**
+- `github.com/fluxcd/helm-controller/api` v1.5.5 -> v1.6.5
+- `github.com/fluxcd/source-controller/api` v1.8.5 -> v1.9.6
+
+**Chart image tag updates:**
+- `gotk.helmController` image tag: v1.5.5 -> v1.6.5
+- `gotk.sourceController` image tag: v1.8.5 -> v1.9.6
+
+### Chart Artifacts
+
+- Refreshed embedded FluxCD HelmRelease and source-controller CRDs from the v1.6.5 and v1.9.6 controller modules.
+- Added `scripts/update-gotk-crds.sh` (and `make update-gotk-crds`) to regenerate these vendored CRDs directly from the versions pinned in `go.mod`.
+
+### ⚠️ Breaking Changes
+
+- **helm-controller v1.6.0**: the default `HelmRelease` `.spec.postRenderStrategy` changed from
+  `nohooks` (Helm v3 behavior) to `combined` (Helm v4.2 default), changing how hooks are sent to
+  post-renderers. Set `.spec.postRenderStrategy: nohooks` on affected HelmReleases, or enable the
+  `UseHelm3Defaults` feature gate, to retain the previous behavior.
+- **helm-controller v1.6.4**: `HelmRelease` `kubeConfig` Secrets that reference local files are no
+  longer supported; credentials and certificates must be embedded inline in the Secret.
+
 ## v0.3.56
 
 ### Dependency Bumps

@@ -144,7 +144,7 @@ function args() {
           "--git-url") (( arg_index+=1 )); GIT_URL="${arg_list[${arg_index}]}";;
           "--git-user") (( arg_index+=1 )); GIT_USER="${arg_list[${arg_index}]}";;
           "--git-token") (( arg_index+=1 )); GIT_CREDENTIALS="${arg_list[${arg_index}]}";;
-          "--dry-run") dry_run="--dry-run";;
+          "--dry-run") dry_run="--dry-run=client";;
           "--helm") (( arg_index+=1 )); helm_action="${arg_list[${arg_index}]}";;
           "--no-git-auth") no_git_auth=1;;
           "--debug") set -x;;

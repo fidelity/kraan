@@ -118,6 +118,7 @@ clean-lint:
 lint: ${LINT_ARTIFACT}
 ${LINT_ARTIFACT}: ${MAKEFILE_PATH}/.golangci.yml ${GO_SOURCES}
 	echo "${YELLOW}Running go lint${NC_DIR}" && \
+	pkg_dir="${CURDIR}" && \
 	(cd ${MAKEFILE_PATH} && \
 	 procs=$$(expr $$( \
 		(grep -c ^processor /proc/cpuinfo || \
@@ -127,5 +128,5 @@ ${LINT_ARTIFACT}: ${MAKEFILE_PATH}/.golangci.yml ${GO_SOURCES}
 	 golangci-lint run \
 		--config ${MAKEFILE_PATH}/.golangci.yml \
 		--concurrency=$${procs} \
-		"$$(realpath --relative-to ${MAKEFILE_PATH} ${CURDIR})/.") && \
+		"$${pkg_dir#${MAKEFILE_PATH}/}/.") && \
 	touch $@

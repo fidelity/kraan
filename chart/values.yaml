@@ -49,7 +49,7 @@ kraan:
       name: kraan-controller
       tag:
       imagePullPolicy:
- 
+
 
     args:
       logLevel: 0
@@ -125,7 +125,7 @@ gotk:
     image:
       repository: ghcr.io/fluxcd
       name: source-controller
-      tag: v1.8.5
+      tag: v1.9.6
       imagePullPolicy:
 
     imagePullSecrets:
@@ -239,7 +239,7 @@ gotk:
     image:
       repository: ghcr.io/fluxcd
       name: helm-controller
-      tag: v1.5.5
+      tag: v1.6.5
       imagePullPolicy:
 
     proxy: true

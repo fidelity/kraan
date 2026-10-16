@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Set versions of software required
-linter_version=2.4.0
+linter_version=2.14.0
 mockgen_version=v0.6.0
 helm_version=v3.17.4
 kind_version=v0.30.0
@@ -28,7 +28,17 @@ function args() {
 
 function install_linter() {
     TARGET=$(go env GOPATH)
-    curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b "${TARGET}/bin" v${linter_version}
+    # Use golangci-lint's own official install.sh, but patch one line first:
+    # its checksum lookup does an unanchored `grep "${BASENAME}"`, which matches
+    # both the tarball's checksum line and the newer "*.tar.gz.sbom.json" line
+    # (whose filename is a superset of the tarball's), so verification always
+    # fails on releases that ship SBOMs. Anchoring the match to end-of-line
+    # fixes it without changing which binary gets installed.
+    tmp_installer=$(mktemp)
+    trap 'rm -f "${tmp_installer}" "${tmp_installer}.bak"' RETURN
+    curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh -o "${tmp_installer}"
+    sed -i.bak 's/grep "${BASENAME}"/grep -E "[[:space:]]${BASENAME}\$"/' "${tmp_installer}"
+    sh "${tmp_installer}" -b "${TARGET}/bin" v${linter_version}
 }
 
 function install_kubebuilder() {

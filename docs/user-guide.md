@@ -121,11 +121,11 @@ The Kraan-Controller is designed to deploy [HelmReleases](https://toolkit.fluxcd
 
 ### Moving HelmReleases between AddonLayers
 
-If a HelmRelease is removed from one AddonLayer's git repository source path and added to another layer's git repositiory source path then Kraan will detect this and not allow the existing HelmRelease on the cluster to be 'adpoted' by the layer it is now defined in rather than being deleted and readded. However to achieve this behaviour both AddonLayers need to be updated at the same time.
+If a HelmRelease is removed from one AddonLayer's git repository source path and added to another layer's git repository source path then Kraan will detect this and not allow the existing HelmRelease on the cluster to be 'adopted' by the layer it is now defined in rather than being deleted and re-added. However to achieve this behavior both AddonLayers need to be updated at the same time.
 
-The 'prune' processing for the layer it has been removed from will mark the HelmReelease as 'orphaned' and wait for a period set by that layer's `interval` setting, which defauts to one minute, before uninstalling it. This allows an opportunity for another layer to identify that the HelmRelease in its git repository source path is present on the cluster but currently owned by another layer. In this case if the HelmRelease has been updated by the other layer with an 'orphaned' label this layer will change the owner and apply it to the cluster, which will cause the Helm Controller to upgrade it if any changes have been made or do nothing if the HelmRelease definition matches the current state on the cluster.
+The 'prune' processing for the layer it has been removed from will mark the HelmRelease as 'orphaned' and wait for a period set by that layer's `interval` setting, which defaults to one minute, before uninstalling it. This allows an opportunity for another layer to identify that the HelmRelease in its git repository source path is present on the cluster but currently owned by another layer. In this case if the HelmRelease has been updated by the other layer with an 'orphaned' label this layer will change the owner and apply it to the cluster, which will cause the Helm Controller to upgrade it if any changes have been made or do nothing if the HelmRelease definition matches the current state on the cluster.
 
-If a HelmRelease is defined in multiple layers at the same time the first layer to process it will acquire ownership and the other layer(s) will fail to apply. This will be clearly reported in the AddonLayer status. It is possible that this error could occur briefly in the sceanrio where a HelmRelease is moved from one layer to another if the layer it is now defined in processes before the layer that it has been removed from, but this situation will be resolved when the layer it has been removed from processes and adds an 'orphaned' label.
+If a HelmRelease is defined in multiple layers at the same time the first layer to process it will acquire ownership and the other layer(s) will fail to apply. This will be clearly reported in the AddonLayer status. It is possible that this error could occur briefly in the scenario where a HelmRelease is moved from one layer to another if the layer it is now defined in processes before the layer that it has been removed from, but this situation will be resolved when the layer it has been removed from processes and adds an 'orphaned' label.
 
 ### Git Repository Source
 
@@ -151,7 +151,7 @@ The `version` field defines the version of the AddonsLayer. This can be used to 
 
 Modifying the version field can be used to force redeployment of HelmReleases that have not changed. This feature can be activated by adding an annotation to the HelmRelease definition. Setting `kraan.updateVersion: "true"` will cause the Kraan-Controller to add a value to that HelmRelease with key `kraanVersion` and value of the AddonsLayer's version. This means that if the version has changed since the last time the AddonsLayer was processed the HelmRelease will be redeployed. This feature enables the user configure an integration test HelmRelease for an AddonsLayer which will be run on AddonsLayer version change even if it has not changed. By using the HelmRelease `dependsOn` feature you can ensure this HelmRelease is not deployed until all other HelmReleases in the layer are deployed, see [testdata/addons/bootstrap](https://github.com/fidelity/kraan/tree/master/testdata/addons/bootstrap) for an example.
 
-The version field does not need to be updated, simply commiting a change to the git repository branch referenced by the GitRepository custom resource that is referenced in the AddonsLayer's source element or editing that GitRepository to reference a different tag, commit or even a different git repository will cause Kraan to reprocess the AddonsLayer.
+The version field does not need to be updated, simply committing a change to the git repository branch referenced by the GitRepository custom resource that is referenced in the AddonsLayer's source element or editing that GitRepository to reference a different tag, commit or even a different git repository will cause Kraan to reprocess the AddonsLayer.
 
 ### Example AddonsLayers
 
@@ -178,7 +178,7 @@ metadata:
 spec:
   version: 0.1.01
   interval: 1m
-  source: 
+  source:
     name: addons-config
     namespace: gotk-system
     path: ./testdata/addons/base
@@ -254,7 +254,7 @@ Events:
   Normal  Failed                              1s (x2 over 23s)    kraan-controller  AddonsLayer failed, HelmRelease: base/microservice-1, not ready
 ```
 
-A 'HelmRelease not deployed' log message will be emmitted if a HelmRelease fails to deploy. This message includes the layer name as well as HelmRelease namespace and name, e.g.
+A 'HelmRelease not deployed' log message will be emitted if a HelmRelease fails to deploy. This message includes the layer name as well as HelmRelease namespace and name, e.g.
 
 ```json
 {

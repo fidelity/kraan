@@ -21,7 +21,7 @@ Install the Kraan Addon Manager and gitops source controller to a Kubernetes clu
 Options:
   '--helm' perform helm upgrade or install, if you don't specify either script will not deploy helm chart.
   '--kraan-image-pull-secret' set to 'auto' to generate image pull secrets from ~/.docker/config.json
-                              or supply name of file containing image pull secret defintion to apply.
+                              or supply name of file containing image pull secret definition to apply.
                               The secret should be called 'kraan-regcred'.
   '--kraan-image-reg'   provide image registry to use for Kraan, defaults to empty for docker hub
   '--kraan-image-repo'  provide image repository prefix to use for Kraan, defaults to 'kraan' for docker hub org.
@@ -32,7 +32,7 @@ Options:
 
   '--gitops-image-reg'  provide image registry to use for gitops toolkit components, defaults to 'ghcr.io'.
   '--gitops-image-pull-secret' set to 'auto' to generate image pull secrets from ~/.docker/config.json
-                               or supply name of file containing image pull secret defintion to apply.
+                               or supply name of file containing image pull secret definition to apply.
                                The secret should be called 'gotk-regcred'.
   '--gitops-proxy'    set to 'auto' to generate proxy setting for gotk components using value of HTTPS_PROXY
                       environment variable or supply the proxy url to use.
@@ -144,7 +144,7 @@ function args() {
           "--git-url") (( arg_index+=1 )); GIT_URL="${arg_list[${arg_index}]}";;
           "--git-user") (( arg_index+=1 )); GIT_USER="${arg_list[${arg_index}]}";;
           "--git-token") (( arg_index+=1 )); GIT_CREDENTIALS="${arg_list[${arg_index}]}";;
-          "--dry-run") dry_run="--dry-run";;
+          "--dry-run") dry_run="--dry-run=client";;
           "--helm") (( arg_index+=1 )); helm_action="${arg_list[${arg_index}]}";;
           "--no-git-auth") no_git_auth=1;;
           "--debug") set -x;;

@@ -29,7 +29,9 @@ Alternatively you can run make in a docker container.
 
     make check
 
-If you change the golang source in the `api` directory such that the custom resource definition is changed you need to rin `make manifests` to regenerate the crd yaml in `config/crd/bases/kraan.io_addonslayers.yaml` and then cut an paste the contents of this file into `chart/templates/kraan/crd.yaml`, retaining the first and last line of this file.
+If you change the golang source in the `api` directory such that the custom resource definition is changed you need to run `make manifests`. This regenerates the CRD yaml in `config/crd/bases/kraan.io_addonslayers.yaml` via `controller-gen` and automatically syncs it into `chart/templates/kraan/crd.yaml` (via `scripts/sync-kraan-crd.sh`) — no manual copy/paste required.
+
+If you bump the `github.com/fluxcd/source-controller/api` or `github.com/fluxcd/helm-controller/api` versions in `go.mod`, run `make update-gotk-crds` to regenerate the vendored upstream CRDs under `chart/templates/gotk/` (via `scripts/update-gotk-crds.sh`).
 
 A shell script is provided to perform `goimports`, `gofmt`, run linter and tests on a per package basis.
 
@@ -60,7 +62,7 @@ If the `VERSION` is not set the contents of the `VERSION` file will be used. The
 
 ## Releases
 
-The offical releases use docker hub repository: kraan/kraan-controller. The 'master' tag will be contain a version of kraan built from the master branch. Release versions will be deployed to this repository for public use.
+The official releases use docker hub repository: kraan/kraan-controller. The 'master' tag will be contain a version of kraan built from the master branch. Release versions will be deployed to this repository for public use.
 
 Helm Charts are deployed to github pages so can be accessed via repo: kraan <https://fidelity.github.io/kraan/>
 
@@ -88,7 +90,7 @@ To update the gitops toolkit components (Helm Controller and Source Controller) 
 
     scripts/deploy.sh --toolkit
 
-Then compare the file produced with the equivalent sections in the chart directory and updat the chart files accordingly.
+Then compare the file produced with the equivalent sections in the chart directory and update the chart files accordingly.
 Once the changes are tested and merged into master, create a new chart release as described above.
 
 ## Continuous Integration
@@ -115,7 +117,7 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
     Options:
     '--helm' perform helm upgrade or install, if you don't specify either script will not deploy helm chart.
     '--kraan-image-pull-secret' set to 'auto' to generate image pull secrets from ~/.docker/config.json
-                                or supply name of file containing image pull secret defintion to apply.
+                                or supply name of file containing image pull secret definition to apply.
                                 The secret should be called 'kraan-regcred'.
     '--kraan-image-reg'   provide image registry to use for Kraan, defaults to empty for docker hub
     '--kraan-image-repo'  provide image repository prefix to use for Kraan, defaults to 'kraan' for docker hub org.
@@ -126,7 +128,7 @@ A shell script is provided to deploy the artifacts necessary to test the kraan-c
 
     '--gitops-image-reg'  provide image registry to use for gitops toolkit components, defaults to 'ghcr.io'.
     '--gitops-image-pull-secret' set to 'auto' to generate image pull secrets from ~/.docker/config.json
-                                or supply name of file containing image pull secret defintion to apply.
+                                or supply name of file containing image pull secret definition to apply.
                                 The secret should be called 'gotk-regcred'.
     '--gitops-proxy'    set to 'auto' to generate proxy setting for gotk components using value of HTTPS_PROXY
                         environment variable or supply the proxy url to use.
@@ -165,7 +167,7 @@ To deploy the image to your account in docker.io:
     make docker-push
     scripts/deploy.sh --kraan-tag $VERSION --kraan-image-repo $REPO
 
-Set `REPO` to `kraan` to push to the `kraan` organisation in docker.io.
+Set `REPO` to `kraan` to push to the `kraan` organization in docker.io.
 
 ## Testing
 
@@ -181,7 +183,7 @@ To test the kraan-controller you can run it on your local machine against a kube
     This script will create a temporary directory call /tmp/kraan-local-exec which the kraan-controller
     will use as its root directory when storing files it retrieves from this git repository
 
-The kraan-controller will reprocess all AddonsLayers perioidically. This period defaults to 1 minute but can be set using a command line argument.
+The kraan-controller will reprocess all AddonsLayers periodically. This period defaults to 1 minute but can be set using a command line argument.
 
     kraan-controller -sync-period=2m
 

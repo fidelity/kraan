@@ -21,8 +21,8 @@ PROJECT_SOURCES:=$(shell find ./main ./controllers/ ./api/ ./pkg/ -regex '.*.\.\
 BUILD_DIR:=build/
 RELEASE_DIR:=$(shell mktemp -d)
 GITHUB_USER?=$(shell git config --local  user.name)
-GITHUB_ORG=$(shell git config --get remote.origin.url | sed -nr '/github.com/ s/.*github.com([^"]+).*/\1/p' | cut --characters=2- | cut -f1 -d/)
-GITHUB_REPO=$(shell git config --get remote.origin.url | sed -nr '/github.com/ s/.*github.com([^"]+).*/\1/p'| cut --characters=2- | cut -f2 -d/ | cut -f1 -d.)
+GITHUB_ORG=$(shell git config --get remote.origin.url | sed -nr '/github.com/ s/.*github.com([^"]+).*/\1/p' | cut -c2- | cut -f1 -d/)
+GITHUB_REPO=$(shell git config --get remote.origin.url | sed -nr '/github.com/ s/.*github.com([^"]+).*/\1/p'| cut -c2- | cut -f2 -d/ | cut -f1 -d.)
 GIT_BRANCH=$(shell git rev-parse --abbrev-ref HEAD)
 export VERSION?=$(shell cat VERSION)
 export REPO ?=docker.pkg.github.com/${GITHUB_ORG}/${GITHUB_REPO}
@@ -44,11 +44,10 @@ ALL_GO_PACKAGES:=$(shell find ${CURDIR}/main/ ${CURDIR}/controllers/ ${CURDIR}/a
 GO_CHECK_PACKAGES:=$(shell echo $(subst $() $(),\\n,$(ALL_GO_PACKAGES)) | \
 	awk '{print $$0}')
 
-CHECK_ARTIFACT:=${BUILD_DIR}${PROJECT}-check-${VERSION}-docker.tar
+CHECK_ARTIFACT:=${BUILD_DIR}${PROJECT}-${VERSION}-check-docker.tar
 BUILD_ARTIFACT:=${BUILD_DIR}${PROJECT}-${VERSION}-build-docker.tar
 DEV_BUILD_ARTIFACT:=${BUILD_DIR}${PROJECT}-${VERSION}-build-dev-docker.tar
 
-GOMOD_CACHE_ARTIFACT:=${GOMOD_CACHE_DIR}._gomod
 GOMOD_ARTIFACT:=_gomod
 GO_BIN_ARTIFACT:=${GOBIN}/${PROJECT}
 GO_DOCS_ARTIFACTS:=$(shell echo $(subst $() $(),\\n,$(ALL_GO_PACKAGES)) | \
@@ -65,7 +64,8 @@ NC:=\033[0m
 	clean-${PROJECT}-check ${PROJECT}-check clean-${PROJECT}-build \
 	${PROJECT}-build ${GO_CHECK_PACKAGES} clean-check check \
 	clean-build build generate manifests deploy docker-push controller-gen \
-	install uninstall lint-build run ${PROJECT}-integration integration clean-integration docker-push-prerelease
+	install uninstall lint ${PROJECT}-build run ${PROJECT}-integration \
+	integration clean-integration docker-push-prerelease update-gotk-crds
 # Stop prints each line of the recipe.
 .SILENT:
 
@@ -103,6 +103,11 @@ mkdir-${BUILD_DIR}:
 validate-versions:
 	./scripts/validate.sh
 
+# Regenerate the vendored source-controller/helm-controller CRDs in
+# chart/templates/gotk from the versions pinned in go.mod.
+update-gotk-crds:
+	./scripts/update-gotk-crds.sh
+
 release:
 	cp -rf docs ${RELEASE_DIR}  || exit
 	cp -f *.md ${RELEASE_DIR}  || exit
@@ -122,11 +127,7 @@ release:
 	git checkout ${GIT_BRANCH}  || exit
 
 clean-gomod:
-clean-gomod:
 	rm -rf ${GOMOD_ARTIFACT}
-
-go.mod:
-	go mod tidy
 
 gomod: go.sum
 go.sum:  ${GOMOD_ARTIFACT}
@@ -137,7 +138,7 @@ ${GOMOD_ARTIFACT}: gomod-update
 gomod-update: go.mod ${PROJECT_SOURCES}
 	echo "${YELLOW}go mod tidy${NC}" && \
 	go mod tidy && \
-	go build ./... 
+	go build ./...
 
 clean-${PROJECT}-check:
 	$(foreach target,${GO_CHECK_PACKAGES}, \
@@ -179,6 +180,15 @@ check: DOCKER_SOURCES=Dockerfile-check ${MAKE_SOURCES} ${PROJECT_SOURCES}
 check: DOCKER_BUILD_OPTIONS=--target builder --no-cache
 check: IMG=${PROJECT}-check:${VERSION}
 check: mkdir-${BUILD_DIR} ${CHECK_ARTIFACT}
+
+%-check-docker.tar: $${DOCKER_SOURCES}
+	docker build --rm --pull=true \
+		${DOCKER_BUILD_OPTIONS} \
+		${DOCKER_BUILD_PROXYS} \
+		--tag ${IMG} \
+		--file $< \
+		. && \
+	docker save --output $@ ${IMG}
 
 clean-build:
 	rm -f ${BUILD_ARTIFACT}
@@ -236,7 +246,8 @@ deploy: manifests
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	$(CONTROLLER_GEN) crd:trivialVersions=true paths="./..."  rbac:roleName=manager-role paths="api/..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) crd paths="./..."  rbac:roleName=manager-role paths="api/..." output:crd:artifacts:config=config/crd/bases
+	./scripts/sync-kraan-crd.sh
 
 # Generate code
 generate: controller-gen
@@ -252,14 +263,7 @@ docker-push:
 # download controller-gen if necessary
 controller-gen:
 ifeq (, $(shell which controller-gen))
-	@{ \
-	set -e ;\
-	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
-	cd $$CONTROLLER_GEN_TMP_DIR ;\
-	go mod init tmp ;\
-	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1 ;\
-	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
-	}
+	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.21.0
 CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)
